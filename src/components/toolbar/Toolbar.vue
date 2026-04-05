@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NButtonGroup, NButton, NTooltip, NSpace, NInput, NSwitch } from 'naive-ui'
+import { NButtonGroup, NButton, NTooltip, NSpace } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
 
 const store = useEditorStore()
@@ -42,13 +42,13 @@ function selectTool(toolId: string) {
       <NButtonGroup>
         <NTooltip trigger="hover">
           <template #trigger>
-            <NButton disabled>↶</NButton>
+            <NButton :disabled="!store.canUndo" @click="store.undo">↶</NButton>
           </template>
           撤销
         </NTooltip>
         <NTooltip trigger="hover">
           <template #trigger>
-            <NButton disabled>↷</NButton>
+            <NButton :disabled="!store.canRedo" @click="store.redo">↷</NButton>
           </template>
           重做
         </NTooltip>

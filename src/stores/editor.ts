@@ -38,10 +38,23 @@ export interface Project {
   shapes: BaseShape[]
 }
 
+// 兼容不支持和支持 crypto.randomUUID 的环境
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 export const useEditorStore = defineStore('editor', () => {
   // State
   const project = ref<Project>({
-    id: crypto.randomUUID(),
+    id: generateId(),
     name: 'Untitled Project',
     version: '1.0.0',
     createdAt: new Date().toISOString(),
@@ -62,6 +75,52 @@ export const useEditorStore = defineStore('editor', () => {
   const zoom = ref(1)
   const panOffset = ref({ x: 0, y: 0 })
 
+  // === Undo/Redo History ===
+  const MAX_HISTORY = 50
+  const history = ref<Array<{ shapes: BaseShape[]; selectedIds: string[] }>>([])
+  const historyIndex = ref(-1)
+
+  function getHistorySnapshot() {
+    return {
+      shapes: JSON.parse(JSON.stringify(project.value.shapes)),
+      selectedIds: [...selectedShapeIds.value],
+    }
+  }
+
+  function pushHistory(snapshot: { shapes: BaseShape[]; selectedIds: string[] }) {
+    // Trim forward history when branching
+    history.value = history.value.slice(0, historyIndex.value + 1)
+    history.value.push(snapshot)
+    if (history.value.length > MAX_HISTORY) {
+      history.value.shift()
+    }
+    historyIndex.value = history.value.length - 1
+  }
+
+  const canUndo = computed(() => historyIndex.value > 0)
+  const canRedo = computed(() => historyIndex.value < history.value.length - 1)
+
+  function undo() {
+    if (!canUndo.value) return
+    historyIndex.value--
+    const snap = history.value[historyIndex.value]
+    project.value.shapes = JSON.parse(JSON.stringify(snap.shapes))
+    selectedShapeIds.value = [...snap.selectedIds]
+    project.value.modifiedAt = new Date().toISOString()
+  }
+
+  function redo() {
+    if (!canRedo.value) return
+    historyIndex.value++
+    const snap = history.value[historyIndex.value]
+    project.value.shapes = JSON.parse(JSON.stringify(snap.shapes))
+    selectedShapeIds.value = [...snap.selectedIds]
+    project.value.modifiedAt = new Date().toISOString()
+  }
+
+  // Initialise history with empty project state
+  pushHistory(getHistorySnapshot())
+
   // Getters
   const selectedShapes = computed(() =>
     project.value.shapes.filter((s) => selectedShapeIds.value.includes(s.id))
@@ -75,12 +134,13 @@ export const useEditorStore = defineStore('editor', () => {
   )
 
   // Actions
-  function addShape(shape: BaseShape) {
+  function addShape(shape: BaseShape, saveHistory = true) {
     project.value.shapes.push(shape)
     project.value.modifiedAt = new Date().toISOString()
+    if (saveHistory) pushHistory(getHistorySnapshot())
   }
 
-  function updateShape(id: string, updates: Partial<BaseShape>) {
+  function updateShape(id: string, updates: Partial<BaseShape>, saveHistory = false) {
     const index = project.value.shapes.findIndex((s) => s.id === id)
     if (index !== -1) {
       project.value.shapes[index] = { ...project.value.shapes[index], ...updates }
@@ -88,10 +148,11 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  function deleteShape(id: string) {
+  function deleteShape(id: string, saveHistory = true) {
     project.value.shapes = project.value.shapes.filter((s) => s.id !== id)
     selectedShapeIds.value = selectedShapeIds.value.filter((sid) => sid !== id)
     project.value.modifiedAt = new Date().toISOString()
+    if (saveHistory) pushHistory(getHistorySnapshot())
   }
 
   function selectShape(id: string, addToSelection = false) {
@@ -106,6 +167,15 @@ export const useEditorStore = defineStore('editor', () => {
 
   function clearSelection() {
     selectedShapeIds.value = []
+  }
+
+  function deleteSelectedShapes() {
+    if (selectedShapeIds.value.length === 0) return
+    const idsToDelete = new Set(selectedShapeIds.value)
+    project.value.shapes = project.value.shapes.filter((s) => !idsToDelete.has(s.id))
+    selectedShapeIds.value = []
+    project.value.modifiedAt = new Date().toISOString()
+    pushHistory(getHistorySnapshot())
   }
 
   function addLayer(layer: Layer) {
@@ -168,12 +238,15 @@ export const useEditorStore = defineStore('editor', () => {
     // Getters
     selectedShapes,
     visibleShapes,
+    canUndo,
+    canRedo,
     // Actions
     addShape,
     updateShape,
     deleteShape,
     selectShape,
     clearSelection,
+    deleteSelectedShapes,
     addLayer,
     updateLayer,
     deleteLayer,
@@ -182,5 +255,7 @@ export const useEditorStore = defineStore('editor', () => {
     setPan,
     saveProject,
     loadProject,
+    undo,
+    redo,
   }
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NInputNumber, NInput, NSpace, NButton, NDivider } from 'naive-ui'
+import { NInputNumber, NSpace, NButton, NDivider } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
 import { computed } from 'vue'
 
@@ -116,7 +116,7 @@ function updateSize(dimension: 'width' | 'height', value: number) {
         <h4>操作</h4>
         <NSpace>
           <NButton size="small" disabled>复制</NButton>
-          <NButton size="small" type="error" disabled>删除</NButton>
+          <NButton size="small" type="error" @click="store.deleteSelectedShapes?.()">删除</NButton>
         </NSpace>
       </div>
     </div>

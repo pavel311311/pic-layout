@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NButton, NColorPicker, NSwitch, NScrollbar } from 'naive-ui'
+import { NButton, NColorPicker, NSwitch, NScrollbar } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
 import { ref } from 'vue'
 

@@ -60,7 +60,8 @@ const themeOverrides = {
         show-trigger="bar"
         content-style="padding: 12px;"
         bordered
-        position="right"
+        :position="'absolute'"
+        style="right: 0; top: 0; bottom: 0;"
       >
         <PropertiesPanel />
       </NLayoutSider>
@@ -88,12 +89,16 @@ const themeOverrides = {
 .main-area {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
 }
 
 .canvas-content {
   flex: 1;
   overflow: hidden;
   background: #0d0d0d;
+  height: 100%;
 }
 
 .properties-panel {
