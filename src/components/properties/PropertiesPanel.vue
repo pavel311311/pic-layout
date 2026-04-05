@@ -21,13 +21,15 @@ const selectedLayer = computed(() => {
 
 function updatePosition(axis: 'x' | 'y', value: number) {
   if (selectedShape.value) {
-    store.updateShape(selectedShape.value.id, { [axis]: value })
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { [axis]: value }, true)
   }
 }
 
 function updateSize(dimension: 'width' | 'height', value: number) {
   if (selectedShape.value) {
-    store.updateShape(selectedShape.value.id, { [dimension]: value })
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { [dimension]: value }, true)
   }
 }
 </script>
@@ -116,7 +118,7 @@ function updateSize(dimension: 'width' | 'height', value: number) {
         <h4>操作</h4>
         <NSpace>
           <NButton size="small" disabled>复制</NButton>
-          <NButton size="small" type="error" @click="store.deleteSelectedShapes?.()">删除</NButton>
+          <NButton size="small" type="error" @click="store.deleteSelectedShapes()">删除</NButton>
         </NSpace>
       </div>
     </div>

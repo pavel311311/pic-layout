@@ -145,6 +145,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (index !== -1) {
       project.value.shapes[index] = { ...project.value.shapes[index], ...updates }
       project.value.modifiedAt = new Date().toISOString()
+      if (saveHistory) pushHistory(getHistorySnapshot())
     }
   }
 

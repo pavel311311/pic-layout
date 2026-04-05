@@ -141,12 +141,6 @@ function render() {
   animationFrameId = requestAnimationFrame(render)
 }
 
-// 观察 store 变化，主动标记脏区
-// 在 addShape / updateShape / deleteShape / selectShape / clearSelection / setZoom / setPan 后调用
-function scheduleRefresh() {
-  isDirty = true
-}
-
 // 初始化画布
 async function initCanvas() {
   if (!canvasRef.value || !containerRef.value) return
@@ -277,11 +271,11 @@ function handleWheel(e: WheelEvent) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
-  // Space+Shift for zoom (check before preventDefault)
+  // Space+Shift + Arrow Up/Down for zoom (check before preventDefault)
   if (e.key === ' ' && e.shiftKey) {
     e.preventDefault()
-    // Determine zoom direction based on arrow key
-    const delta = e.code === 'ArrowUp' ? 1.1 : 0.9
+    // Determine zoom direction based on arrow key (use e.key, not e.code, inside Space block)
+    const delta = e.key === 'ArrowUp' ? 1.1 : 0.9
     store.setZoom(store.zoom * delta)
     markDirty()
     return
@@ -451,7 +445,8 @@ function handleTouchMove(e: TouchEvent) {
 function handleTouchEnd(e: TouchEvent) {
   if (e.touches.length === 0) {
     if (wasDragging) {
-      store.pushHistory?.(store.getHistorySnapshot?.())
+      // pushHistory() takes no parameters — it creates its own snapshot internally
+      store.pushHistory()
     }
     isDragging = false
     wasDragging = false
