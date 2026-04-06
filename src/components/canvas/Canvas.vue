@@ -89,6 +89,16 @@ function drawShapes() {
       ctx.closePath()
       ctx.fill()
       ctx.stroke()
+    } else if (shape.type === 'waveguide' && shape.width != null && shape.height != null) {
+      // Waveguide: thin filled rectangle (waveguide trace)
+      ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+    } else if (shape.type === 'label' && shape.text) {
+      // Label: rendered as text at shape position
+      ctx.font = `${12 * (store.zoom > 0.5 ? 1 : 0.8)}px "SF Mono", Monaco, monospace`
+      ctx.fillStyle = layer.color
+      ctx.textBaseline = 'top'
+      ctx.fillText(shape.text, shape.x, shape.y)
     }
   }
 }
@@ -271,6 +281,25 @@ function handleWheel(e: WheelEvent) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  // Ctrl+Z / Cmd+Z: Undo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault()
+    if (store.canUndo) {
+      store.undo()
+      markDirty()
+    }
+    return
+  }
+  // Ctrl+Y / Cmd+Y or Ctrl+Shift+Z / Cmd+Shift+Z: Redo
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault()
+    if (store.canRedo) {
+      store.redo()
+      markDirty()
+    }
+    return
+  }
+
   // Space+Shift + Arrow Up/Down for zoom (check before preventDefault)
   if (e.key === ' ' && e.shiftKey) {
     e.preventDefault()

@@ -258,5 +258,6 @@ export const useEditorStore = defineStore('editor', () => {
     loadProject,
     undo,
     redo,
+    pushHistory,
   }
 })
