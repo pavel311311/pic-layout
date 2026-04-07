@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, darkTheme } from 'naive-ui'
+import { NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent } from 'naive-ui'
 import Toolbar from './components/toolbar/Toolbar.vue'
 import LayerPanel from './components/layers/LayerPanel.vue'
 import PropertiesPanel from './components/properties/PropertiesPanel.vue'
@@ -11,59 +11,80 @@ const themeOverrides = {
     primaryColor: '#4FC3F7',
     primaryColorHover: '#81D4FA',
     primaryColorPressed: '#29B6F6',
-    borderRadius: '4px',
-    borderRadiusSmall: '3px',
+    borderRadius: '2px',
+    borderRadiusSmall: '2px',
   },
 }
 </script>
 
 <template>
-  <NConfigProvider :theme="darkTheme" :theme-overrides="themeOverrides">
+  <NConfigProvider :theme-overrides="themeOverrides">
     <NLayout class="app-layout" has-sider position="absolute">
-      <!-- 左侧图层面板 -->
+      <!-- 左侧面板 -->
       <NLayoutSider
-        class="layer-panel"
-        :width="220"
+        class="left-panel"
+        :width="200"
         :collapsed-width="0"
         collapse-mode="width"
         :collapsed="false"
         show-trigger="bar"
-        content-style="padding: 12px;"
+        content-style="padding: 0;"
         bordered
+        :native-scrollbar="false"
       >
+        <!-- 面板标题栏 -->
+        <div class="panel-header">
+          <span class="panel-title">Navigator</span>
+        </div>
+        
+        <!-- Cell 层级 -->
+        <div class="panel-section">
+          <div class="section-header">
+            <span>Cells</span>
+          </div>
+          <div class="cell-tree">
+            <div class="cell-item selected">
+              <span class="cell-arrow">▼</span>
+              <span class="cell-name">TOP</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 图层面板 -->
         <LayerPanel />
       </NLayoutSider>
 
       <!-- 主内容区 -->
       <NLayout class="main-area">
         <!-- 顶部工具栏 -->
-        <NLayoutHeader class="toolbar-header" bordered>
+        <NLayoutHeader class="toolbar-area" bordered>
           <Toolbar />
         </NLayoutHeader>
 
         <!-- 画布区域 -->
-        <NLayoutContent class="canvas-content" content-style="padding: 0;">
+        <NLayoutContent class="canvas-area" content-style="padding: 0;">
           <Canvas />
         </NLayoutContent>
 
         <!-- 底部状态栏 -->
-        <div class="status-bar" bordered>
+        <div class="status-area" bordered>
           <StatusBar />
         </div>
       </NLayout>
 
       <!-- 右侧属性面板 -->
       <NLayoutSider
-        class="properties-panel"
-        :width="260"
+        class="right-panel"
+        :width="220"
         :collapsed-width="0"
         collapse-mode="width"
         :collapsed="false"
         show-trigger="bar"
-        content-style="padding: 12px;"
+        content-style="padding: 0;"
         bordered
         :position="'absolute'"
         style="right: 0; top: 0; bottom: 0;"
+        :native-scrollbar="false"
       >
         <PropertiesPanel />
       </NLayoutSider>
@@ -75,18 +96,69 @@ const themeOverrides = {
 .app-layout {
   width: 100vw;
   height: 100vh;
-  background: #1a1a1a;
+  background: #d4d4d4;
 }
 
-.toolbar-header {
-  height: 44px;
-  background: #252525;
-  border-bottom: 1px solid #333;
+.left-panel {
+  background: #f5f5f5;
+  border-right: 1px solid #a0a0a0;
 }
 
-.layer-panel {
-  background: #232323;
-  border-right: 1px solid #333;
+.panel-header {
+  height: 24px;
+  background: var(--bg-header-gradient);
+  border-bottom: 1px solid #a0a0a0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #000;
+}
+
+.panel-section {
+  border-bottom: 1px solid #c0c0c0;
+}
+
+.section-header {
+  height: 20px;
+  background: #e8e8e8;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #404040;
+}
+
+.cell-tree {
+  padding: 4px;
+}
+
+.cell-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cell-item.selected {
+  background: #d0e8ff;
+}
+
+.cell-arrow {
+  font-size: 8px;
+  color: #808080;
+}
+
+.cell-name {
+  color: #000;
 }
 
 .main-area {
@@ -95,25 +167,32 @@ const themeOverrides = {
   flex: 1;
   min-width: 0;
   height: 100vh;
+  background: #d4d4d4;
 }
 
-.canvas-content {
+.toolbar-area {
+  height: 56px;
+  background: #e0e0e0;
+  border-bottom: 1px solid #a0a0a0;
+  flex-shrink: 0;
+}
+
+.canvas-area {
   flex: 1;
   overflow: hidden;
-  background: #0d0d0d;
+  background: #ffffff;
   height: 100%;
 }
 
-.properties-panel {
-  background: #232323;
-  border-left: 1px solid #333;
+.status-area {
+  height: 24px;
+  background: #e0e0e0;
+  border-top: 1px solid #a0a0a0;
+  flex-shrink: 0;
 }
 
-.status-bar {
-  height: 26px;
-  background: #1e1e1e;
-  border-top: 1px solid #333;
-  display: flex;
-  align-items: center;
+.right-panel {
+  background: #f5f5f5;
+  border-left: 1px solid #a0a0a0;
 }
 </style>

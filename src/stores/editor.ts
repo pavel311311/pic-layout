@@ -196,6 +196,13 @@ export const useEditorStore = defineStore('editor', () => {
     project.value.shapes = project.value.shapes.filter((s) => s.layerId !== id)
   }
 
+  function toggleLayerVisibility(layerId: number) {
+    const layer = project.value.layers.find((l) => l.id === layerId)
+    if (layer) {
+      layer.visible = !layer.visible
+    }
+  }
+
   function setTool(tool: string) {
     selectedTool.value = tool
   }
@@ -252,6 +259,7 @@ export const useEditorStore = defineStore('editor', () => {
     addLayer,
     updateLayer,
     deleteLayer,
+    toggleLayerVisibility,
     setTool,
     setZoom,
     setPan,

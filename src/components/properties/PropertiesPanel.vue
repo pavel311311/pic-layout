@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { NInputNumber, NSpace, NButton, NDivider } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
 import { computed } from 'vue'
 
@@ -36,90 +35,98 @@ function updateSize(dimension: 'width' | 'height', value: number) {
 
 <template>
   <div class="properties-panel">
-    <h3>属性</h3>
+    <!-- 面板标题 -->
+    <div class="panel-header">
+      <span class="panel-title">Properties</span>
+    </div>
 
     <!-- 无选中 -->
     <div v-if="!selectedShape" class="empty-state">
-      <p>选择图形以查看属性</p>
+      <p>No selection</p>
+      <span>Select an element to view its properties</span>
     </div>
 
-    <!-- 选中单个图形 -->
-    <div v-else class="shape-properties">
-      <div class="property-section">
-        <h4>基本信息</h4>
-        <div class="property-row">
-          <span>类型</span>
-          <span class="value">{{ selectedShape.type }}</span>
+    <!-- 选中图形 -->
+    <div v-else class="properties-content">
+      <!-- 基本信息 -->
+      <div class="prop-section">
+        <div class="section-header">
+          <span>General</span>
         </div>
-        <div class="property-row">
-          <span>图层</span>
-          <span class="value" :style="{ color: selectedLayer?.color }">
-            {{ selectedLayer?.name }}
+        <div class="prop-grid">
+          <span class="prop-label">Type:</span>
+          <span class="prop-value">{{ selectedShape.type }}</span>
+          
+          <span class="prop-label">Layer:</span>
+          <span class="prop-value layer-value" :style="{ color: selectedLayer?.color }">
+            {{ selectedLayer?.name }} ({{ selectedLayer?.gdsLayer }}/0)
           </span>
         </div>
       </div>
 
-      <NDivider />
-
-      <div class="property-section">
-        <h4>位置</h4>
-        <NSpace vertical :size="12">
-          <div class="input-group">
-            <label>X</label>
-            <NInputNumber
-              :value="selectedShape.x"
-              @update:value="(v) => updatePosition('x', v || 0)"
-              :step="0.1"
-              size="small"
-            />
-          </div>
-          <div class="input-group">
-            <label>Y</label>
-            <NInputNumber
-              :value="selectedShape.y"
-              @update:value="(v) => updatePosition('y', v || 0)"
-              :step="0.1"
-              size="small"
-            />
-          </div>
-        </NSpace>
+      <!-- 位置 -->
+      <div class="prop-section">
+        <div class="section-header">
+          <span>Location</span>
+        </div>
+        <div class="prop-grid coords">
+          <span class="coord-label">X:</span>
+          <input 
+            type="number" 
+            :value="selectedShape.x" 
+            @change="(e) => updatePosition('x', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+          
+          <span class="coord-label">Y:</span>
+          <input 
+            type="number" 
+            :value="selectedShape.y" 
+            @change="(e) => updatePosition('y', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+        </div>
       </div>
 
-      <NDivider />
-
-      <!-- 矩形属性 -->
-      <div v-if="selectedShape.type === 'rectangle'" class="property-section">
-        <h4>尺寸</h4>
-        <NSpace vertical :size="12">
-          <div class="input-group">
-            <label>宽度</label>
-            <NInputNumber
-              :value="selectedShape.width"
-              @update:value="(v) => updateSize('width', v || 0)"
-              :step="0.1"
-              size="small"
-            />
-          </div>
-          <div class="input-group">
-            <label>高度</label>
-            <NInputNumber
-              :value="selectedShape.height"
-              @update:value="(v) => updateSize('height', v || 0)"
-              :step="0.1"
-              size="small"
-            />
-          </div>
-        </NSpace>
+      <!-- 尺寸 (矩形/波导) -->
+      <div v-if="selectedShape.type === 'rectangle' || selectedShape.type === 'waveguide'" class="prop-section">
+        <div class="section-header">
+          <span>Size</span>
+        </div>
+        <div class="prop-grid coords">
+          <span class="coord-label">W:</span>
+          <input 
+            type="number" 
+            :value="selectedShape.width" 
+            @change="(e) => updateSize('width', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            min="0.1"
+            class="prop-input"
+          />
+          
+          <span class="coord-label">H:</span>
+          <input 
+            type="number" 
+            :value="selectedShape.height" 
+            @change="(e) => updateSize('height', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            min="0.1"
+            class="prop-input"
+          />
+        </div>
       </div>
 
-      <NDivider />
-
-      <div class="property-section">
-        <h4>操作</h4>
-        <NSpace>
-          <NButton size="small" disabled>复制</NButton>
-          <NButton size="small" type="error" @click="store.deleteSelectedShapes()">删除</NButton>
-        </NSpace>
+      <!-- 操作 -->
+      <div class="prop-section">
+        <div class="section-header">
+          <span>Operations</span>
+        </div>
+        <div class="action-buttons">
+          <button class="action-btn" disabled>Copy</button>
+          <button class="action-btn delete" @click="store.deleteSelectedShapes()">Delete</button>
+        </div>
       </div>
     </div>
   </div>
@@ -128,56 +135,144 @@ function updateSize(dimension: 'width' | 'height', value: number) {
 <style scoped>
 .properties-panel {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
 }
 
-.properties-panel h3 {
-  font-size: 14px;
+.panel-header {
+  height: 24px;
+  background: var(--bg-header-gradient);
+  border-bottom: 1px solid #a0a0a0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.panel-title {
+  font-size: 11px;
   font-weight: 600;
-  color: #fff;
-  margin: 0 0 16px 0;
+  color: #000;
 }
 
 .empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.shape-properties {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
 }
 
-.property-section h4 {
+.empty-state p {
   font-size: 12px;
+  color: #606060;
+  margin-bottom: 4px;
+}
+
+.empty-state span {
+  font-size: 10px;
+  color: #808080;
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.prop-section {
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.section-header {
+  height: 20px;
+  background: #e8e8e8;
+  border-bottom: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 10px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 12px 0;
+  color: #404040;
 }
 
-.property-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+.prop-grid {
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 4px 8px;
+  font-size: 11px;
 }
 
-.property-row .value {
-  color: #fff;
+.prop-grid.coords {
+  grid-template-columns: 30px 1fr 30px 1fr;
+}
+
+.prop-label {
+  color: #606060;
+}
+
+.prop-value {
+  color: #000;
+}
+
+.layer-value {
+  font-weight: 500;
+}
+
+.coord-label {
+  color: #606060;
+  font-size: 10px;
+  text-align: right;
+}
+
+.prop-input {
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid #c0c0c0;
+  border-radius: 2px;
+  font-size: 11px;
   font-family: monospace;
+  background: #fff;
 }
 
-.input-group {
+.prop-input:focus {
+  outline: 1px solid #4FC3F7;
+}
+
+.action-buttons {
+  padding: 8px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.input-group label {
-  width: 30px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+.action-btn {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #a0a0a0;
+  border-radius: 2px;
+  font-size: 10px;
+  background: #f0f0f0;
+  color: #404040;
+  cursor: pointer;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #e8e8e8;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.delete {
+  background: #f8e0e0;
+  color: #c04040;
+}
+
+.action-btn.delete:hover {
+  background: #f0d0d0;
 }
 </style>

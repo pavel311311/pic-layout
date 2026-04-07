@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { NButtonGroup, NButton, NTooltip, NSpace } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
 
 const store = useEditorStore()
 
 const tools = [
-  { id: 'select', icon: '◇', name: '选择', shortcut: 'V' },
-  { id: 'rectangle', icon: '▭', name: '矩形', shortcut: 'R' },
-  { id: 'polygon', icon: '⬡', name: '多边形', shortcut: 'P' },
-  { id: 'waveguide', icon: '∿', name: '波导', shortcut: 'W' },
-  { id: 'label', icon: 'T', name: '标签', shortcut: 'T' },
+  { id: 'select', name: 'Select', shortcut: 'V' },
+  { id: 'rectangle', name: 'Rectangle', shortcut: 'R' },
+  { id: 'polygon', name: 'Polygon', shortcut: 'P' },
+  { id: 'waveguide', name: 'Waveguide', shortcut: 'W' },
+  { id: 'label', name: 'Label', shortcut: 'T' },
 ]
 
 function selectTool(toolId: string) {
@@ -19,146 +18,172 @@ function selectTool(toolId: string) {
 
 <template>
   <div class="toolbar">
-    <!-- 左侧：工具按钮 -->
-    <NSpace align="center" :size="8">
-      <!-- 工具组 -->
-      <NButtonGroup size="small">
-        <NTooltip v-for="tool in tools" :key="tool.id" trigger="hover" placement="bottom">
-          <template #trigger>
-            <NButton
-              :type="store.selectedTool === tool.id ? 'primary' : 'default'"
-              @click="selectTool(tool.id)"
-              class="tool-btn"
-              :class="{ active: store.selectedTool === tool.id }"
-            >
-              <span class="tool-icon">{{ tool.icon }}</span>
-              <span class="tool-name">{{ tool.name }}</span>
-            </NButton>
-          </template>
-          {{ tool.name }} ({{ tool.shortcut }})
-        </NTooltip>
-      </NButtonGroup>
-
-      <div class="divider"></div>
-
-      <!-- 撤销/重做 -->
-      <NButtonGroup size="small">
-        <NTooltip trigger="hover" placement="bottom">
-          <template #trigger>
-            <NButton 
-              @click="store.undo" 
-              :disabled="!store.canUndo"
-              class="action-btn"
-            >
-              <span class="btn-icon">↶</span>
-              <span class="btn-text">撤销</span>
-            </NButton>
-          </template>
-          撤销 (Ctrl+Z)
-        </NTooltip>
-        <NTooltip trigger="hover" placement="bottom">
-          <template #trigger>
-            <NButton 
-              @click="store.redo" 
-              :disabled="!store.canRedo"
-              class="action-btn"
-            >
-              <span class="btn-icon">↷</span>
-              <span class="btn-text">重做</span>
-            </NButton>
-          </template>
-          重做 (Ctrl+Y)
-        </NTooltip>
-      </NButtonGroup>
-
-      <div class="divider"></div>
-
-      <!-- 保存按钮 -->
-      <NTooltip trigger="hover" placement="bottom">
-        <template #trigger>
-          <NButton @click="store.saveProject" type="primary" size="small" class="save-btn">
-            <span class="btn-icon">⬇</span>
-            <span class="btn-text">保存</span>
-          </NButton>
-        </template>
-        保存项目 (Ctrl+S)
-      </NTooltip>
-    </NSpace>
-
-    <!-- 右侧：项目名称 -->
-    <NSpace align="center">
+    <!-- 文件操作 -->
+    <div class="tool-group">
+      <button class="tool-btn">
+        <span class="btn-icon">📁</span>
+        <span class="btn-label">Open</span>
+      </button>
+      <button class="tool-btn" @click="store.saveProject">
+        <span class="btn-icon">💾</span>
+        <span class="btn-label">Save</span>
+      </button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <!-- 编辑操作 -->
+    <div class="tool-group">
+      <button 
+        class="tool-btn" 
+        @click="store.undo"
+        :disabled="!store.canUndo"
+      >
+        <span class="btn-icon">↶</span>
+        <span class="btn-label">Undo</span>
+      </button>
+      <button 
+        class="tool-btn" 
+        @click="store.redo"
+        :disabled="!store.canRedo"
+      >
+        <span class="btn-icon">↷</span>
+        <span class="btn-label">Redo</span>
+      </button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <!-- 绘图工具 -->
+    <div class="tool-group">
+      <button 
+        v-for="tool in tools" 
+        :key="tool.id"
+        class="tool-btn"
+        :class="{ active: store.selectedTool === tool.id }"
+        @click="selectTool(tool.id)"
+        :title="`${tool.name} (${tool.shortcut})`"
+      >
+        <span class="btn-icon">
+          <template v-if="tool.id === 'select'">◇</template>
+          <template v-else-if="tool.id === 'rectangle'">▭</template>
+          <template v-else-if="tool.id === 'polygon'">⬡</template>
+          <template v-else-if="tool.id === 'waveguide'">∿</template>
+          <template v-else-if="tool.id === 'label'">T</template>
+        </span>
+        <span class="btn-label">{{ tool.name }}</span>
+      </button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <!-- 视图操作 -->
+    <div class="tool-group">
+      <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)">
+        <span class="btn-icon">🔍+</span>
+        <span class="btn-label">Zoom In</span>
+      </button>
+      <button class="tool-btn" @click="store.setZoom(store.zoom * 0.8)">
+        <span class="btn-icon">🔍-</span>
+        <span class="btn-label">Zoom Out</span>
+      </button>
+    </div>
+    
+    <div class="spacer"></div>
+    
+    <!-- 项目名称 -->
+    <div class="project-info">
       <span class="project-name">{{ store.project.name }}</span>
-    </NSpace>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .toolbar {
-  height: 44px;
+  height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  background: #252525;
-  border-bottom: 1px solid #333;
+  padding: 0 8px;
+  background: #e0e0e0;
+  gap: 4px;
+}
+
+.tool-group {
+  display: flex;
+  gap: 2px;
 }
 
 .tool-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px !important;
-  font-size: 12px;
+  justify-content: center;
+  width: 52px;
+  height: 48px;
+  padding: 4px;
+  background: #f0f0f0;
+  border: 1px solid #c0c0c0;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background: #e8e8e8;
+  border-color: #a0a0a0;
+}
+
+.tool-btn:active:not(:disabled) {
+  background: #d8d8d8;
 }
 
 .tool-btn.active {
-  background: #4FC3F7 !important;
-  color: #000 !important;
+  background: #d0e8ff;
+  border-color: #4FC3F7;
 }
 
-.tool-icon {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.tool-name {
-  font-size: 12px;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px !important;
-  font-size: 12px;
+.tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-icon {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.btn-label {
+  font-size: 9px;
+  color: #404040;
+  text-align: center;
   line-height: 1;
 }
 
-.btn-text {
-  font-size: 12px;
-}
-
-.save-btn {
-  font-size: 12px;
+.tool-btn.active .btn-label {
+  color: #0066cc;
 }
 
 .divider {
   width: 1px;
-  height: 24px;
-  background: #444;
-  margin: 0 4px;
+  height: 40px;
+  background: #c0c0c0;
+  margin: 0 6px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.project-info {
+  padding: 4px 12px;
+  background: #f8f8f8;
+  border: 1px solid #c0c0c0;
+  border-radius: 2px;
 }
 
 .project-name {
-  font-size: 13px;
-  color: #888;
-  padding: 4px 12px;
-  background: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 4px;
+  font-size: 11px;
+  color: #404040;
 }
 </style>
