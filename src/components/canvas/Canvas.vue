@@ -300,16 +300,6 @@ function handleKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // Space+Shift + Arrow Up/Down for zoom (check before preventDefault)
-  if (e.key === ' ' && e.shiftKey) {
-    e.preventDefault()
-    // Determine zoom direction based on arrow key (use e.key, not e.code, inside Space block)
-    const delta = e.key === 'ArrowUp' ? 1.1 : 0.9
-    store.setZoom(store.zoom * delta)
-    markDirty()
-    return
-  }
-
   // Arrow keys for panning
   if (e.key === 'ArrowUp') {
     e.preventDefault()

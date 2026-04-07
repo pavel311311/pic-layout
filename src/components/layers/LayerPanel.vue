@@ -31,6 +31,7 @@ function addLayer() {
 
 <template>
   <div class="layer-panel">
+    <!-- 面板标题 -->
     <div class="panel-header">
       <h3>图层</h3>
       <NButton size="tiny" @click="showAddLayer = !showAddLayer">
@@ -40,10 +41,19 @@ function addLayer() {
 
     <!-- 添加图层表单 -->
     <div v-if="showAddLayer" class="add-layer-form">
-      <NColorPicker v-model:value="newLayerColor" :swatches="['#4FC3F7', '#FFD54F', '#81C784', '#E57373', '#BA68C8', '#4DB6AC']" />
-      <input v-model="newLayerName" placeholder="图层名称" class="layer-input" />
-      <input v-model.number="newLayerGds" type="number" placeholder="GDS层" class="layer-input small" />
-      <NButton size="small" type="primary" @click="addLayer">添加</NButton>
+      <div class="form-row">
+        <label>颜色</label>
+        <NColorPicker v-model:value="newLayerColor" :swatches="['#4FC3F7', '#FFD54F', '#81C784', '#E57373', '#BA68C8', '#4DB6AC']" />
+      </div>
+      <div class="form-row">
+        <label>名称</label>
+        <input v-model="newLayerName" placeholder="图层名称" class="layer-input" />
+      </div>
+      <div class="form-row">
+        <label>GDS</label>
+        <input v-model.number="newLayerGds" type="number" min="1" max="255" class="layer-input small" />
+      </div>
+      <NButton size="small" type="primary" @click="addLayer" block>添加</NButton>
     </div>
 
     <!-- 图层列表 -->
@@ -53,7 +63,7 @@ function addLayer() {
           v-for="layer in store.project.layers"
           :key="layer.id"
           class="layer-item"
-          :class="{ hidden: !layer.visible }"
+          :class="{ hidden: !layer.visible, locked: layer.locked }"
         >
           <div class="layer-color" :style="{ backgroundColor: layer.color }"></div>
           <span class="layer-name">{{ layer.name }}</span>
@@ -64,6 +74,12 @@ function addLayer() {
         </div>
       </div>
     </NScrollbar>
+
+    <!-- 统计信息 -->
+    <div class="layer-stats">
+      <span>图层: {{ store.project.layers.length }}</span>
+      <span>图形: {{ store.project.shapes.length }}</span>
+    </div>
   </div>
 </template>
 
@@ -82,33 +98,48 @@ function addLayer() {
 }
 
 .panel-header h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   margin: 0;
 }
 
 .add-layer-form {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 12px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  padding: 10px;
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  border: 1px solid #333;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-row label {
+  font-size: 12px;
+  color: #888;
+  width: 35px;
 }
 
 .layer-input {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 6px 8px;
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 5px 8px;
   color: #fff;
   font-size: 12px;
 }
 
 .layer-input.small {
   width: 60px;
+  flex: none;
 }
 
 .layer-list {
@@ -122,40 +153,56 @@ function addLayer() {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  transition: background 0.2s;
+  background: #2a2a2a;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
 }
 
 .layer-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #333;
+  border-color: #444;
 }
 
 .layer-item.hidden {
   opacity: 0.5;
 }
 
+.layer-item.locked {
+  border-left: 3px solid #FF9800;
+}
+
 .layer-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 
 .layer-name {
   flex: 1;
   font-size: 12px;
-  color: #fff;
+  color: #ddd;
 }
 
 .layer-gds {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: #666;
   font-family: monospace;
 }
 
 .layer-actions {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+}
+
+.layer-stats {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666;
 }
 </style>

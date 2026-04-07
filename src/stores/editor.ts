@@ -87,10 +87,11 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  function pushHistory(snapshot: { shapes: BaseShape[]; selectedIds: string[] }) {
+  function pushHistory(snapshot?: { shapes: BaseShape[]; selectedIds: string[] }) {
+    const snap = snapshot || getHistorySnapshot()
     // Trim forward history when branching
     history.value = history.value.slice(0, historyIndex.value + 1)
-    history.value.push(snapshot)
+    history.value.push(snap)
     if (history.value.length > MAX_HISTORY) {
       history.value.shift()
     }

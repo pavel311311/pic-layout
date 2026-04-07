@@ -11,6 +11,8 @@ const themeOverrides = {
     primaryColor: '#4FC3F7',
     primaryColorHover: '#81D4FA',
     primaryColorPressed: '#29B6F6',
+    borderRadius: '4px',
+    borderRadiusSmall: '3px',
   },
 }
 </script>
@@ -77,13 +79,14 @@ const themeOverrides = {
 }
 
 .toolbar-header {
-  height: 48px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  height: 44px;
+  background: #252525;
+  border-bottom: 1px solid #333;
 }
 
 .layer-panel {
-  background: rgba(255, 255, 255, 0.02);
+  background: #232323;
+  border-right: 1px solid #333;
 }
 
 .main-area {
@@ -102,13 +105,14 @@ const themeOverrides = {
 }
 
 .properties-panel {
-  background: rgba(255, 255, 255, 0.02);
+  background: #232323;
+  border-left: 1px solid #333;
 }
 
 .status-bar {
-  height: 28px;
-  background: rgba(255, 255, 255, 0.02);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  height: 26px;
+  background: #1e1e1e;
+  border-top: 1px solid #333;
   display: flex;
   align-items: center;
 }
