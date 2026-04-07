@@ -13,6 +13,30 @@ let animationFrameId: number | null = null
 const mouseX = ref(0)
 const mouseY = ref(0)
 
+// 绘制状态
+const isDrawing = ref(false)
+const drawingStart = ref<{ x: number; y: number } | null>(null)
+const currentPolygonPoints = ref<Array<{ x: number; y: number }>>([])
+
+// 通知屏幕阅读器画布状态变化
+function announceCanvasChange(message: string) {
+  if ('announce' in canvasRef.value) {
+    (canvasRef.value as any).announce(message)
+  }
+}
+
+// 聚焦画布
+function focusCanvas() {
+  canvasRef.value?.focus()
+}
+
+// 获取画布内容描述（用于屏幕阅读器）
+function getCanvasDescription() {
+  const shapeCount = store.project.shapes.length
+  const layerCount = store.project.layers.filter(l => l.visible).length
+  return `画布包含 ${shapeCount} 个图形，${layerCount} 个可见图层。使用工具栏选择绘图工具开始创建图形。`
+}
+
 // 兼容 crypto.randomUUID
 function genId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -134,6 +158,26 @@ function drawShapes() {
       ctx.textBaseline = 'top'
       ctx.fillText(shape.text, shape.x, shape.y)
     }
+  }
+
+  // 绘制当前正在绘制的多边形
+  if (isDrawing.value && currentPolygonPoints.value.length > 0) {
+    ctx.strokeStyle = '#4FC3F7'
+    ctx.lineWidth = 1
+    ctx.setLineDash([3, 3])
+    ctx.beginPath()
+    ctx.moveTo(
+      currentPolygonPoints.value[0].x * store.zoom + store.panOffset.x,
+      currentPolygonPoints.value[0].y * store.zoom + store.panOffset.y
+    )
+    for (let i = 1; i < currentPolygonPoints.value.length; i++) {
+      ctx.lineTo(
+        currentPolygonPoints.value[i].x * store.zoom + store.panOffset.x,
+        currentPolygonPoints.value[i].y * store.zoom + store.panOffset.y
+      )
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
   }
 }
 
@@ -297,6 +341,7 @@ function handleMouseDown(e: MouseEvent) {
       height: 10,
     })
     store.setTool('select')
+    announceCanvasChange('创建了矩形图形')
     markDirty()
   } else if (store.selectedTool === 'waveguide') {
     store.pushHistory()
@@ -310,6 +355,14 @@ function handleMouseDown(e: MouseEvent) {
       height: 10,
     })
     store.setTool('select')
+    announceCanvasChange('创建了波导图形')
+    markDirty()
+  } else if (store.selectedTool === 'polygon') {
+    // 开始绘制多边形
+    isDrawing.value = true
+    drawingStart.value = { x: snappedX, y: snappedY }
+    currentPolygonPoints.value = [{ x: snappedX, y: snappedY }]
+    announceCanvasChange('开始绘制多边形，点击添加顶点，按 Esc 键结束绘制')
     markDirty()
   }
 
@@ -335,6 +388,21 @@ function handleMouseMove(e: MouseEvent) {
     wasDragging = true
   }
 
+  // 处理多边形绘制
+  if (store.selectedTool === 'polygon' && isDrawing.value && drawingStart.value) {
+    const rect = canvasRef.value?.getBoundingClientRect()
+    if (!rect) return
+    const currentX = e.clientX - rect.left
+    const currentY = e.clientY - rect.top
+    const designPos = screenToDesign(currentX, currentY)
+    const snappedX = snapToGrid(designPos.x)
+    const snappedY = snapToGrid(designPos.y)
+    currentPolygonPoints.value.push({ x: snappedX, y: snappedY })
+    markDirty()
+    return
+  }
+
+  // 处理图形拖拽
   for (const id of store.selectedShapeIds) {
     const shape = store.project.shapes.find((s) => s.id === id)
     if (shape) {
@@ -350,6 +418,25 @@ function handleMouseMove(e: MouseEvent) {
 }
 
 function handleMouseUp() {
+  // 处理多边形完成
+  if (store.selectedTool === 'polygon' && isDrawing.value && drawingStart.value) {
+    if (currentPolygonPoints.value.length >= 3) {
+      store.pushHistory()
+      store.addShape({
+        id: genId(),
+        type: 'polygon',
+        layerId: store.project.layers[0].id,
+        points: [...currentPolygonPoints.value],
+      })
+      announceCanvasChange('创建了多边形图形')
+    }
+    isDrawing.value = false
+    drawingStart.value = null
+    currentPolygonPoints.value = []
+    markDirty()
+    return
+  }
+
   if (wasDragging) {
     store.pushHistory()
     wasDragging = false
@@ -399,6 +486,15 @@ function handleKeyDown(e: KeyboardEvent) {
     markDirty()
   } else if (e.key === 'Escape') {
     e.preventDefault()
+    // 取消多边形绘制
+    if (isDrawing.value) {
+      isDrawing.value = false
+      drawingStart.value = null
+      currentPolygonPoints.value = []
+      announceCanvasChange('取消了多边形绘制')
+      markDirty()
+      return
+    }
     store.clearSelection()
     markDirty()
   } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -422,6 +518,7 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
   canvasRef.value?.setAttribute('tabindex', '0')
   canvasRef.value?.focus()
+  announceCanvasChange(getCanvasDescription())
 })
 
 onUnmounted(() => {
@@ -440,15 +537,27 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="containerRef" class="canvas-container">
+  <div
+    ref="containerRef"
+    class="canvas-container"
+    role="application"
+    aria-label="光子芯片布局编辑器画布"
+    aria-describedby="canvas-description"
+  >
     <canvas
       ref="canvasRef"
+      tabindex="0"
       @mousedown="handleMouseDown"
       @mousemove="handleMouseMove"
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
       @wheel.prevent="handleWheel"
+      @keydown="handleKeyDown"
+      aria-describedby="canvas-description"
     />
+    <div id="canvas-description" class="sr-only">
+      {{ getCanvasDescription() }}
+    </div>
     <div v-if="isLoading" class="loading-overlay">
       <span>Loading...</span>
     </div>
@@ -462,6 +571,18 @@ defineExpose({
   overflow: hidden;
   cursor: crosshair;
   position: relative;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 canvas {
