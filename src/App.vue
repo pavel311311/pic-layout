@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent } from 'naive-ui'
+import { NConfigProvider } from 'naive-ui'
 import Toolbar from './components/toolbar/Toolbar.vue'
 import LayerPanel from './components/layers/LayerPanel.vue'
 import PropertiesPanel from './components/properties/PropertiesPanel.vue'
@@ -81,9 +81,7 @@ const themeOverrides = {
   flex-shrink: 0;
   background: #f5f5f5;
   border-right: 1px solid #a0a0a0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
 }
 
 .canvas-container {
@@ -98,9 +96,7 @@ const themeOverrides = {
   flex-shrink: 0;
   background: #f5f5f5;
   border-left: 1px solid #a0a0a0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
 }
 
 .status-footer {

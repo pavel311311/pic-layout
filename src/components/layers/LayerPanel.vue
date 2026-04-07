@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NButton, NColorPicker, NScrollbar } from 'naive-ui'
 import { useEditorStore } from '../../stores/editor'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const store = useEditorStore()
 
@@ -33,72 +33,202 @@ function toggleLayer(layerId: number) {
     store.toggleLayerVisibility(layerId)
   }
 }
+
+// 计算所有图形的边界框
+const boundingBox = computed(() => {
+  const shapes = store.project.shapes
+  if (shapes.length === 0) {
+    return { minX: 0, minY: 0, maxX: 100, maxY: 100 }
+  }
+  
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  
+  for (const shape of shapes) {
+    minX = Math.min(minX, shape.x)
+    minY = Math.min(minY, shape.y)
+    maxX = Math.max(maxX, shape.x + (shape.width || 0))
+    maxY = Math.max(maxY, shape.y + (shape.height || 0))
+  }
+  
+  // 添加边距
+  const padding = 10
+  return {
+    minX: minX - padding,
+    minY: minY - padding,
+    maxX: maxX + padding,
+    maxY: maxY + padding
+  }
+})
+
+// 基本图元库
+const libraries = [
+  { name: 'ARC', icon: '⌒', description: '圆弧' },
+  { name: 'CIRCLE', icon: '○', description: '圆形' },
+  { name: 'DONUT', icon: '⊚', description: '圆环' },
+  { name: 'PIE', icon: '◠', description: '扇形' },
+  { name: 'TEXT', icon: 'T', description: '文字' },
+  { name: 'BOX', icon: '▭', description: '矩形' },
+  { name: 'PATH', icon: '∿', description: '路径' },
+  { name: 'POLYGON', icon: '⬡', description: '多边形' },
+]
+
+// 图层填充图案类型
+const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 </script>
 
 <template>
   <div class="layer-panel">
-    <!-- 面板标题 -->
-    <div class="panel-header">
-      <span class="panel-title">Layers</span>
-      <div class="header-actions">
-        <button class="icon-btn" title="Add Layer" @click="showAddLayer = !showAddLayer">+</button>
+    <!-- 1. Navigator 缩略图 -->
+    <div class="panel-section navigator">
+      <div class="section-header">
+        <span>Navigator</span>
       </div>
-    </div>
-
-    <!-- 添加图层表单 -->
-    <div v-if="showAddLayer" class="add-layer-form">
-      <div class="form-row">
-        <label>Name:</label>
-        <input v-model="newLayerName" placeholder="Layer name" class="layer-input" />
-      </div>
-      <div class="form-row">
-        <label>GDS:</label>
-        <input v-model.number="newLayerGds" type="number" min="1" max="255" class="layer-input small" />
-      </div>
-      <div class="form-row">
-        <label>Color:</label>
-        <NColorPicker v-model:value="newLayerColor" :swatches="['#4FC3F7', '#FFD54F', '#81C784', '#E57373', '#BA68C8', '#4DB6AC', '#FF8A65', '#90A4AE']" size="small" />
-      </div>
-      <div class="form-actions">
-        <button class="btn-cancel" @click="showAddLayer = false">Cancel</button>
-        <button class="btn-add" @click="addLayer">Add</button>
-      </div>
-    </div>
-
-    <!-- 图层列表 -->
-    <NScrollbar style="max-height: calc(100vh - 280px)">
-      <div class="layer-list">
-        <div
-          v-for="layer in store.project.layers"
-          :key="layer.id"
-          class="layer-item"
-          :class="{ hidden: !layer.visible }"
-        >
-          <!-- 可见性复选框 -->
-          <input 
-            type="checkbox" 
-            :checked="layer.visible" 
-            @change="toggleLayer(layer.id)"
-            class="layer-checkbox"
+      <div class="navigator-view">
+        <svg width="100%" height="100%" viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet">
+          <!-- 背景 -->
+          <rect width="160" height="120" fill="#fff"/>
+          
+          <!-- 绘制所有图形轮廓 -->
+          <template v-for="shape in store.project.shapes" :key="shape.id">
+            <rect
+              v-if="shape.type === 'rectangle'"
+              :x="(shape.x - boundingBox.minX) * 1.5 + 10"
+              :y="(shape.y - boundingBox.minY) * 1.5 + 10"
+              :width="(shape.width || 10) * 1.5"
+              :height="(shape.height || 10) * 1.5"
+              fill="none"
+              stroke="#666"
+              stroke-width="0.5"
+            />
+            <rect
+              v-else-if="shape.type === 'waveguide'"
+              :x="(shape.x - boundingBox.minX) * 1.5 + 10"
+              :y="(shape.y - boundingBox.minY) * 1.5 + 10"
+              :width="Math.max((shape.width || 0.5) * 1.5, 2)"
+              :height="(shape.height || 10) * 1.5"
+              fill="none"
+              stroke="#666"
+              stroke-width="0.5"
+            />
+          </template>
+          
+          <!-- 当前视口框 -->
+          <rect
+            x="10"
+            y="10"
+            width="140"
+            height="100"
+            fill="none"
+            stroke="#4FC3F7"
+            stroke-width="1"
+            stroke-dasharray="3,2"
           />
-          
-          <!-- 颜色块（带图案） -->
-          <div class="layer-color" :style="{ backgroundColor: layer.color }">
-            <div class="color-pattern"></div>
-          </div>
-          
-          <!-- 图层信息 -->
-          <div class="layer-info">
-            <span class="layer-name">{{ layer.name }}</span>
-            <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
-          </div>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 2. Cells 层级 -->
+    <div class="panel-section cells">
+      <div class="section-header">
+        <span>Cells</span>
+      </div>
+      <div class="cell-tree">
+        <div class="cell-item selected">
+          <span class="cell-arrow">▼</span>
+          <span class="cell-icon">○</span>
+          <span class="cell-name">{{ store.project.name || 'TOP' }}</span>
         </div>
       </div>
-    </NScrollbar>
+    </div>
 
-    <!-- 底部统计 -->
-    <div class="layer-footer">
-      <span>{{ store.project.layers.length }} layers</span>
+    <!-- 3. Libraries 图元 -->
+    <div class="panel-section libraries">
+      <div class="section-header">
+        <span>Libraries</span>
+      </div>
+      <div class="library-grid">
+        <div 
+          v-for="lib in libraries" 
+          :key="lib.name"
+          class="lib-item"
+          :title="lib.description"
+        >
+          <span class="lib-icon">{{ lib.icon }}</span>
+          <span class="lib-name">{{ lib.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Layers 图层 -->
+    <div class="panel-section layers">
+      <div class="section-header">
+        <span>Layers</span>
+        <button class="add-btn" @click="showAddLayer = !showAddLayer">+</button>
+      </div>
+
+      <!-- 添加图层表单 -->
+      <div v-if="showAddLayer" class="add-layer-form">
+        <div class="form-row">
+          <label>Name:</label>
+          <input v-model="newLayerName" placeholder="Layer name" class="layer-input" />
+        </div>
+        <div class="form-row">
+          <label>GDS:</label>
+          <input v-model.number="newLayerGds" type="number" min="1" max="255" class="layer-input small" />
+        </div>
+        <div class="form-row">
+          <label>Color:</label>
+          <NColorPicker v-model:value="newLayerColor" :swatches="['#4FC3F7', '#FFD54F', '#81C784', '#E57373', '#BA68C8', '#4DB6AC', '#FF8A65', '#90A4AE']" size="small" />
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" @click="showAddLayer = false">Cancel</button>
+          <button class="btn-add" @click="addLayer">Add</button>
+        </div>
+      </div>
+
+      <!-- 图层列表 -->
+      <NScrollbar style="max-height: 200px">
+        <div class="layer-list">
+          <div
+            v-for="layer in store.project.layers"
+            :key="layer.id"
+            class="layer-item"
+            :class="{ hidden: !layer.visible }"
+          >
+            <!-- 可见性复选框 -->
+            <input 
+              type="checkbox" 
+              :checked="layer.visible" 
+              @change="toggleLayer(layer.id)"
+              class="layer-checkbox"
+            />
+            
+            <!-- 颜色块（带图案） -->
+            <div class="layer-color" :style="{ backgroundColor: layer.color }">
+              <svg class="color-pattern" viewBox="0 0 20 14" preserveAspectRatio="none">
+                <defs>
+                  <pattern id="diag" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
+                    <line x1="0" y1="0" x2="0" y2="4" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                  </pattern>
+                </defs>
+                <rect width="20" height="14" fill="inherit"/>
+                <rect width="20" height="14" fill="url(#diag)"/>
+              </svg>
+            </div>
+            
+            <!-- 图层信息 -->
+            <div class="layer-info">
+              <span class="layer-name">{{ layer.name }}</span>
+              <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
+            </div>
+          </div>
+        </div>
+      </NScrollbar>
+
+      <!-- 底部统计 -->
+      <div class="layer-footer">
+        <span>{{ store.project.layers.length }} layers | {{ store.project.shapes.length }} shapes</span>
+      </div>
     </div>
   </div>
 </template>
@@ -109,30 +239,132 @@ function toggleLayer(layerId: number) {
   display: flex;
   flex-direction: column;
   background: #f5f5f5;
+  overflow-y: auto;
 }
 
-.panel-header {
-  height: 24px;
-  background: var(--bg-header-gradient);
-  border-bottom: 1px solid #a0a0a0;
+.panel-section {
+  border-bottom: 1px solid #c0c0c0;
+}
+
+.section-header {
+  height: 22px;
+  background: linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%);
+  border-bottom: 1px solid #c0c0c0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #404040;
 }
 
-.panel-title {
+/* Navigator */
+.navigator {
+  height: 100px;
+}
+
+.navigator-view {
+  height: 78px;
+  background: #fff;
+  border: 1px solid #c0c0c0;
+  margin: 4px;
+}
+
+/* Cells */
+.cells {
+  height: 60px;
+}
+
+.cell-tree {
+  padding: 4px;
+}
+
+.cell-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
   font-size: 11px;
-  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.cell-item:hover {
+  background: #e8e8e8;
+}
+
+.cell-item.selected {
+  background: #d0e8ff;
+  border-color: #a0c8e0;
+}
+
+.cell-arrow {
+  font-size: 8px;
+  color: #606060;
+}
+
+.cell-icon {
+  font-size: 10px;
+  color: #606060;
+}
+
+.cell-name {
   color: #000;
 }
 
-.header-actions {
-  display: flex;
-  gap: 4px;
+/* Libraries */
+.libraries {
+  height: 90px;
 }
 
-.icon-btn {
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 4px;
+}
+
+.lib-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  background: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.lib-item:hover {
+  background: #e8e8e8;
+  border-color: #a0a0a0;
+}
+
+.lib-icon {
+  font-size: 14px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.lib-name {
+  font-size: 8px;
+  color: #606060;
+  text-align: center;
+  line-height: 1;
+}
+
+/* Layers */
+.layers {
+  flex: 1;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-btn {
   width: 16px;
   height: 16px;
   padding: 0;
@@ -144,7 +376,7 @@ function toggleLayer(layerId: number) {
   cursor: pointer;
 }
 
-.icon-btn:hover {
+.add-btn:hover {
   background: #d0d0d0;
   border-color: #a0a0a0;
 }
@@ -210,10 +442,6 @@ function toggleLayer(layerId: number) {
   color: #000;
 }
 
-.btn-add:hover {
-  background: #d0d0d0;
-}
-
 .layer-list {
   padding: 4px;
 }
@@ -244,24 +472,19 @@ function toggleLayer(layerId: number) {
 }
 
 .layer-color {
-  width: 18px;
+  width: 20px;
   height: 14px;
   border: 1px solid #808080;
   border-radius: 1px;
-  position: relative;
   overflow: hidden;
+  position: relative;
 }
 
 .color-pattern {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 2px,
-    rgba(255,255,255,0.3) 2px,
-    rgba(255,255,255,0.3) 4px
-  );
+  width: 100%;
+  height: 100%;
 }
 
 .layer-info {
