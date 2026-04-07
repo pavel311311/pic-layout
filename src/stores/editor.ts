@@ -203,6 +203,20 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  function duplicateShape(shapeId: string) {
+    const shape = project.value.shapes.find((s) => s.id === shapeId)
+    if (shape) {
+      const newShape: BaseShape = {
+        ...JSON.parse(JSON.stringify(shape)),
+        id: generateId(),
+        x: shape.x + 10,
+        y: shape.y + 10,
+      }
+      addShape(newShape)
+      selectShape(newShape.id)
+    }
+  }
+
   function setTool(tool: string) {
     selectedTool.value = tool
   }
@@ -260,6 +274,7 @@ export const useEditorStore = defineStore('editor', () => {
     updateLayer,
     deleteLayer,
     toggleLayerVisibility,
+    duplicateShape,
     setTool,
     setZoom,
     setPan,

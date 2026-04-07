@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useEditorStore } from '../stores/editor'
 
+const props = defineProps<{
+  cursorX?: number
+  cursorY?: number
+}>()
+
 const store = useEditorStore()
 
 const toolNames: Record<string, string> = {
@@ -19,12 +24,14 @@ const toolNames: Record<string, string> = {
       <span class="mode">{{ toolNames[store.selectedTool] || store.selectedTool }}</span>
       <span class="separator">|</span>
       <span class="mode">G</span>
+      <span class="separator">|</span>
+      <span class="grid">Grid: {{ store.gridSize }}</span>
     </div>
     
     <!-- 右侧：坐标和缩放 -->
     <div class="status-right">
       <span class="coords">
-        xy {{ store.panOffset.x.toFixed(2) }}, {{ store.panOffset.y.toFixed(2) }}
+        xy {{ (cursorX ?? 0).toFixed(2) }}, {{ (cursorY ?? 0).toFixed(2) }}
       </span>
       <span class="separator">|</span>
       <span class="zoom">{{ Math.round(store.zoom * 100) }}%</span>
@@ -55,13 +62,14 @@ const toolNames: Record<string, string> = {
   gap: 6px;
 }
 
-.mode {
+.mode, .grid {
   color: #000;
 }
 
 .coords {
-  min-width: 140px;
+  min-width: 160px;
   text-align: right;
+  color: #000;
 }
 
 .zoom {

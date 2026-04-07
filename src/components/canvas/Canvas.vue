@@ -4,6 +4,14 @@ import { useEditorStore } from '../../stores/editor'
 
 const store = useEditorStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const containerRef = ref<HTMLDivElement | null>(null)
+const isLoading = ref(false)
+let ctx: CanvasRenderingContext2D | null = null
+let animationFrameId: number | null = null
+
+// 鼠标坐标
+const mouseX = ref(0)
+const mouseY = ref(0)
 
 // 兼容 crypto.randomUUID
 function genId(): string {
@@ -16,10 +24,6 @@ function genId(): string {
     return v.toString(16)
   })
 }
-const containerRef = ref<HTMLDivElement | null>(null)
-const isLoading = ref(false)
-let ctx: CanvasRenderingContext2D | null = null
-let animationFrameId: number | null = null
 
 // 坐标转换
 function screenToDesign(screenX: number, screenY: number) {
@@ -41,10 +45,11 @@ function drawGrid() {
   const { width, height } = canvasRef.value
   const gridSize = store.gridSize * store.zoom
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+  if (gridSize < 5) return // 太小的网格不绘制
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'
   ctx.lineWidth = 0.5
 
-  // 计算网格起点
   const offsetX = store.panOffset.x % gridSize
   const offsetY = store.panOffset.y % gridSize
 
@@ -65,6 +70,37 @@ function drawGrid() {
   ctx.stroke()
 }
 
+// 绘制十字光标
+function drawCrosshair(x: number, y: number) {
+  if (!ctx || !canvasRef.value) return
+  
+  const designPos = screenToDesign(x, y)
+  const snapX = snapToGrid(designPos.x)
+  const snapY = snapToGrid(designPos.y)
+  
+  // 吸附后的屏幕坐标
+  const screenX = snapX * store.zoom + store.panOffset.x
+  const screenY = snapY * store.zoom + store.panOffset.y
+  
+  ctx.strokeStyle = '#4FC3F7'
+  ctx.lineWidth = 1
+  ctx.setLineDash([3, 3])
+  
+  // 垂直线
+  ctx.beginPath()
+  ctx.moveTo(screenX, 0)
+  ctx.lineTo(screenX, canvasRef.value.height)
+  ctx.stroke()
+  
+  // 水平线
+  ctx.beginPath()
+  ctx.moveTo(0, screenY)
+  ctx.lineTo(canvasRef.value.width, screenY)
+  ctx.stroke()
+  
+  ctx.setLineDash([])
+}
+
 // 绘制所有图形
 function drawShapes() {
   if (!ctx) return
@@ -73,7 +109,7 @@ function drawShapes() {
     const layer = store.project.layers.find((l) => l.id === shape.layerId)
     if (!layer || !layer.visible) continue
 
-    ctx.fillStyle = layer.color + '80' // 添加透明度
+    ctx.fillStyle = layer.color + '80'
     ctx.strokeStyle = layer.color
     ctx.lineWidth = 1
 
@@ -90,11 +126,9 @@ function drawShapes() {
       ctx.fill()
       ctx.stroke()
     } else if (shape.type === 'waveguide' && shape.width != null && shape.height != null) {
-      // Waveguide: thin filled rectangle (waveguide trace)
       ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
       ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
     } else if (shape.type === 'label' && shape.text) {
-      // Label: rendered as text at shape position
       ctx.font = `${12 * (store.zoom > 0.5 ? 1 : 0.8)}px "SF Mono", Monaco, monospace`
       ctx.fillStyle = layer.color
       ctx.textBaseline = 'top'
@@ -123,35 +157,79 @@ function drawSelection() {
   }
 }
 
-// === 脏标记：只在状态变化时重绘 ===
+// 绘制比例尺
+function drawScaleBar() {
+  if (!ctx || !canvasRef.value) return
+  
+  const barWidth = 100
+  const barHeight = 6
+  const x = 20
+  const y = canvasRef.value.height - 30
+  
+  // 计算比例尺代表的实际长度
+  const realLength = barWidth / store.zoom
+  let unit = 'μm'
+  let displayLength = realLength
+  
+  if (realLength >= 1000) {
+    displayLength = realLength / 1000
+    unit = 'mm'
+  }
+  
+  // 绘制背景
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.fillRect(x - 5, y - 15, barWidth + 10, barHeight + 25)
+  ctx.strokeStyle = '#a0a0a0'
+  ctx.lineWidth = 1
+  ctx.strokeRect(x - 5, y - 15, barWidth + 10, barHeight + 25)
+  
+  // 绘制比例尺
+  ctx.fillStyle = '#000'
+  ctx.fillRect(x, y, barWidth / 2, barHeight)
+  ctx.fillRect(x + barWidth / 2 + 1, y, barWidth / 2, barHeight)
+  
+  // 绘制刻度线
+  ctx.fillRect(x, y + barHeight, 1, 4)
+  ctx.fillRect(x + barWidth / 2, y + barHeight, 1, 4)
+  ctx.fillRect(x + barWidth, y + barHeight, 1, 4)
+  
+  // 绘制文字
+  ctx.font = '10px Arial'
+  ctx.fillStyle = '#000'
+  ctx.textBaseline = 'top'
+  ctx.fillText(`${displayLength.toFixed(2)} ${unit}`, x, y + barHeight + 6)
+}
+
+// 脏标记
 let isDirty = true
 
 function markDirty() {
   isDirty = true
 }
 
-// 主动画循环 — 按需重绘，idle 时不消耗 CPU
 function render() {
   if (!ctx || !canvasRef.value) return
 
   if (isDirty) {
     isDirty = false
 
-    // 清空画布
-    ctx.fillStyle = '#0d0d0d'
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height)
 
-    // 绘制
     drawGrid()
     drawShapes()
     drawSelection()
+    drawScaleBar()
+    
+    // 如果鼠标在画布上，绘制十字光标
+    if (mouseX.value > 0 && mouseY.value > 0) {
+      drawCrosshair(mouseX.value, mouseY.value)
+    }
   }
 
-  // Store animation frame ID for cleanup
   animationFrameId = requestAnimationFrame(render)
 }
 
-// 初始化画布
 async function initCanvas() {
   if (!canvasRef.value || !containerRef.value) return
 
@@ -172,7 +250,7 @@ async function initCanvas() {
 // 鼠标事件
 let isDragging = false
 let dragStart = { x: 0, y: 0 }
-let wasDragging = false // tracks whether last drag had any movement
+let wasDragging = false
 
 function handleMouseDown(e: MouseEvent) {
   const rect = canvasRef.value?.getBoundingClientRect()
@@ -185,12 +263,10 @@ function handleMouseDown(e: MouseEvent) {
   dragStart = { x: e.clientX, y: e.clientY }
   wasDragging = false
 
-  // 计算网格吸附坐标（提前计算，供多个工具使用）
   const snappedX = snapToGrid(designPos.x)
   const snappedY = snapToGrid(designPos.y)
 
   if (store.selectedTool === 'select') {
-    // 简单的点击选择
     const clicked = store.project.shapes.find((s) => {
       if (s.type === 'rectangle' && s.width && s.height) {
         return (
@@ -210,7 +286,6 @@ function handleMouseDown(e: MouseEvent) {
     }
     markDirty()
   } else if (store.selectedTool === 'rectangle') {
-    // 创建矩形 — 先保存历史，再添加图形
     store.pushHistory()
     store.addShape({
       id: genId(),
@@ -224,7 +299,6 @@ function handleMouseDown(e: MouseEvent) {
     store.setTool('select')
     markDirty()
   } else if (store.selectedTool === 'waveguide') {
-    // 创建波导 — 先保存历史，再添加图形
     store.pushHistory()
     store.addShape({
       id: genId(),
@@ -243,12 +317,24 @@ function handleMouseDown(e: MouseEvent) {
 }
 
 function handleMouseMove(e: MouseEvent) {
-  if (!isDragging) return
+  const rect = canvasRef.value?.getBoundingClientRect()
+  if (!rect) return
+  
+  mouseX.value = e.clientX - rect.left
+  mouseY.value = e.clientY - rect.top
+  
+  if (!isDragging) {
+    markDirty()
+    return
+  }
 
   const dx = e.clientX - dragStart.x
   const dy = e.clientY - dragStart.y
 
-  // 更新所有选中的图形位置
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    wasDragging = true
+  }
+
   for (const id of store.selectedShapeIds) {
     const shape = store.project.shapes.find((s) => s.id === id)
     if (shape) {
@@ -265,12 +351,10 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp() {
   if (wasDragging) {
-    // Drag ended — save history snapshot so undo restores pre-drag position
     store.pushHistory()
     wasDragging = false
   }
   isDragging = false
-  canvasRef.value?.focus()
 }
 
 function handleWheel(e: WheelEvent) {
@@ -281,7 +365,6 @@ function handleWheel(e: WheelEvent) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
-  // Ctrl+Z / Cmd+Z: Undo
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault()
     if (store.canUndo) {
@@ -290,7 +373,6 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     return
   }
-  // Ctrl+Y / Cmd+Y or Ctrl+Shift+Z / Cmd+Shift+Z: Redo
   if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
     e.preventDefault()
     if (store.canRedo) {
@@ -299,8 +381,6 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     return
   }
-
-  // Arrow keys for panning
   if (e.key === 'ArrowUp') {
     e.preventDefault()
     store.setPan(store.panOffset.x, store.panOffset.y - 10)
@@ -317,15 +397,11 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     store.setPan(store.panOffset.x + 10, store.panOffset.y)
     markDirty()
-  }
-  // Escape to clear selection
-  else if (e.key === 'Escape') {
+  } else if (e.key === 'Escape') {
     e.preventDefault()
     store.clearSelection()
     markDirty()
-  }
-  // Delete selected shapes
-  else if (e.key === 'Delete' || e.key === 'Backspace') {
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault()
     if (store.selectedShapeIds.length > 0) {
       store.pushHistory()
@@ -335,147 +411,6 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-// ==================== 触摸事件（移动端支持）====================
-let lastTouchDist = 0
-let lastTouchMidpoint = { x: 0, y: 0 }
-let touchDragStart = { x: 0, y: 0 }
-let touchMoved = false
-
-function getTouchDistance(touches: TouchList): number {
-  const dx = touches[0].clientX - touches[1].clientX
-  const dy = touches[0].clientY - touches[1].clientY
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-function getTouchMidpoint(touches: TouchList) {
-  return {
-    x: (touches[0].clientX + touches[1].clientX) / 2,
-    y: (touches[0].clientY + touches[1].clientY) / 2,
-  }
-}
-
-function handleTouchStart(e: TouchEvent) {
-  e.preventDefault()
-  if (e.touches.length === 1) {
-    const t = e.touches[0]
-    touchDragStart = { x: t.clientX, y: t.clientY }
-    touchMoved = false
-    dragStart = { x: t.clientX, y: t.clientY }
-    isDragging = true
-    wasDragging = false
-
-    const rect = canvasRef.value?.getBoundingClientRect()
-    if (!rect) return
-    const x = t.clientX - rect.left
-    const y = t.clientY - rect.top
-    const designPos = screenToDesign(x, y)
-    const snappedX = snapToGrid(designPos.x)
-    const snappedY = snapToGrid(designPos.y)
-
-    if (store.selectedTool === 'select') {
-      const clicked = store.project.shapes.find((s) => {
-        if (s.type === 'rectangle' && s.width && s.height) {
-          return (
-            designPos.x >= s.x &&
-            designPos.x <= s.x + s.width &&
-            designPos.y >= s.y &&
-            designPos.y <= s.y + s.height
-          )
-        }
-        return false
-      })
-      if (clicked) {
-        store.selectShape(clicked.id)
-      } else {
-        store.clearSelection()
-      }
-      markDirty()
-    } else if (store.selectedTool === 'rectangle') {
-      store.pushHistory()
-      store.addShape({
-        id: genId(),
-        type: 'rectangle',
-        layerId: store.project.layers[0].id,
-        x: snappedX,
-        y: snappedY,
-        width: 10,
-        height: 10,
-      })
-      store.setTool('select')
-      markDirty()
-    } else if (store.selectedTool === 'waveguide') {
-      store.pushHistory()
-      store.addShape({
-        id: genId(),
-        type: 'waveguide',
-        layerId: store.project.layers[0].id,
-        x: snappedX,
-        y: snappedY,
-        width: 0.5,
-        height: 10,
-      })
-      store.setTool('select')
-      markDirty()
-    }
-  } else if (e.touches.length === 2) {
-    // Pinch-to-zoom
-    isDragging = false
-    lastTouchDist = getTouchDistance(e.touches)
-    lastTouchMidpoint = getTouchMidpoint(e.touches)
-  }
-}
-
-function handleTouchMove(e: TouchEvent) {
-  e.preventDefault()
-  if (e.touches.length === 1 && isDragging) {
-    const t = e.touches[0]
-    const dx = t.clientX - dragStart.x
-    const dy = t.clientY - dragStart.y
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      touchMoved = true
-      wasDragging = true
-    }
-
-    for (const id of store.selectedShapeIds) {
-      const shape = store.project.shapes.find((s) => s.id === id)
-      if (shape) {
-        store.updateShape(id, {
-          x: shape.x + dx / store.zoom,
-          y: shape.y + dy / store.zoom,
-        })
-      }
-    }
-    markDirty()
-    dragStart = { x: t.clientX, y: t.clientY }
-  } else if (e.touches.length === 2) {
-    // Pinch-to-zoom
-    const dist = getTouchDistance(e.touches)
-    const midpoint = getTouchMidpoint(e.touches)
-    if (lastTouchDist > 0) {
-      const scale = dist / lastTouchDist
-      store.setZoom(store.zoom * scale)
-    }
-    lastTouchDist = dist
-    lastTouchMidpoint = midpoint
-    markDirty()
-  }
-}
-
-function handleTouchEnd(e: TouchEvent) {
-  if (e.touches.length === 0) {
-    if (wasDragging) {
-      // pushHistory() takes no parameters — it creates its own snapshot internally
-      store.pushHistory()
-    }
-    isDragging = false
-    wasDragging = false
-    lastTouchDist = 0
-  } else if (e.touches.length === 1) {
-    lastTouchDist = 0
-  }
-}
-
-// 窗口调整
 function handleResize() {
   initCanvas()
   markDirty()
@@ -484,22 +419,23 @@ function handleResize() {
 onMounted(() => {
   initCanvas()
   window.addEventListener('resize', handleResize)
-  // Add keyboard navigation
   window.addEventListener('keydown', handleKeyDown)
-  // Focus canvas for accessibility
   canvasRef.value?.setAttribute('tabindex', '0')
-  canvasRef.value?.setAttribute('role', 'application')
-  canvasRef.value?.setAttribute('aria-label', 'Chip layout design canvas - Use arrow keys to pan, mouse or touch to draw')
   canvasRef.value?.focus()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeyDown)
-  // Cancel animation frame to prevent memory leaks
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId)
   }
+})
+
+// 暴露鼠标坐标给外部
+defineExpose({
+  mouseX,
+  mouseY,
 })
 </script>
 
@@ -512,13 +448,9 @@ onUnmounted(() => {
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
       @wheel.prevent="handleWheel"
-      @touchstart.passive="handleTouchStart"
-      @touchmove.passive="handleTouchMove"
-      @touchend.passive="handleTouchEnd"
     />
-    <div v-if="isLoading" class="loading-overlay" role="status" aria-live="polite">
-      <div class="loading-spinner" aria-hidden="true"></div>
-      <span>加载中...</span>
+    <div v-if="isLoading" class="loading-overlay">
+      <span>Loading...</span>
     </div>
   </div>
 </template>
@@ -542,31 +474,11 @@ canvas {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(13, 13, 13, 0.8);
+  background: rgba(255, 255, 255, 0.8);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  z-index: 10;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #4FC3F7;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.loading-overlay span {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  color: #606060;
 }
 </style>
