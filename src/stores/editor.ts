@@ -87,12 +87,10 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  function pushHistory(snapshot?: { shapes: BaseShape[]; selectedIds: string[] }) {
-    // If no snapshot provided, save current state
-    const snap = snapshot || getHistorySnapshot()
+  function pushHistory(snapshot: { shapes: BaseShape[]; selectedIds: string[] }) {
     // Trim forward history when branching
     history.value = history.value.slice(0, historyIndex.value + 1)
-    history.value.push(snap)
+    history.value.push(snapshot)
     if (history.value.length > MAX_HISTORY) {
       history.value.shift()
     }
@@ -197,43 +195,6 @@ export const useEditorStore = defineStore('editor', () => {
     project.value.shapes = project.value.shapes.filter((s) => s.layerId !== id)
   }
 
-  // Layer actions
-  function toggleLayerVisibility(layerId: number) {
-    const layer = project.value.layers.find((l) => l.id === layerId)
-    if (layer) {
-      layer.visible = !layer.visible
-    }
-  }
-
-  function toggleLayerLock(layerId: number) {
-    const layer = project.value.layers.find((l) => l.id === layerId)
-    if (layer) {
-      layer.locked = !layer.locked
-    }
-  }
-
-  function toggleSnap() {
-    snapToGrid.value = !snapToGrid.value
-  }
-
-  function getShapeCountByLayer(layerId: number): number {
-    return project.value.shapes.filter((s) => s.layerId === layerId).length
-  }
-
-  function duplicateShape(shapeId: string) {
-    const shape = project.value.shapes.find((s) => s.id === shapeId)
-    if (shape) {
-      const newShape: BaseShape = {
-        ...JSON.parse(JSON.stringify(shape)),
-        id: generateId(),
-        x: shape.x + 10,
-        y: shape.y + 10,
-      }
-      addShape(newShape)
-      selectShape(newShape.id)
-    }
-  }
-
   function setTool(tool: string) {
     selectedTool.value = tool
   }
@@ -275,12 +236,6 @@ export const useEditorStore = defineStore('editor', () => {
     snapToGrid,
     zoom,
     panOffset,
-    // Layer actions
-    toggleLayerVisibility,
-    toggleLayerLock,
-    toggleSnap,
-    getShapeCountByLayer,
-    duplicateShape,
     // Getters
     selectedShapes,
     visibleShapes,

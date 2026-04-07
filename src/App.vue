@@ -11,26 +11,6 @@ const themeOverrides = {
     primaryColor: '#4FC3F7',
     primaryColorHover: '#81D4FA',
     primaryColorPressed: '#29B6F6',
-    primaryColorSuppl: '#4FC3F720',
-    borderRadius: '6px',
-    borderRadiusSmall: '4px',
-  },
-  Button: {
-    heightMedium: '32px',
-    fontSizeMedium: '13px',
-  },
-  Input: {
-    heightMedium: '32px',
-    fontSizeMedium: '13px',
-  },
-  InputNumber: {
-    heightMedium: '32px',
-    fontSizeMedium: '13px',
-  },
-  Tooltip: {
-    padding: '8px 12px',
-    fontSize: '12px',
-    borderRadius: '6px',
   },
 }
 </script>
@@ -41,14 +21,13 @@ const themeOverrides = {
       <!-- 左侧图层面板 -->
       <NLayoutSider
         class="layer-panel"
-        :width="240"
+        :width="220"
         :collapsed-width="0"
         collapse-mode="width"
         :collapsed="false"
         show-trigger="bar"
-        content-style="padding: 16px; height: 100%;"
+        content-style="padding: 12px;"
         bordered
-        :native-scrollbar="false"
       >
         <LayerPanel />
       </NLayoutSider>
@@ -66,7 +45,7 @@ const themeOverrides = {
         </NLayoutContent>
 
         <!-- 底部状态栏 -->
-        <div class="status-bar-wrapper">
+        <div class="status-bar" bordered>
           <StatusBar />
         </div>
       </NLayout>
@@ -74,16 +53,15 @@ const themeOverrides = {
       <!-- 右侧属性面板 -->
       <NLayoutSider
         class="properties-panel"
-        :width="280"
+        :width="260"
         :collapsed-width="0"
         collapse-mode="width"
         :collapsed="false"
         show-trigger="bar"
-        content-style="padding: 16px; height: 100%;"
+        content-style="padding: 12px;"
         bordered
         :position="'absolute'"
         style="right: 0; top: 0; bottom: 0;"
-        :native-scrollbar="false"
       >
         <PropertiesPanel />
       </NLayoutSider>
@@ -95,17 +73,17 @@ const themeOverrides = {
 .app-layout {
   width: 100vw;
   height: 100vh;
-  background: #0d0d0d;
+  background: #1a1a1a;
 }
 
 .toolbar-header {
-  height: 52px;
-  background: transparent;
-  border-bottom: 1px solid var(--border-color);
+  height: 48px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .layer-panel {
-  background: rgba(20, 20, 20, 0.98);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .main-area {
@@ -114,21 +92,24 @@ const themeOverrides = {
   flex: 1;
   min-width: 0;
   height: 100vh;
-  background: #0d0d0d;
 }
 
 .canvas-content {
   flex: 1;
   overflow: hidden;
-  background: #0a0a0a;
+  background: #0d0d0d;
   height: 100%;
 }
 
 .properties-panel {
-  background: rgba(20, 20, 20, 0.98);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.status-bar-wrapper {
-  flex-shrink: 0;
+.status-bar {
+  height: 28px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
 }
 </style>
