@@ -312,6 +312,8 @@ function handleMouseDown(e: MouseEvent) {
 
   if (store.selectedTool === 'select') {
     const clicked = store.project.shapes.find((s) => {
+      const layer = store.project.layers.find((l) => l.id === s.layerId)
+      if (layer?.locked) return false
       if (s.type === 'rectangle' && s.width && s.height) {
         return (
           designPos.x >= s.x &&
@@ -364,6 +366,23 @@ function handleMouseDown(e: MouseEvent) {
     currentPolygonPoints.value = [{ x: snappedX, y: snappedY }]
     announceCanvasChange('开始绘制多边形，点击添加顶点，按 Esc 键结束绘制')
     markDirty()
+  } else if (store.selectedTool === 'label') {
+    // 弹出文本输入框创建标签
+    const text = window.prompt('请输入标签文字:')
+    if (text !== null && text.trim() !== '') {
+      store.pushHistory()
+      store.addShape({
+        id: genId(),
+        type: 'label',
+        layerId: store.project.layers[0].id,
+        x: snappedX,
+        y: snappedY,
+        text: text.trim(),
+      })
+      store.setTool('select')
+      announceCanvasChange(`创建了标签: ${text.trim()}`)
+      markDirty()
+    }
   }
 
   isDragging = true
@@ -406,6 +425,8 @@ function handleMouseMove(e: MouseEvent) {
   for (const id of store.selectedShapeIds) {
     const shape = store.project.shapes.find((s) => s.id === id)
     if (shape) {
+      const layer = store.project.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
       store.updateShape(id, {
         x: shape.x + dx / store.zoom,
         y: shape.y + dy / store.zoom,
@@ -452,6 +473,46 @@ function handleWheel(e: WheelEvent) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  // 工具快捷键 (无修饰键)
+  if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    switch (e.key) {
+      case 'v':
+      case 'V':
+        e.preventDefault()
+        store.setTool('select')
+        announceCanvasChange('选择工具: 选择')
+        markDirty()
+        return
+      case 'r':
+      case 'R':
+        e.preventDefault()
+        store.setTool('rectangle')
+        announceCanvasChange('选择工具: 矩形')
+        markDirty()
+        return
+      case 'p':
+      case 'P':
+        e.preventDefault()
+        store.setTool('polygon')
+        announceCanvasChange('选择工具: 多边形')
+        markDirty()
+        return
+      case 'w':
+      case 'W':
+        e.preventDefault()
+        store.setTool('waveguide')
+        announceCanvasChange('选择工具: 波导')
+        markDirty()
+        return
+      case 't':
+      case 'T':
+        e.preventDefault()
+        store.setTool('label')
+        announceCanvasChange('选择工具: 标签')
+        markDirty()
+        return
+    }
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault()
     if (store.canUndo) {

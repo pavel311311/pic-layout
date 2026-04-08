@@ -34,6 +34,36 @@ function toggleLayer(layerId: number) {
   }
 }
 
+function toggleLayerLock(layerId: number, e: Event) {
+  e.stopPropagation()
+  const layer = store.project.layers.find((l) => l.id === layerId)
+  if (layer) {
+    store.updateLayer(layerId, { locked: !layer.locked })
+  }
+}
+
+function deleteLayer(layerId: number, e: Event) {
+  e.stopPropagation()
+  if (store.project.layers.length <= 1) {
+    alert('不能删除最后一个图层')
+    return
+  }
+  const layer = store.project.layers.find((l) => l.id === layerId)
+  if (layer && confirm(`确定要删除图层 "${layer.name}" 吗？该图层上的所有图形也将被删除。`)) {
+    store.deleteLayer(layerId)
+  }
+}
+
+function renameLayer(layerId: number, e: Event) {
+  e.stopPropagation()
+  const layer = store.project.layers.find((l) => l.id === layerId)
+  if (!layer) return
+  const newName = window.prompt('输入新图层名称:', layer.name)
+  if (newName !== null && newName.trim() !== '') {
+    store.updateLayer(layerId, { name: newName.trim() })
+  }
+}
+
 // 计算所有图形的边界框
 const boundingBox = computed(() => {
   const shapes = store.project.shapes
@@ -221,6 +251,34 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
               <span class="layer-name">{{ layer.name }}</span>
               <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
             </div>
+
+            <!-- 锁定按钮 -->
+            <button
+              class="layer-action-btn lock-btn"
+              :class="{ locked: layer.locked }"
+              @click="toggleLayerLock(layer.id, $event)"
+              :title="layer.locked ? '解锁图层' : '锁定图层'"
+            >
+              {{ layer.locked ? '🔒' : '🔓' }}
+            </button>
+
+            <!-- 重命名按钮 -->
+            <button
+              class="layer-action-btn rename-btn"
+              @click="renameLayer(layer.id, $event)"
+              title="重命名图层"
+            >
+              ✏️
+            </button>
+
+            <!-- 删除按钮 -->
+            <button
+              class="layer-action-btn delete-btn"
+              @click="deleteLayer(layer.id, $event)"
+              title="删除图层"
+            >
+              🗑️
+            </button>
           </div>
         </div>
       </NScrollbar>
@@ -512,5 +570,59 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   border-top: 1px solid #c0c0c0;
   font-size: 10px;
   color: #606060;
+}
+
+.layer-item {
+  position: relative;
+}
+
+.layer-action-btn {
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.layer-item:hover .layer-action-btn {
+  opacity: 1;
+}
+
+.lock-btn.locked {
+  opacity: 1;
+  color: #c04040;
+}
+
+.lock-btn:hover {
+  background: #e0e0e0;
+  border-color: #c0c0c0;
+}
+
+.rename-btn:hover {
+  background: #e0e0e0;
+  border-color: #c0c0c0;
+}
+
+.delete-btn:hover {
+  background: #ffe0e0;
+  border-color: #e08080;
+}
+
+.layer-item.hidden .layer-action-btn {
+  opacity: 0.5;
+}
+
+.layer-item.hidden:hover .layer-action-btn {
+  opacity: 1;
 }
 </style>
