@@ -7,8 +7,6 @@ const store = useEditorStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 const isLoading = ref(false)
-const hasError = ref(false)
-const errorMessage = ref('')
 
 let ctx: CanvasRenderingContext2D | null = null
 let animationFrameId: number | null = null
@@ -32,45 +30,6 @@ const tempHeight = ref(0)
 // Marquee selection
 const marqueeStart = ref<Point | null>(null)
 const marqueeEnd = ref<Point | null>(null)
-
-// Error handling
-function handleError(error: Error) {
-  console.error('[Canvas] 渲染错误:', error)
-  hasError.value = true
-  errorMessage.value = error.message || '画布渲染失败，请刷新页面重试'
-  
-  // Announce error to screen readers
-  announceCanvasChange(errorMessage.value)
-  
-  // Try to restore canvas context
-  if (canvasRef.value) {
-    try {
-      ctx = canvasRef.value.getContext('2d') || null
-      if (ctx) {
-        hasError.value = false
-        errorMessage.value = ''
-        drawShapes()
-      }
-    } catch (restoreError) {
-      console.error('[Canvas] 无法恢复画布上下文:', restoreError)
-      hasError.value = true
-      errorMessage.value = '画布渲染失败且无法恢复，请刷新页面'
-    }
-  }
-}
-
-function reloadCanvas() {
-  hasError.value = false
-  errorMessage.value = ''
-  try {
-    ctx = canvasRef.value?.getContext('2d') || null
-    if (ctx) {
-      drawShapes()
-    }
-  } catch (error) {
-    handleError(error as Error)
-  }
-}
 
 // Accessibility
 function announceCanvasChange(message: string) {
@@ -1069,8 +1028,6 @@ onUnmounted(() => {
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId)
   }
-  ctx = null
-  animationFrameId = null
 })
 
 defineExpose({
@@ -1105,19 +1062,6 @@ defineExpose({
     </div>
     <div v-if="isLoading" class="loading-overlay">
       <span>Loading...</span>
-    </div>
-    <div v-if="hasError" class="error-overlay">
-      <div class="error-content">
-        <span class="error-icon" aria-hidden="true">⚠️</span>
-        <span class="error-message">{{ errorMessage }}</span>
-        <button 
-          class="error-button"
-          @click="reloadCanvas"
-          aria-label="重试加载画布"
-        >
-          重试
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -1159,60 +1103,5 @@ canvas {
   justify-content: center;
   font-size: 14px;
   color: #606060;
-}
-
-.error-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #d32f2f;
-}
-
-.error-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  max-width: 400px;
-  padding: 24px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.error-icon {
-  font-size: 48px;
-}
-
-.error-message {
-  text-align: center;
-  color: #333;
-}
-
-.error-button {
-  padding: 8px 24px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.error-button:hover {
-  background: #2563eb;
-}
-
-.error-button:focus {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
 }
 </style>

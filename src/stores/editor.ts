@@ -1,55 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { Layer, BaseShape, Project, ShapeType, ShapeStyle, FillPattern } from '../types/shapes'
 
-// Layer definition
-export interface Layer {
-  id: number
-  name: string
-  color: string
-  visible: boolean
-  locked: boolean
-  gdsLayer: number
-}
-
-// Base shape interface
-export interface BaseShape {
-  id: string
-  type: 'rectangle' | 'polygon' | 'waveguide' | 'label' | 'group'
-  layerId: number
-  x: number
-  y: number
-  width?: number
-  height?: number
-  points?: { x: number; y: number }[]
-  text?: string
-  children?: BaseShape[]
-  selected?: boolean
-  rotation?: number
-}
-
-// Project data
-export interface Project {
-  id: string
-  name: string
-  version: string
-  createdAt: string
-  modifiedAt: string
-  layers: Layer[]
-  shapes: BaseShape[]
-}
-
-// 兼容不支持和支持 crypto.randomUUID 的环境
+// Generate unique ID
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  // Fallback
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0
     const v = c === 'x' ? r : (r & 0x3) | 0x8
     return v.toString(16)
   })
 }
+
+// Default layers (KLayout compatible)
+const DEFAULT_LAYERS: Layer[] = [
+  { id: 1, name: 'Waveguide', color: '#4FC3F7', visible: true, locked: false, gdsLayer: 1, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 2, name: 'Metal', color: '#FFD54F', visible: true, locked: false, gdsLayer: 2, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 3, name: 'Device', color: '#81C784', visible: true, locked: false, gdsLayer: 3, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 4, name: 'Etch', color: '#E57373', visible: true, locked: false, gdsLayer: 4, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 5, name: 'Implant', color: '#BA68C8', visible: true, locked: false, gdsLayer: 5, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 6, name: 'Via', color: '#4DB6AC', visible: true, locked: false, gdsLayer: 6, gdsDatatype: 0, fillPattern: 'solid' },
+  { id: 99, name: 'Text', color: '#E0E0E0', visible: true, locked: false, gdsLayer: 99, gdsDatatype: 0, fillPattern: 'solid' },
+]
 
 export const useEditorStore = defineStore('editor', () => {
   // State
@@ -59,18 +33,33 @@ export const useEditorStore = defineStore('editor', () => {
     version: '1.0.0',
     createdAt: new Date().toISOString(),
     modifiedAt: new Date().toISOString(),
-    layers: [
-      { id: 1, name: 'Waveguide', color: '#4FC3F7', visible: true, locked: false, gdsLayer: 1 },
-      { id: 2, name: 'Metal', color: '#FFD54F', visible: true, locked: false, gdsLayer: 2 },
-      { id: 3, name: 'Device', color: '#81C784', visible: true, locked: false, gdsLayer: 3 },
-      { id: 4, name: 'Text', color: '#E0E0E0', visible: true, locked: false, gdsLayer: 99 },
-    ],
+    layers: JSON.parse(JSON.stringify(DEFAULT_LAYERS)),
     shapes: [],
   })
 
+  // Current tool
   const selectedTool = ref<string>('select')
+  
+  // Current layer for new shapes
+  const currentLayerId = ref<number>(1)
+  
+  // Current style for new shapes
+  const currentStyle = ref<ShapeStyle>({
+    fillColor: undefined,      // Use layer color
+    fillAlpha: 0.5,
+    strokeColor: undefined,     // Use layer color
+    strokeWidth: 1,
+    strokeDash: [],
+    pattern: 'solid',
+    patternColor: undefined,
+    patternSpacing: 8,
+  })
+
+  // Selection
   const selectedShapeIds = ref<string[]>([])
-  const gridSize = ref(1) // microns
+
+  // View settings
+  const gridSize = ref(1)       // microns
   const snapToGrid = ref(true)
   const zoom = ref(1)
   const panOffset = ref({ x: 0, y: 0 })
@@ -89,7 +78,6 @@ export const useEditorStore = defineStore('editor', () => {
 
   function pushHistory(snapshot?: { shapes: BaseShape[]; selectedIds: string[] }) {
     const snap = snapshot || getHistorySnapshot()
-    // Trim forward history when branching
     history.value = history.value.slice(0, historyIndex.value + 1)
     history.value.push(snap)
     if (history.value.length > MAX_HISTORY) {
@@ -119,10 +107,10 @@ export const useEditorStore = defineStore('editor', () => {
     project.value.modifiedAt = new Date().toISOString()
   }
 
-  // Initialise history with empty project state
+  // Initialize history
   pushHistory(getHistorySnapshot())
 
-  // Getters
+  // === Computed ===
   const selectedShapes = computed(() =>
     project.value.shapes.filter((s) => selectedShapeIds.value.includes(s.id))
   )
@@ -134,13 +122,20 @@ export const useEditorStore = defineStore('editor', () => {
     })
   )
 
-  // Actions
+  // === Actions ===
+
+  // Add a new shape
   function addShape(shape: BaseShape, saveHistory = true) {
+    // Merge with current style if not specified
+    if (!shape.style) {
+      shape.style = { ...currentStyle.value }
+    }
     project.value.shapes.push(shape)
     project.value.modifiedAt = new Date().toISOString()
     if (saveHistory) pushHistory(getHistorySnapshot())
   }
 
+  // Update shape properties
   function updateShape(id: string, updates: Partial<BaseShape>, saveHistory = false) {
     const index = project.value.shapes.findIndex((s) => s.id === id)
     if (index !== -1) {
@@ -150,6 +145,16 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  // Update shape style
+  function updateShapeStyle(id: string, styleUpdates: Partial<ShapeStyle>, saveHistory = true) {
+    const shape = project.value.shapes.find((s) => s.id === id)
+    if (shape) {
+      const newStyle = { ...shape.style, ...styleUpdates }
+      updateShape(id, { style: newStyle }, saveHistory)
+    }
+  }
+
+  // Delete shape
   function deleteShape(id: string, saveHistory = true) {
     project.value.shapes = project.value.shapes.filter((s) => s.id !== id)
     selectedShapeIds.value = selectedShapeIds.value.filter((sid) => sid !== id)
@@ -157,6 +162,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (saveHistory) pushHistory(getHistorySnapshot())
   }
 
+  // Selection
   function selectShape(id: string, addToSelection = false) {
     if (addToSelection) {
       if (!selectedShapeIds.value.includes(id)) {
@@ -171,6 +177,29 @@ export const useEditorStore = defineStore('editor', () => {
     selectedShapeIds.value = []
   }
 
+  function selectShapesInArea(x1: number, y1: number, x2: number, y2: number) {
+    const minX = Math.min(x1, x2)
+    const maxX = Math.max(x1, x2)
+    const minY = Math.min(y1, y2)
+    const maxY = Math.max(y1, y2)
+
+    const ids = project.value.shapes
+      .filter((s) => {
+        const layer = project.value.layers.find((l) => l.id === s.layerId)
+        if (layer?.locked) return false
+
+        const sx = s.x
+        const sy = s.y
+        const sw = s.width || 0
+        const sh = s.height || 0
+
+        return sx < maxX && sx + sw > minX && sy < maxY && sy + sh > minY
+      })
+      .map((s) => s.id)
+
+    selectedShapeIds.value = ids
+  }
+
   function deleteSelectedShapes() {
     if (selectedShapeIds.value.length === 0) return
     const idsToDelete = new Set(selectedShapeIds.value)
@@ -179,6 +208,34 @@ export const useEditorStore = defineStore('editor', () => {
     project.value.modifiedAt = new Date().toISOString()
     pushHistory(getHistorySnapshot())
   }
+
+  // Duplicate selected shapes
+  function duplicateSelectedShapes() {
+    if (selectedShapeIds.value.length === 0) return
+    
+    pushHistory()
+    const newIds: string[] = []
+    
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (shape) {
+        const newShape: BaseShape = {
+          ...JSON.parse(JSON.stringify(shape)),
+          id: generateId(),
+          x: shape.x + 10,
+          y: shape.y + 10,
+        }
+        project.value.shapes.push(newShape)
+        newIds.push(newShape.id)
+      }
+    }
+    
+    selectedShapeIds.value = newIds
+    project.value.modifiedAt = new Date().toISOString()
+    pushHistory(getHistorySnapshot())
+  }
+
+  // === Layer Management ===
 
   function addLayer(layer: Layer) {
     project.value.layers.push(layer)
@@ -192,6 +249,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function deleteLayer(id: number) {
+    if (project.value.layers.length <= 1) return
     project.value.layers = project.value.layers.filter((l) => l.id !== id)
     project.value.shapes = project.value.shapes.filter((s) => s.layerId !== id)
   }
@@ -203,22 +261,43 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  function duplicateShape(shapeId: string) {
-    const shape = project.value.shapes.find((s) => s.id === shapeId)
-    if (shape) {
-      const newShape: BaseShape = {
-        ...JSON.parse(JSON.stringify(shape)),
-        id: generateId(),
-        x: shape.x + 10,
-        y: shape.y + 10,
-      }
-      addShape(newShape)
-      selectShape(newShape.id)
+  // Get layer by ID
+  function getLayer(id: number): Layer | undefined {
+    return project.value.layers.find((l) => l.id === id)
+  }
+
+  // Get style for a shape (merge layer defaults with shape style)
+  function getShapeStyle(shape: BaseShape): Required<ShapeStyle> {
+    const layer = getLayer(shape.layerId)
+    const defaultStyle: Required<ShapeStyle> = {
+      fillColor: layer?.color || '#808080',
+      fillAlpha: 0.5,
+      strokeColor: layer?.color || '#808080',
+      strokeWidth: 1,
+      strokeDash: [],
+      pattern: layer?.fillPattern || 'solid',
+      patternColor: layer?.color || '#808080',
+      patternSpacing: 8,
+    }
+
+    return {
+      ...defaultStyle,
+      ...shape.style,
     }
   }
 
+  // === Tool & View ===
+
   function setTool(tool: string) {
     selectedTool.value = tool
+  }
+
+  function setCurrentLayer(layerId: number) {
+    currentLayerId.value = layerId
+  }
+
+  function setCurrentStyle(style: Partial<ShapeStyle>) {
+    currentStyle.value = { ...currentStyle.value, ...style }
   }
 
   function setZoom(value: number) {
@@ -228,6 +307,8 @@ export const useEditorStore = defineStore('editor', () => {
   function setPan(x: number, y: number) {
     panOffset.value = { x, y }
   }
+
+  // === Project Save/Load ===
 
   function saveProject() {
     const data = JSON.stringify(project.value, null, 2)
@@ -244,44 +325,136 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       const data = JSON.parse(jsonString) as Project
       project.value = data
+      selectedShapeIds.value = []
+      history.value = []
+      historyIndex.value = -1
+      pushHistory(getHistorySnapshot())
     } catch (e) {
       console.error('Failed to load project:', e)
     }
+  }
+
+  // === Point Hit Testing ===
+
+  function pointInShape(px: number, py: number, shape: BaseShape): boolean {
+    if (shape.type === 'rectangle' || shape.type === 'waveguide') {
+      const w = shape.width || 0
+      const h = shape.height || 0
+      return px >= shape.x && px <= shape.x + w && py >= shape.y && py <= shape.y + h
+    }
+    
+    if (shape.type === 'polygon' && shape.points && shape.points.length >= 3) {
+      return pointInPolygon(px, py, shape.points)
+    }
+    
+    if (shape.type === 'polyline' && shape.points && shape.points.length >= 2) {
+      // Check if point is near the polyline
+      return pointNearPolyline(px, py, shape.points, 5)
+    }
+    
+    if (shape.type === 'label') {
+      // Simple bounding box for labels
+      const w = (shape.text?.length || 0) * 8
+      const h = 14
+      return px >= shape.x && px <= shape.x + w && py >= shape.y && py <= shape.y + h
+    }
+    
+    return false
+  }
+
+  function pointInPolygon(px: number, py: number, points: { x: number; y: number }[]): boolean {
+    let inside = false
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i].x, yi = points[i].y
+      const xj = points[j].x, yj = points[j].y
+      if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+        inside = !inside
+      }
+    }
+    return inside
+  }
+
+  function pointNearPolyline(px: number, py: number, points: { x: number; y: number }[], threshold: number): boolean {
+    for (let i = 0; i < points.length - 1; i++) {
+      const dist = pointToSegmentDistance(px, py, points[i], points[i + 1])
+      if (dist <= threshold) return true
+    }
+    return false
+  }
+
+  function pointToSegmentDistance(px: number, py: number, p1: { x: number; y: number }, p2: { x: number; y: number }): number {
+    const dx = p2.x - p1.x
+    const dy = p2.y - p1.y
+    const t = Math.max(0, Math.min(1, ((px - p1.x) * dx + (py - p1.y) * dy) / (dx * dx + dy * dy)))
+    const nearX = p1.x + t * dx
+    const nearY = p1.y + t * dy
+    return Math.sqrt((px - nearX) ** 2 + (py - nearY) ** 2)
+  }
+
+  // Find shape at point
+  function getShapeAtPoint(px: number, py: number): BaseShape | null {
+    // Search in reverse order (top shapes first)
+    for (let i = project.value.shapes.length - 1; i >= 0; i--) {
+      const shape = project.value.shapes[i]
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      if (pointInShape(px, py, shape)) return shape
+    }
+    return null
   }
 
   return {
     // State
     project,
     selectedTool,
+    currentLayerId,
+    currentStyle,
     selectedShapeIds,
     gridSize,
     snapToGrid,
     zoom,
     panOffset,
-    // Getters
+    
+    // Computed
     selectedShapes,
     visibleShapes,
     canUndo,
     canRedo,
-    // Actions
+    
+    // Shape Actions
     addShape,
     updateShape,
+    updateShapeStyle,
     deleteShape,
     selectShape,
     clearSelection,
+    selectShapesInArea,
     deleteSelectedShapes,
+    duplicateSelectedShapes,
+    getShapeAtPoint,
+    getShapeStyle,
+    
+    // Layer Actions
     addLayer,
     updateLayer,
     deleteLayer,
     toggleLayerVisibility,
-    duplicateShape,
+    getLayer,
+    setCurrentLayer,
+    setCurrentStyle,
+    
+    // View Actions
     setTool,
     setZoom,
     setPan,
-    saveProject,
-    loadProject,
+    
+    // History
     undo,
     redo,
     pushHistory,
+    
+    // Project
+    saveProject,
+    loadProject,
   }
 })

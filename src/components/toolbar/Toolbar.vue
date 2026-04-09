@@ -1,16 +1,31 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useEditorStore } from '../../stores/editor'
+import { downloadGDS } from '../../services/gdsExporter'
 
 const store = useEditorStore()
 
+async function handleExportGDS() {
+  try {
+    await downloadGDS(
+      store.project.shapes,
+      store.project.layers,
+      { name: store.project.name || 'PIC_LAYOUT' }
+    )
+  } catch (err) {
+    console.error('GDS export failed:', err)
+    alert('GDS 导出失败: ' + (err as Error).message)
+  }
+}
+
 const tools = [
-  { id: 'select', name: 'Select', shortcut: 'V' },
-  { id: 'rectangle', name: 'Rectangle', shortcut: 'R' },
-  { id: 'polygon', name: 'Polygon', shortcut: 'P' },
-  { id: 'waveguide', name: 'Waveguide', shortcut: 'W' },
-  { id: 'label', name: 'Label', shortcut: 'T' },
-  { id: 'ruler', name: 'Ruler', shortcut: 'M' },
+  { id: 'select', name: 'Select', shortcut: 'V', icon: '◇' },
+  { id: 'rectangle', name: 'Rectangle', shortcut: 'R', icon: '▭' },
+  { id: 'polygon', name: 'Polygon', shortcut: 'P', icon: '⬡' },
+  { id: 'polyline', name: 'Polyline', shortcut: 'L', icon: '╱' },
+  { id: 'waveguide', name: 'Waveguide', shortcut: 'W', icon: '∿' },
+  { id: 'label', name: 'Label', shortcut: 'T', icon: 'T' },
+  { id: 'ruler', name: 'Ruler', shortcut: 'M', icon: '📏' },
 ]
 
 const isRulerMode = ref(false)
@@ -28,46 +43,31 @@ function selectTool(toolId: string) {
     measurementEnd.value = null
   }
 }
-
-function startMeasurement(x: number, y: number) {
-  if (isRulerMode.value) {
-    measurementStart.value = { x, y }
-    measurementEnd.value = null
-  }
-}
-
-function updateMeasurement(x: number, y: number) {
-  if (isRulerMode.value && measurementStart.value) {
-    measurementEnd.value = { x, y }
-    const dx = (measurementEnd.value.x - measurementStart.value.x)
-    const dy = (measurementEnd.value.y - measurementStart.value.y)
-    measurementDistance.value = Math.sqrt(dx * dx + dy * dy)
-  }
-}
 </script>
 
 <template>
   <div class="toolbar">
-    <!-- 文件操作 -->
+    <!-- File Operations -->
     <div class="tool-group">
-      <button class="tool-btn">
-        <span class="btn-icon">📁</span>
-        <span class="btn-label">Open</span>
-      </button>
-      <button class="tool-btn" @click="store.saveProject">
+      <button class="tool-btn" @click="store.saveProject" title="Save Project">
         <span class="btn-icon">💾</span>
         <span class="btn-label">Save</span>
+      </button>
+      <button class="tool-btn" @click="handleExportGDS" title="Export GDS (KLayout)">
+        <span class="btn-icon">📤</span>
+        <span class="btn-label">GDS</span>
       </button>
     </div>
     
     <div class="divider"></div>
     
-    <!-- 编辑操作 -->
+    <!-- Edit Operations -->
     <div class="tool-group">
       <button 
         class="tool-btn" 
         @click="store.undo"
         :disabled="!store.canUndo"
+        title="Undo (Ctrl+Z)"
       >
         <span class="btn-icon">↶</span>
         <span class="btn-label">Undo</span>
@@ -76,6 +76,7 @@ function updateMeasurement(x: number, y: number) {
         class="tool-btn" 
         @click="store.redo"
         :disabled="!store.canRedo"
+        title="Redo (Ctrl+Y)"
       >
         <span class="btn-icon">↷</span>
         <span class="btn-label">Redo</span>
@@ -84,7 +85,7 @@ function updateMeasurement(x: number, y: number) {
     
     <div class="divider"></div>
     
-    <!-- 绘图工具 -->
+    <!-- Drawing Tools -->
     <div class="tool-group">
       <button 
         v-for="tool in tools" 
@@ -94,21 +95,14 @@ function updateMeasurement(x: number, y: number) {
         @click="selectTool(tool.id)"
         :title="`${tool.name} (${tool.shortcut})`"
       >
-        <span class="btn-icon">
-          <template v-if="tool.id === 'select'">◇</template>
-          <template v-else-if="tool.id === 'rectangle'">▭</template>
-          <template v-else-if="tool.id === 'polygon'">⬡</template>
-          <template v-else-if="tool.id === 'waveguide'">∿</template>
-          <template v-else-if="tool.id === 'label'">T</template>
-          <template v-else-if="tool.id === 'ruler'">📏</template>
-        </span>
+        <span class="btn-icon">{{ tool.icon }}</span>
         <span class="btn-label">{{ tool.name }}</span>
       </button>
     </div>
     
     <div class="divider"></div>
     
-    <!-- 视图操作 -->
+    <!-- View Operations -->
     <div class="tool-group">
       <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In">
         <span class="btn-icon">🔍+</span>
@@ -126,7 +120,7 @@ function updateMeasurement(x: number, y: number) {
     
     <div class="divider"></div>
     
-    <!-- 测量显示 -->
+    <!-- Measurement Display -->
     <div v-if="isRulerMode && measurementDistance > 0" class="measurement-display">
       <span class="measure-icon">📏</span>
       <span class="measure-value">{{ measurementDistance.toFixed(2) }} μm</span>
@@ -134,7 +128,18 @@ function updateMeasurement(x: number, y: number) {
     
     <div class="spacer"></div>
     
-    <!-- 网格设置 -->
+    <!-- Current Layer Indicator -->
+    <div class="tool-group layer-indicator">
+      <div 
+        class="layer-color-box"
+        :style="{ backgroundColor: store.getLayer(store.currentLayerId)?.color }"
+      ></div>
+      <span class="layer-name">{{ store.getLayer(store.currentLayerId)?.name }}</span>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <!-- Grid Settings -->
     <div class="tool-group grid-settings">
       <span class="grid-label">Grid:</span>
       <select 
@@ -155,7 +160,7 @@ function updateMeasurement(x: number, y: number) {
       </label>
     </div>
     
-    <!-- 项目名称 -->
+    <!-- Project Name -->
     <div class="project-info">
       <span class="project-name">{{ store.project.name }}</span>
     </div>
@@ -257,6 +262,28 @@ function updateMeasurement(x: number, y: number) {
 
 .spacer {
   flex: 1;
+}
+
+.layer-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #f8f8f8;
+  border: 1px solid #c0c0c0;
+  border-radius: 2px;
+}
+
+.layer-color-box {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #808080;
+  border-radius: 2px;
+}
+
+.layer-name {
+  font-size: 11px;
+  color: #404040;
 }
 
 .grid-settings {
