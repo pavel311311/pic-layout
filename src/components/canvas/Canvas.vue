@@ -13,6 +13,262 @@ const errorMessage = ref('')
 let ctx: CanvasRenderingContext2D | null = null
 let animationFrameId: number | null = null
 
+// === Canvas Virtualization - Day 2: Dirty Rectangles & Incremental Rendering ===
+
+/**
+ * Dirty rectangle tracking for incremental rendering.
+ * Instead of redrawing the entire canvas, we only redraw regions that changed.
+ */
+interface DirtyRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+// Full canvas dirty flag (when everything needs redraw)
+let isFullDirty = true
+
+// Dirty rectangles list (when specific regions changed)
+const dirtyRects: DirtyRect[] = []
+
+// Batched shape render groups (by layer)
+interface RenderBatch {
+  layerId: number
+  shapes: BaseShape[]
+}
+
+/**
+ * Mark the entire canvas as dirty (full redraw needed).
+ */
+function markDirty() {
+  isFullDirty = true
+  dirtyRects.length = 0
+}
+
+/**
+ * Mark a specific region as dirty (incremental redraw).
+ * Uses screen coordinates for pixel-accurate dirty tracking.
+ */
+function markDirtyRect(screenX: number, screenY: number, width: number, height: number) {
+  // Normalize to positive dimensions
+  const x = width < 0 ? screenX + width : screenX
+  const y = height < 0 ? screenY + height : screenY
+  const w = Math.abs(width)
+  const h = Math.abs(height)
+
+  // Skip tiny updates (less than 1 pixel)
+  if (w < 1 || h < 1) return
+
+  // Expand the rect slightly to account for stroke widths and anti-aliasing
+  const padding = 4
+  dirtyRects.push({
+    x: x - padding,
+    y: y - padding,
+    width: w + padding * 2,
+    height: h + padding * 2,
+  })
+}
+
+/**
+ * Mark a shape's bounding box as dirty (in design coordinates, converted to screen).
+ */
+function markShapeDirty(shape: BaseShape) {
+  const bounds = getShapeBounds(shape)
+  const topLeft = designToScreen(bounds.minX, bounds.minY)
+  const bottomRight = designToScreen(bounds.maxX, bounds.maxY)
+
+  markDirtyRect(
+    topLeft.x,
+    topLeft.y,
+    bottomRight.x - topLeft.x,
+    bottomRight.y - topLeft.y
+  )
+}
+
+/**
+ * Merge overlapping dirty rectangles to reduce redraw area.
+ */
+function mergeDirtyRects(): DirtyRect[] {
+  if (dirtyRects.length === 0) return []
+  if (dirtyRects.length === 1) return [...dirtyRects]
+
+  // Sort by y then x for sweep-line merging
+  const sorted = [...dirtyRects].sort((a, b) => a.y - b.y || a.x - b.x)
+  const merged: DirtyRect[] = []
+  let current = { ...sorted[0] }
+
+  for (let i = 1; i < sorted.length; i++) {
+    const rect = sorted[i]
+
+    // Check if current and rect overlap or are adjacent
+    const overlapX = current.x <= rect.x + rect.width && current.x + current.width >= rect.x
+    const overlapY = current.y <= rect.y + rect.height && current.y + current.height >= rect.y
+    const adjacentX = Math.abs((current.x + current.width) - rect.x) <= 2
+    const adjacentY = Math.abs((current.y + current.height) - rect.y) <= 2
+
+    if (overlapX && overlapY) {
+      // Merge by taking bounding box
+      current.x = Math.min(current.x, rect.x)
+      current.y = Math.min(current.y, rect.y)
+      current.width = Math.max(current.x + current.width, rect.x + rect.width) - current.x
+      current.height = Math.max(current.y + current.height, rect.y + rect.height) - current.y
+    } else if (overlapX && adjacentY) {
+      // Same column, adjacent vertically
+      current.y = Math.min(current.y, rect.y)
+      current.height = Math.max(current.y + current.height, rect.y + rect.height) - current.y
+    } else if (overlapY && adjacentX) {
+      // Same row, adjacent horizontally
+      current.x = Math.min(current.x, rect.x)
+      current.width = Math.max(current.x + current.width, rect.x + rect.width) - current.x
+    } else {
+      // Non-overlapping, push current and start new
+      merged.push(current)
+      current = { ...rect }
+    }
+  }
+  merged.push(current)
+
+  return merged
+}
+
+/**
+ * Clear the dirty tracking state.
+ */
+function clearDirty() {
+  isFullDirty = false
+  dirtyRects.length = 0
+}
+
+/**
+ * Batch shapes by layer for efficient rendering.
+ * Shapes in the same layer can be rendered together with fewer state changes.
+ */
+function batchShapesByLayer(shapes: BaseShape[]): RenderBatch[] {
+  const batches: Map<number, BaseShape[]> = new Map()
+
+  for (const shape of shapes) {
+    const existing = batches.get(shape.layerId)
+    if (existing) {
+      existing.push(shape)
+    } else {
+      batches.set(shape.layerId, [shape])
+    }
+  }
+
+  // Convert to array and sort by layer order
+  const result: RenderBatch[] = []
+  for (const [layerId, layerShapes] of batches) {
+    result.push({ layerId, shapes: layerShapes })
+  }
+
+  // Sort batches by layer order (ascending)
+  result.sort((a, b) => {
+    const layerA = store.getLayer(a.layerId)
+    const layerB = store.getLayer(b.layerId)
+    // Use gdsLayer if available (from layer definition), fallback to layerId
+    const orderA = layerA?.gdsLayer ?? a.layerId
+    const orderB = layerB?.gdsLayer ?? b.layerId
+    return orderA - orderB
+  })
+
+  return result
+}
+
+/**
+ * Render a batch of shapes in a single layer.
+ * Minimizes canvas state changes by grouping style changes.
+ */
+function renderBatch(ctx: CanvasRenderingContext2D, batch: RenderBatch) {
+  const layer = store.getLayer(batch.layerId)
+  if (!layer || !layer.visible) return
+
+  for (const shape of batch.shapes) {
+    renderShape(ctx, shape)
+  }
+}
+
+/**
+ * Render a single shape with its style.
+ */
+function renderShape(ctx: CanvasRenderingContext2D, shape: BaseShape) {
+  const style = getEffectiveStyle(shape)
+
+  ctx.fillStyle = style.fillColor || '#808080'
+  ctx.globalAlpha = style.fillAlpha ?? 0.5
+  ctx.strokeStyle = style.strokeColor || '#808080'
+  ctx.lineWidth = style.strokeWidth ?? 1
+
+  if (style.strokeDash && style.strokeDash.length > 0) {
+    ctx.setLineDash(style.strokeDash)
+  }
+
+  if (shape.type === 'rectangle' && shape.width && shape.height) {
+    ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+    if (style.pattern && style.pattern !== 'solid') {
+      drawPattern(ctx, shape.x, shape.y, shape.width, shape.height, style)
+    }
+    ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+  } else if (shape.type === 'waveguide' && shape.width != null && shape.height != null) {
+    ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+    ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+  } else if (shape.type === 'polygon' && shape.points && shape.points.length >= 3) {
+    ctx.beginPath()
+    ctx.moveTo(shape.points[0].x, shape.points[0].y)
+    for (let i = 1; i < shape.points.length; i++) {
+      ctx.lineTo(shape.points[i].x, shape.points[i].y)
+    }
+    ctx.closePath()
+    ctx.fill()
+    if (style.pattern && style.pattern !== 'solid') {
+      const minX = Math.min(...shape.points.map((p: Point) => p.x))
+      const minY = Math.min(...shape.points.map((p: Point) => p.y))
+      const maxX = Math.max(...shape.points.map((p: Point) => p.x))
+      const maxY = Math.max(...shape.points.map((p: Point) => p.y))
+      drawPattern(ctx, minX, minY, maxX - minX, maxY - minY, style)
+    }
+    ctx.stroke()
+  } else if (shape.type === 'polyline' && shape.points && shape.points.length >= 2) {
+    ctx.beginPath()
+    ctx.moveTo(shape.points[0].x, shape.points[0].y)
+    for (let i = 1; i < shape.points.length; i++) {
+      ctx.lineTo(shape.points[i].x, shape.points[i].y)
+    }
+    if ((shape as any).closed) {
+      ctx.closePath()
+    }
+    ctx.stroke()
+  } else if (shape.type === 'label' && shape.text) {
+    const fontSize = (shape as any).fontSize || 12 * (store.zoom > 0.5 ? 1 : 0.8)
+    const fontFamily = (shape as any).fontFamily || '"SF Mono", Monaco, monospace'
+    ctx.font = `${fontSize}px ${fontFamily}`
+    ctx.fillStyle = style.fillColor || '#808080'
+    ctx.textBaseline = 'top'
+    ctx.fillText(shape.text, shape.x, shape.y)
+  }
+
+  ctx.globalAlpha = 1
+  ctx.setLineDash([])
+}
+
+/**
+ * Clear a specific screen region with white background.
+ */
+function clearRegion(ctx: CanvasRenderingContext2D, rect: DirtyRect) {
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+}
+
+/**
+ * Clear the entire canvas.
+ */
+function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, height)
+}
+
+// === End Canvas Virtualization - Day 2 ===
+
 // Mouse position
 const mouseX = ref(0)
 const mouseY = ref(0)
@@ -672,31 +928,95 @@ function drawScaleBar() {
   ctx.fillText(`${displayLength.toFixed(2)} ${unit}`, x, y + barHeight + 6)
 }
 
-// Dirty flag for rendering
+// Dirty flag for rendering (legacy, replaced by isFullDirty + dirtyRects)
 let isDirty = true
 
-function markDirty() {
-  isDirty = true
-}
+// === Incremental Rendering ===
 
+/**
+ * Main render loop with incremental (dirty rectangle) rendering.
+ * When the canvas is fully dirty, redraws everything.
+ * When specific regions are dirty, only redraws those regions.
+ */
 function render() {
-  if (!ctx || !canvasRef.value) return
+  if (!ctx || !canvasRef.value) {
+    animationFrameId = requestAnimationFrame(render)
+    return
+  }
 
-  if (isDirty) {
-    isDirty = false
+  const { width, height } = canvasRef.value
 
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height)
+  // Always draw dynamic elements (crosshair) on top, but shapes are cached
+  // For full dirty: redraw entire canvas
+  if (isFullDirty) {
+    // Full canvas clear
+    clearCanvas(ctx, width, height)
 
+    // Draw static elements (grid + shapes)
     drawGrid()
     drawShapes()
-    drawCurrentDrawing()
-    drawSelection()
-    drawScaleBar()
-    
-    if (mouseX.value > 0 && mouseY.value > 0) {
-      drawCrosshair(mouseX.value, mouseY.value)
+
+    // Clear full dirty flag
+    clearDirty()
+  } else if (dirtyRects.length > 0) {
+    // Incremental: only redraw dirty regions
+    const mergedRects = mergeDirtyRects()
+
+    for (const rect of mergedRects) {
+      // Clip to canvas bounds
+      const clippedX = Math.max(0, rect.x)
+      const clippedY = Math.max(0, rect.y)
+      const clippedW = Math.min(rect.width, width - clippedX)
+      const clippedH = Math.min(rect.height, height - clippedY)
+
+      if (clippedW <= 0 || clippedH <= 0) continue
+
+      // Clear the region
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(clippedX, clippedY, clippedW, clippedH)
+      ctx.clip()
+
+      // Redraw grid in this region (may need full grid redraw for pan)
+      clearRegion(ctx, { x: clippedX, y: clippedY, width: clippedW, height: clippedH })
+      drawGrid()
+
+      // Find shapes that intersect with this dirty region and redraw
+      const dirtyBounds: Bounds = {
+        minX: screenToDesign(clippedX, clippedY).x,
+        minY: screenToDesign(clippedX, clippedY).y,
+        maxX: screenToDesign(clippedX + clippedW, clippedY + clippedH).x,
+        maxY: screenToDesign(clippedX + clippedW, clippedY + clippedH).y,
+      }
+
+      const visibleShapes = clipShapesToViewport(store.visibleShapes)
+      const affectedShapes = visibleShapes.filter(shape => {
+        const shapeBounds = getShapeBounds(shape)
+        return boundsIntersect(shapeBounds, dirtyBounds)
+      })
+
+      if (affectedShapes.length > 0) {
+        const batches = batchShapesByLayer(affectedShapes)
+        for (const batch of batches) {
+          renderBatch(ctx, batch)
+        }
+      }
+
+      ctx.restore()
     }
+
+    // Clear dirty rectangles after processing
+    dirtyRects.length = 0
+  }
+
+  // Always redraw dynamic UI elements (these change frequently)
+  // Clear selection and scale bar area first
+  drawSelection()
+  drawCurrentDrawing()
+  drawScaleBar()
+
+  if (mouseX.value > 0 && mouseY.value > 0) {
+    drawCrosshair(mouseX.value, mouseY.value)
   }
 
   animationFrameId = requestAnimationFrame(render)
