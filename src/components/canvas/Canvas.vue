@@ -155,15 +155,184 @@ function invalidateLayerCache() {
  * Clear all layer caches.
  */
 function clearLayerCache() {
+  layerCache.forEach((entry) => {
+    if (entry.bitmap) {
+      entry.bitmap.close()
+      entry.bitmap = null
+    }
+  })
   layerCache.clear()
   cacheVersion = 0
 }
+
+// === Canvas Virtualization - Day 4: Memory Optimization & Performance ===
+
+// Memory management settings
+const MAX_CACHED_LAYERS = 20  // Maximum number of layer caches to keep
+const MEMORY_CHECK_INTERVAL = 5000  // Check memory every 5 seconds
+const INVISIBLE_LAYER_DISTANCE = 5000  // Design units - layers beyond this are considered "invisible"
+
+let lastMemoryCheck = 0
+let totalBitmapMemory = 0  // Estimated memory used by bitmaps in bytes
 
 /**
  * Get effective zoom for rendering (considering quality setting).
  */
 function getEffectiveZoom(): number {
   return isLowQuality ? store.zoom * 0.5 : store.zoom
+}
+
+/**
+ * Calculate estimated memory usage of an ImageBitmap.
+ */
+function estimateBitmapMemory(bitmap: ImageBitmap): number {
+  // ImageBitmap stores RGBA pixels, 4 bytes per pixel
+  return bitmap.width * bitmap.height * 4
+}
+
+/**
+ * Release caches for layers that are far from the current viewport.
+ * This helps manage memory when working with large designs.
+ */
+function releaseDistantLayerCaches() {
+  const visibleBounds = getVisibleBounds()
+  if (!visibleBounds) return
+
+  // Expand bounds by the invisible distance threshold
+  const expandedBounds = {
+    minX: visibleBounds.minX - INVISIBLE_LAYER_DISTANCE,
+    minY: visibleBounds.minY - INVISIBLE_LAYER_DISTANCE,
+    maxX: visibleBounds.maxX + INVISIBLE_LAYER_DISTANCE,
+    maxY: visibleBounds.maxY + INVISIBLE_LAYER_DISTANCE,
+  }
+
+  let releasedCount = 0
+  let releasedMemory = 0
+
+  layerCache.forEach((entry, layerId) => {
+    if (!entry.bitmap) return
+
+    // Get layer bounds (approximate - layers don't have explicit bounds)
+    // Instead, we'll release caches based on layer ID distance from visible layers
+    // This is a heuristic - in practice, we track which layers have shapes near viewport
+
+    // Check if this layer has shapes in the visible area
+    const shapesInLayer = store.project.shapes.filter(s => s.layerId === layerId)
+    let hasVisibleShapes = false
+
+    for (const shape of shapesInLayer) {
+      const bounds = getShapeBounds(shape)
+      if (boundsIntersect(bounds, expandedBounds)) {
+        hasVisibleShapes = true
+        break
+      }
+    }
+
+    // Release cache if layer has no visible shapes
+    if (!hasVisibleShapes && shapesInLayer.length > 0) {
+      releasedMemory += estimateBitmapMemory(entry.bitmap)
+      entry.bitmap.close()
+      entry.bitmap = null
+      entry.dirty = true  // Mark for re-render if needed later
+      releasedCount++
+    }
+  })
+
+  totalBitmapMemory -= releasedMemory
+
+  if (releasedCount > 0) {
+    console.log(`[Canvas] Released ${releasedCount} distant layer caches (freed ~${(releasedMemory / 1024 / 1024).toFixed(2)}MB)`)
+  }
+}
+
+/**
+ * Evict least recently used layer caches when memory limit is approached.
+ * Uses a simple LRU strategy - removes oldest entries first.
+ */
+function evictLeastUsedCaches(targetCount: number) {
+  if (layerCache.size <= targetCount) return
+
+  const toRemove: number[] = []
+  let removedCount = 0
+  let freedMemory = 0
+
+  // Sort by version (lower version = older/less recently used)
+  const entries = Array.from(layerCache.entries())
+    .filter(([_, entry]) => entry.bitmap !== null)
+    .sort((a, b) => a[1].version - b[1].version)
+
+  // Remove oldest entries until we reach target count
+  const removeCount = entries.length - targetCount
+  for (let i = 0; i < removeCount && i < entries.length; i++) {
+    const [layerId, entry] = entries[i]
+    if (entry.bitmap) {
+      freedMemory += estimateBitmapMemory(entry.bitmap)
+      entry.bitmap.close()
+      entry.bitmap = null
+      entry.dirty = true
+      toRemove.push(layerId)
+      removedCount++
+    }
+  }
+
+  totalBitmapMemory -= freedMemory
+
+  if (removedCount > 0) {
+    console.log(`[Canvas] Evicted ${removedCount} LRU layer caches (freed ~${(freedMemory / 1024 / 1024).toFixed(2)}MB)`)
+  }
+}
+
+/**
+ * Periodically check and optimize memory usage.
+ * Called during render loop.
+ */
+function checkMemoryUsage(timestamp: number) {
+  // Only check periodically, not every frame
+  if (timestamp - lastMemoryCheck < MEMORY_CHECK_INTERVAL) return
+  lastMemoryCheck = timestamp
+
+  // Evict caches if we have too many
+  if (layerCache.size > MAX_CACHED_LAYERS) {
+    evictLeastUsedCaches(MAX_CACHED_LAYERS)
+  }
+
+  // Release distant layer caches
+  releaseDistantLayerCaches()
+
+  // Log memory stats (in development)
+  if (import.meta.env.DEV && totalBitmapMemory > 1024 * 1024) {
+    console.log(`[Canvas] Layer cache memory: ~${(totalBitmapMemory / 1024 / 1024).toFixed(2)}MB across ${layerCache.size} layers`)
+  }
+}
+
+/**
+ * Get performance statistics for debugging.
+ */
+function getPerformanceStats() {
+  return {
+    totalShapes: store.project.shapes.length,
+    visibleLayers: new Set(store.visibleShapes.map(s => s.layerId)).size,
+    cachedLayers: layerCache.size,
+    estimatedMemoryMB: (totalBitmapMemory / 1024 / 1024).toFixed(2),
+    currentZoom: store.zoom,
+    isLowQuality,
+    isFullDirty,
+    pendingDirtyRects: dirtyRects.length,
+  }
+}
+
+/**
+ * Reset all virtualization state (for testing or recovery).
+ */
+function resetVirtualizationState() {
+  clearLayerCache()
+  clearDirty()
+  isLowQuality = false
+  totalBitmapMemory = 0
+  lastMemoryCheck = 0
+  offscreenCanvas = null
+  offscreenCtx = null
+  markDirty()
 }
 
 // === Canvas Virtualization - Day 2: Dirty Rectangles & Incremental Rendering ===
@@ -1056,6 +1225,11 @@ let isDirty = true
  * When specific regions are dirty, only redraws those regions.
  */
 function render() {
+  const timestamp = performance.now()
+
+  // Periodic memory optimization check
+  checkMemoryUsage(timestamp)
+
   if (!ctx || !canvasRef.value) {
     animationFrameId = requestAnimationFrame(render)
     return
@@ -1674,6 +1848,9 @@ onUnmounted(() => {
 defineExpose({
   mouseX,
   mouseY,
+  getPerformanceStats,
+  resetVirtualizationState,
+  markDirty,
 })
 </script>
 
