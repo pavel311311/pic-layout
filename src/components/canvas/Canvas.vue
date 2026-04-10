@@ -13,6 +13,159 @@ const errorMessage = ref('')
 let ctx: CanvasRenderingContext2D | null = null
 let animationFrameId: number | null = null
 
+// === Canvas Virtualization - Day 3: Offscreen Canvas & Layer Cache ===
+
+// Offscreen canvas for caching static content (grid, labels, etc.)
+let offscreenCanvas: OffscreenCanvas | null = null
+let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null
+
+// Layer cache - cache rendered layers to avoid re-rendering
+interface LayerCacheEntry {
+  layerId: number
+  bitmap: ImageBitmap | null
+  dirty: boolean
+  version: number
+}
+
+const layerCache: Map<number, LayerCacheEntry> = new Map()
+let cacheVersion = 0  // Increment when shapes change
+
+// Zoom quality settings
+const LOW_QUALITY_ZOOM = 0.3
+const HIGH_QUALITY_ZOOM = 1.0
+const QUALITY_TRANSITION_ZOOM = 0.6
+
+let isLowQuality = false
+
+/**
+ * Check if zoom level requires low-quality rendering.
+ * Low quality (lower resolution) for faster rendering when zoomed out.
+ */
+function needsLowQuality(): boolean {
+  return store.zoom < QUALITY_TRANSITION_ZOOM
+}
+
+/**
+ * Update zoom quality setting based on current zoom level.
+ */
+function updateZoomQuality() {
+  const newQuality = needsLowQuality()
+  if (newQuality !== isLowQuality) {
+    isLowQuality = newQuality
+    // Clear cache when quality changes
+    layerCache.clear()
+    markDirty()
+  }
+}
+
+/**
+ * Create or resize offscreen canvas.
+ */
+function initOffscreenCanvas(width: number, height: number) {
+  if (typeof OffscreenCanvas === 'undefined') {
+    console.warn('[Canvas] OffscreenCanvas not supported, skipping layer cache')
+    return
+  }
+
+  const quality = isLowQuality ? 0.5 : 1.0  // Downscale for low quality
+  const scaledWidth = Math.ceil(width * quality)
+  const scaledHeight = Math.ceil(height * quality)
+
+  if (!offscreenCanvas || offscreenCanvas.width !== scaledWidth || offscreenCanvas.height !== scaledHeight) {
+    offscreenCanvas = new OffscreenCanvas(scaledWidth, scaledHeight)
+    offscreenCtx = offscreenCanvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null
+    if (offscreenCtx) {
+      offscreenCtx.scale(quality, quality)
+    }
+  }
+}
+
+/**
+ * Cache a layer's rendered content.
+ */
+function cacheLayer(layerId: number, shapes: BaseShape[]): void {
+  if (!offscreenCtx || !offscreenCanvas) return
+
+  // Update or create cache entry
+  let entry = layerCache.get(layerId)
+  if (!entry) {
+    entry = { layerId, bitmap: null, dirty: false, version: cacheVersion }
+    layerCache.set(layerId, entry)
+  }
+
+  // Check if we need to re-render
+  const needsCache = entry.dirty || entry.version !== cacheVersion
+  if (!needsCache) return
+
+  // Clear previous bitmap if exists
+  if (entry.bitmap) {
+    entry.bitmap.close()
+    entry.bitmap = null
+  }
+
+  // Clear offscreen canvas
+  offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
+
+  // Render shapes to offscreen canvas
+  const batch: RenderBatch = { layerId, shapes }
+  renderBatch(offscreenCtx, batch)
+
+  // Create ImageBitmap for fast blitting (synchronous)
+  try {
+    const bitmap = offscreenCanvas.transferToImageBitmap()
+    entry.bitmap = bitmap
+    entry.dirty = false
+    entry.version = cacheVersion
+  } catch (e) {
+    console.warn('[Canvas] Failed to create ImageBitmap:', e)
+  }
+}
+
+/**
+ * Get cached layer bitmap, rendering if necessary.
+ */
+function getCachedLayerBitmap(layerId: number, shapes: BaseShape[]): ImageBitmap | null {
+  // Ensure cache entry exists
+  let entry = layerCache.get(layerId)
+  if (!entry) {
+    entry = { layerId, bitmap: null, dirty: false, version: cacheVersion }
+    layerCache.set(layerId, entry)
+  }
+
+  // If cache miss or dirty, render and cache
+  if (entry.dirty || entry.version !== cacheVersion) {
+    cacheLayer(layerId, shapes)
+  }
+
+  return entry.bitmap
+}
+
+/**
+ * Invalidate all layer caches.
+ */
+function invalidateLayerCache() {
+  layerCache.forEach((entry) => {
+    entry.dirty = true
+    entry.bitmap = null
+  })
+  cacheVersion++
+}
+
+/**
+ * Clear all layer caches.
+ */
+function clearLayerCache() {
+  layerCache.clear()
+  cacheVersion = 0
+}
+
+/**
+ * Get effective zoom for rendering (considering quality setting).
+ */
+function getEffectiveZoom(): number {
+  return isLowQuality ? store.zoom * 0.5 : store.zoom
+}
+
 // === Canvas Virtualization - Day 2: Dirty Rectangles & Incremental Rendering ===
 
 /**
@@ -179,7 +332,7 @@ function batchShapesByLayer(shapes: BaseShape[]): RenderBatch[] {
  * Render a batch of shapes in a single layer.
  * Minimizes canvas state changes by grouping style changes.
  */
-function renderBatch(ctx: CanvasRenderingContext2D, batch: RenderBatch) {
+function renderBatch(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, batch: RenderBatch) {
   const layer = store.getLayer(batch.layerId)
   if (!layer || !layer.visible) return
 
@@ -191,7 +344,7 @@ function renderBatch(ctx: CanvasRenderingContext2D, batch: RenderBatch) {
 /**
  * Render a single shape with its style.
  */
-function renderShape(ctx: CanvasRenderingContext2D, shape: BaseShape) {
+function renderShape(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, shape: BaseShape) {
   const style = getEffectiveStyle(shape)
 
   ctx.fillStyle = style.fillColor || '#808080'
@@ -560,6 +713,13 @@ function drawGrid() {
 
   if (gridSize < 5) return
 
+  // Cache grid rendering
+  if (offscreenCtx && offscreenCanvas) {
+    const cacheKey = `grid_${store.panOffset.x}_${store.panOffset.y}_${gridSize}`
+    // Note: Grid is dynamic, so we don't cache it permanently
+    // We'll just draw it directly for now
+  }
+
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'
   ctx.lineWidth = 0.5
 
@@ -604,7 +764,7 @@ function drawCrosshair(x: number, y: number) {
 }
 
 // Pattern rendering
-function drawPattern(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, style: ShapeStyle) {
+function drawPattern(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, x: number, y: number, w: number, h: number, style: ShapeStyle) {
   if (!style.pattern || style.pattern === 'solid') return
   
   const spacing = style.patternSpacing || 8
@@ -671,68 +831,25 @@ function drawShapes() {
   // Use virtualization: get only visible shapes sorted by layer
   const visibleShapes = clipShapesToViewport(store.visibleShapes)
 
-  for (const shape of visibleShapes) {
-    const layer = store.project.layers.find((l) => l.id === shape.layerId)
-    if (!layer || !layer.visible) continue
+  // Batch shapes by layer for cache optimization
+  const batches = batchShapesByLayer(visibleShapes)
 
-    const style = getEffectiveStyle(shape)
-    
-    ctx.fillStyle = style.fillColor || '#808080'
-    ctx.globalAlpha = style.fillAlpha ?? 0.5
-    ctx.strokeStyle = style.strokeColor || '#808080'
-    ctx.lineWidth = style.strokeWidth ?? 1
-    
-    if (style.strokeDash && style.strokeDash.length > 0) {
-      ctx.setLineDash(style.strokeDash)
+  // Render cached layers first (fast blit)
+  for (const batch of batches) {
+    const bitmap = getCachedLayerBitmap(batch.layerId, batch.shapes)
+    if (bitmap) {
+      // Draw cached bitmap at current zoom level
+      const screenX = batch.shapes[0].x * store.zoom + store.panOffset.x
+      const screenY = batch.shapes[0].y * store.zoom + store.panOffset.y
+      ctx.drawImage(bitmap, screenX, screenY)
     }
+  }
 
-    if (shape.type === 'rectangle' && shape.width && shape.height) {
-      ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
-      if (style.pattern && style.pattern !== 'solid') {
-        drawPattern(ctx, shape.x, shape.y, shape.width, shape.height, style)
-      }
-      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
-    } 
-    else if (shape.type === 'waveguide' && shape.width != null && shape.height != null) {
-      ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
-      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
-    } 
-    else if (shape.type === 'polygon' && shape.points && shape.points.length >= 3) {
-      ctx.beginPath()
-      ctx.moveTo(shape.points[0].x, shape.points[0].y)
-      for (let i = 1; i < shape.points.length; i++) {
-        ctx.lineTo(shape.points[i].x, shape.points[i].y)
-      }
-      ctx.closePath()
-      ctx.fill()
-      if (style.pattern && style.pattern !== 'solid') {
-        // Calculate bounding box for pattern clipping
-        const minX = Math.min(...shape.points.map(p => p.x))
-        const minY = Math.min(...shape.points.map(p => p.y))
-        const maxX = Math.max(...shape.points.map(p => p.x))
-        const maxY = Math.max(...shape.points.map(p => p.y))
-        drawPattern(ctx, minX, minY, maxX - minX, maxY - minY, style)
-      }
-      ctx.stroke()
-    }
-    else if (shape.type === 'polyline' && shape.points && shape.points.length >= 2) {
-      ctx.beginPath()
-      ctx.moveTo(shape.points[0].x, shape.points[0].y)
-      for (let i = 1; i < shape.points.length; i++) {
-        ctx.lineTo(shape.points[i].x, shape.points[i].y)
-      }
-      if ((shape as any).closed) {
-        ctx.closePath()
-      }
-      ctx.stroke()
-    }
-    else if (shape.type === 'label' && shape.text) {
-      const fontSize = (shape as any).fontSize || 12 * (store.zoom > 0.5 ? 1 : 0.8)
-      const fontFamily = (shape as any).fontFamily || '"SF Mono", Monaco, monospace'
-      ctx.font = `${fontSize}px ${fontFamily}`
-      ctx.fillStyle = style.fillColor || '#808080'
-      ctx.textBaseline = 'top'
-      ctx.fillText(shape.text, shape.x, shape.y)
+  // Render uncached shapes directly
+  for (const batch of batches) {
+    const bitmap = getCachedLayerBitmap(batch.layerId, batch.shapes)
+    if (!bitmap) {
+      renderBatch(ctx, batch)
     }
   }
 
@@ -1033,6 +1150,9 @@ async function initCanvas() {
 
   ctx = canvasRef.value.getContext('2d')
   if (ctx) {
+    // Initialize offscreen canvas for layer caching
+    updateZoomQuality()
+    initOffscreenCanvas(rect.width, rect.height)
     render()
   }
 
@@ -1396,6 +1516,8 @@ function handleWheel(e: WheelEvent) {
   e.preventDefault()
   const delta = e.deltaY > 0 ? 0.9 : 1.1
   store.setZoom(store.zoom * delta)
+  // Update zoom quality based on new zoom level
+  updateZoomQuality()
   markDirty()
 }
 
