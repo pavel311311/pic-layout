@@ -567,6 +567,31 @@ function renderShape(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingCon
     ctx.fillStyle = style.fillColor || '#808080'
     ctx.textBaseline = 'top'
     ctx.fillText(shape.text, shape.x, shape.y)
+  } else if (shape.type === 'path' && shape.points && shape.points.length >= 2) {
+    // Path - thick line with variable width
+    const halfWidth = ((shape as any).width || 1) / 2
+    ctx.lineWidth = halfWidth * 2
+    ctx.lineCap = ((shape as any).endStyle || 'square') === 'round' ? 'round' : 'butt'
+    ctx.lineJoin = ((shape as any).joinStyle || 'miter') === 'round' ? 'round' : ((shape as any).joinStyle || 'miter') === 'bevel' ? 'bevel' : 'miter'
+    ctx.beginPath()
+    ctx.moveTo(shape.points[0].x, shape.points[0].y)
+    for (let i = 1; i < shape.points.length; i++) {
+      ctx.lineTo(shape.points[i].x, shape.points[i].y)
+    }
+    ctx.stroke()
+    ctx.lineCap = 'butt'
+    ctx.lineJoin = 'miter'
+    ctx.lineWidth = style.strokeWidth ?? 1
+  } else if (shape.type === 'edge') {
+    // Edge - single line segment
+    const x1 = (shape as any).x1 ?? shape.x
+    const y1 = (shape as any).y1 ?? shape.y
+    const x2 = (shape as any).x2 ?? shape.x
+    const y2 = (shape as any).y2 ?? shape.y
+    ctx.beginPath()
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x2, y2)
+    ctx.stroke()
   }
 
   ctx.globalAlpha = 1
@@ -794,6 +819,31 @@ function getShapeBounds(shape: BaseShape): Bounds {
       minY: shape.y - ((shape as any).radiusY || 0),
       maxX: shape.x + ((shape as any).radiusX || 0),
       maxY: shape.y + ((shape as any).radiusY || 0),
+    }
+  }
+  
+  if (shape.type === 'path' && shape.points && shape.points.length > 0) {
+    const halfWidth = ((shape as any).width || 1) / 2
+    const xs = shape.points.map((p: Point) => p.x)
+    const ys = shape.points.map((p: Point) => p.y)
+    return {
+      minX: Math.min(...xs) - halfWidth,
+      minY: Math.min(...ys) - halfWidth,
+      maxX: Math.max(...xs) + halfWidth,
+      maxY: Math.max(...ys) + halfWidth,
+    }
+  }
+  
+  if (shape.type === 'edge') {
+    const x1 = (shape as any).x1 ?? shape.x
+    const y1 = (shape as any).y1 ?? shape.y
+    const x2 = (shape as any).x2 ?? shape.x
+    const y2 = (shape as any).y2 ?? shape.y
+    return {
+      minX: Math.min(x1, x2),
+      minY: Math.min(y1, y2),
+      maxX: Math.max(x1, x2),
+      maxY: Math.max(y1, y2),
     }
   }
   
@@ -1171,6 +1221,34 @@ function drawSelection() {
       const w = (shape.text?.length || 0) * 8
       const h = 14
       ctx.strokeRect(shape.x - 2, shape.y - 2, w + 4, h + 4)
+    } else if (shape.type === 'path' && shape.points && shape.points.length >= 2) {
+      // Draw selection outline around path
+      const halfWidth = ((shape as any).width || 1) / 2
+      const xs = shape.points.map((p: Point) => p.x)
+      const ys = shape.points.map((p: Point) => p.y)
+      const minX = Math.min(...xs) - halfWidth - 2
+      const minY = Math.min(...ys) - halfWidth - 2
+      const maxX = Math.max(...xs) + halfWidth + 2
+      const maxY = Math.max(...ys) + halfWidth + 2
+      ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+    } else if (shape.type === 'edge') {
+      const x1 = (shape as any).x1 ?? shape.x
+      const y1 = (shape as any).y1 ?? shape.y
+      const x2 = (shape as any).x2 ?? shape.x
+      const y2 = (shape as any).y2 ?? shape.y
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+      ctx.stroke()
+      // Draw handles at endpoints
+      const handleSize = 4
+      ctx.fillStyle = '#4FC3F7'
+      ctx.beginPath()
+      ctx.arc(x1, y1, handleSize, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(x2, y2, handleSize, 0, Math.PI * 2)
+      ctx.fill()
     }
 
     ctx.setLineDash([])
@@ -1709,7 +1787,7 @@ function handleKeyDown(e: KeyboardEvent) {
         announceCanvasChange('选择工具: 选择')
         markDirty()
         return
-      case 'r':
+      case 'e':
         store.setTool('rectangle')
         announceCanvasChange('选择工具: 矩形')
         markDirty()
@@ -1733,6 +1811,46 @@ function handleKeyDown(e: KeyboardEvent) {
         store.setTool('label')
         announceCanvasChange('选择工具: 标签')
         markDirty()
+        return
+      case 'm':
+        // Move selected shapes by 1 grid unit in direction of last pan, or right
+        if (store.selectedShapeIds.length > 0) {
+          store.moveSelectedShapes(store.gridSize, 0)
+          markDirty()
+          announceCanvasChange('移动选中图形')
+        }
+        return
+      case 'r':
+        // R: Rotate 90° CW (Shift+R for CCW)
+        if (store.selectedShapeIds.length > 0) {
+          if (e.shiftKey) {
+            store.rotateSelectedShapes90CCW()
+            announceCanvasChange('逆时针旋转 90°')
+          } else {
+            store.rotateSelectedShapes90CW()
+            announceCanvasChange('顺时针旋转 90°')
+          }
+          markDirty()
+        }
+        return
+      case 'f':
+        // F: Mirror/Flip (Shift+F for vertical)
+        if (store.selectedShapeIds.length > 0) {
+          if (e.shiftKey) {
+            store.mirrorSelectedShapesV()
+            announceCanvasChange('垂直镜像')
+          } else {
+            store.mirrorSelectedShapesH()
+            announceCanvasChange('水平镜像')
+          }
+          markDirty()
+        }
+        return
+      case 's':
+        // S: Scale dialog (future feature)
+        if (store.selectedShapeIds.length > 0) {
+          announceCanvasChange('缩放功能待实现')
+        }
         return
     }
   }

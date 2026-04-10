@@ -1,6 +1,6 @@
 // Shape types for pic-layout
 
-export type ShapeType = 'rectangle' | 'polygon' | 'polyline' | 'waveguide' | 'label' | 'arc' | 'circle' | 'ellipse'
+export type ShapeType = 'rectangle' | 'polygon' | 'polyline' | 'waveguide' | 'label' | 'arc' | 'circle' | 'ellipse' | 'path' | 'edge'
 
 export interface Point {
   x: number
@@ -9,6 +9,12 @@ export interface Point {
 
 // Fill pattern types
 export type FillPattern = 'solid' | 'diagonal' | 'horizontal' | 'vertical' | 'cross' | 'dots' | 'diagonal_cross'
+
+// Path end styles
+export type PathEndStyle = 'square' | 'round' | 'variable'
+
+// Path join styles
+export type PathJoinStyle = 'miter' | 'round' | 'bevel'
 
 // Shape style - individual shape styling (overrides layer defaults)
 export interface ShapeStyle {
@@ -93,6 +99,26 @@ export interface EllipseShape extends BaseShape {
   type: 'ellipse'
   radiusX: number
   radiusY: number
+}
+
+// Path shape - a line with a given width (GDSII PATH)
+// Used for waveguides with variable width, bus routing, etc.
+export interface PathShape extends BaseShape {
+  type: 'path'
+  points: Point[]           // Path vertices
+  width: number              // Path width (perpendicular to path direction)
+  endStyle?: PathEndStyle   // How path ends are styled
+  joinStyle?: PathJoinStyle // How path corners are styled
+}
+
+// Edge shape - a single line segment (GDSII EDGE)
+// Used for single line segments in DRC markers, measurements, etc.
+export interface EdgeShape extends BaseShape {
+  type: 'edge'
+  x1: number  // Start X
+  y1: number  // Start Y
+  x2: number  // End X
+  y2: number  // End Y
 }
 
 // Layer definition (KLayout compatible)

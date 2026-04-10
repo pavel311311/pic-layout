@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Layer, BaseShape, Project, ShapeType, ShapeStyle, FillPattern } from '../types/shapes'
+import { moveShape, rotateShape90CW, rotateShape90CCW, mirrorShapeH, mirrorShapeV } from '../utils/transforms'
 
 // Generate unique ID
 function generateId(): string {
@@ -359,6 +360,22 @@ export const useEditorStore = defineStore('editor', () => {
       return px >= shape.x && px <= shape.x + w && py >= shape.y && py <= shape.y + h
     }
     
+    // Path - check if point is near the path line
+    if (shape.type === 'path' && shape.points && shape.points.length >= 2) {
+      const threshold = ((shape as any).width || 1) / 2 + 5 // path half-width + tolerance
+      return pointNearPolyline(px, py, shape.points, threshold)
+    }
+    
+    // Edge - check if point is near the line segment
+    if (shape.type === 'edge') {
+      const x1 = (shape as any).x1 ?? shape.x
+      const y1 = (shape as any).y1 ?? shape.y
+      const x2 = (shape as any).x2 ?? shape.x
+      const y2 = (shape as any).y2 ?? shape.y
+      const dist = pointToSegmentDistance(px, py, { x: x1, y: y1 }, { x: x2, y: y2 })
+      return dist <= 5 // 5 unit tolerance
+    }
+    
     return false
   }
 
@@ -401,6 +418,83 @@ export const useEditorStore = defineStore('editor', () => {
       if (pointInShape(px, py, shape)) return shape
     }
     return null
+  }
+
+  // === Transform Operations ===
+
+  /**
+   * Move selected shapes by (dx, dy) units.
+   */
+  function moveSelectedShapes(dx: number, dy: number) {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, moveShape(shape, dx, dy))
+    }
+  }
+
+  /**
+   * Rotate selected shapes 90° clockwise.
+   */
+  function rotateSelectedShapes90CW() {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, rotateShape90CW(shape))
+    }
+  }
+
+  /**
+   * Rotate selected shapes 90° counter-clockwise.
+   */
+  function rotateSelectedShapes90CCW() {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, rotateShape90CCW(shape))
+    }
+  }
+
+  /**
+   * Mirror selected shapes horizontally (flip left-right).
+   */
+  function mirrorSelectedShapesH() {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, mirrorShapeH(shape))
+    }
+  }
+
+  /**
+   * Mirror selected shapes vertically (flip top-bottom).
+   */
+  function mirrorSelectedShapesV() {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, mirrorShapeV(shape))
+    }
   }
 
   return {
@@ -456,5 +550,12 @@ export const useEditorStore = defineStore('editor', () => {
     // Project
     saveProject,
     loadProject,
+    
+    // Transform Actions
+    moveSelectedShapes,
+    rotateSelectedShapes90CW,
+    rotateSelectedShapes90CCW,
+    mirrorSelectedShapesH,
+    mirrorSelectedShapesV,
   }
 })
