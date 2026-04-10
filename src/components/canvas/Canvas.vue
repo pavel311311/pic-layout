@@ -1847,9 +1847,21 @@ function handleKeyDown(e: KeyboardEvent) {
         }
         return
       case 's':
-        // S: Scale dialog (future feature)
+        // S: Scale selected shapes by 1.1x (Shift+S: 0.9x)
         if (store.selectedShapeIds.length > 0) {
-          announceCanvasChange('缩放功能待实现')
+          const factor = e.shiftKey ? 0.9 : 1.1
+          store.scaleSelectedShapes(factor, factor)
+          announceCanvasChange(e.shiftKey ? '缩小选中图形' : '放大选中图形')
+          markDirty()
+        }
+        return
+      case 'o':
+        // O: Offset selected shapes (grow/shrink)
+        if (store.selectedShapeIds.length > 0) {
+          const offsetAmount = e.shiftKey ? -0.5 : 0.5
+          store.offsetSelectedShapes(offsetAmount)
+          announceCanvasChange(e.shiftKey ? '缩小选中图形边缘' : '放大选中图形边缘')
+          markDirty()
         }
         return
     }
@@ -1905,6 +1917,36 @@ function handleKeyDown(e: KeyboardEvent) {
       store.duplicateSelectedShapes()
       markDirty()
     }
+    return
+  }
+
+  // Copy with Ctrl+C
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+    e.preventDefault()
+    if (store.selectedShapeIds.length > 0) {
+      store.copySelectedShapes()
+      announceCanvasChange(`已复制 ${store.selectedShapeIds.length} 个图形`)
+    }
+    return
+  }
+
+  // Paste with Ctrl+V
+  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+    e.preventDefault()
+    if (store.clipboard.length > 0) {
+      store.pasteShapes()
+      announceCanvasChange(`已粘贴 ${store.clipboard.length} 个图形`)
+      markDirty()
+    }
+    return
+  }
+
+  // Select all with Ctrl+A
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    e.preventDefault()
+    store.selectAllShapes()
+    announceCanvasChange(`已选择 ${store.selectedShapeIds.length} 个图形`)
+    markDirty()
     return
   }
 

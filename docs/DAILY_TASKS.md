@@ -121,3 +121,63 @@
 - [ ] Canvas 虚拟化: 完成! Task T1 全部完成
 - [ ] T2: Path/Edge 图形类型 - PathShape 类型定义
 - [ ] T4: 快捷键映射完善 - M (移动), R (旋转), F (镜像)
+
+## 2026-04-10 (第二轮)
+
+### 完成内容
+- [x] T4: 快捷键映射完善
+  - [x] 添加 `src/utils/transforms.ts` - 变换工具函数模块
+  - [x] 实现 `moveShape` / `moveSelectedShapes` - 移动图形
+  - [x] 实现 `rotateShape90CW` / `rotateShape90CCW` / `rotateSelectedShapes90CW/CCW` - 旋转 90°
+  - [x] 实现 `mirrorShapeH` / `mirrorShapeV` / `mirrorSelectedShapesH/V` - 水平/垂直镜像
+  - [x] 实现 `scaleShape` / `offsetShape` - 缩放和偏移 (工具函数)
+  - [x] 添加 M 快捷键: 移动选中图形
+  - [x] 添加 R 快捷键: 顺时针旋转 90° (Shift+R: 逆时针)
+  - [x] 添加 F 快捷键: 水平镜像 (Shift+F: 垂直镜像)
+  - [x] 修正 'r' 快捷键: rectangle 而非 rotate (与 KLayout 保持一致)
+
+- [x] T2: Path/Edge 图形类型 (Day 1/3)
+  - [x] 新增 `PathShape` 接口 - GDSII PATH，带宽度属性的路径
+  - [x] 新增 `EdgeShape` 接口 - GDSII EDGE，单线段
+  - [x] 新增 `PathEndStyle` / `PathJoinStyle` 类型
+  - [x] 实现 Path/Edge 的渲染逻辑 (`renderShape`)
+  - [x] 实现 Path/Edge 的边界计算 (`getShapeBounds`)
+  - [x] 实现 Path/Edge 的选择框绘制 (`drawSelection`)
+  - [x] 实现 Path/Edge 的点击检测 (`pointInShape`)
+
+### 遇到的问题
+- TypeScript 重复类型声明: `PathEndStyle` 和 `PathJoinStyle` 在文件开头定义后又在末尾重复定义
+  - 解决: 删除末尾的重复声明
+
+### 明日计划
+- [ ] T2 Day 2/3: 实现 Path 路径端点编辑 (端点拖动)
+- [ ] T2 Day 2/3: 实现 Edge 线段编辑 (端点拖动)
+- [ ] T4 Day 2: 完善 S (缩放), O (偏移) 快捷键
+- [ ] T4 Day 2: 实现 Ctrl+C (复制), Ctrl+V (粘贴), Ctrl+A (全选)
+
+## 2026-04-10 (第三轮)
+
+### 完成内容
+- [x] T4 Day 2: 快捷键映射完善
+  - [x] 添加复制/粘贴/全选功能到 store
+  - [x] 实现 `clipboard` 状态
+  - [x] 实现 `copySelectedShapes()` - 复制选中图形到剪贴板
+  - [x] 实现 `pasteShapes()` - 从剪贴板粘贴图形
+  - [x] 实现 `selectAllShapes()` - 选择所有未锁定图形
+  - [x] 实现 `clearClipboard()` - 清空剪贴板
+  - [x] 添加 `scaleSelectedShapes()` / `offsetSelectedShapes()` 到 store
+  - [x] 添加 Ctrl+C 快捷键: 复制选中图形
+  - [x] 添加 Ctrl+V 快捷键: 粘贴剪贴板图形
+  - [x] 添加 Ctrl+A 快捷键: 全选图形
+  - [x] 添加 S 快捷键: 缩放选中图形 1.1x (Shift+S: 0.9x)
+  - [x] 添加 O 快捷键: 偏移选中图形边缘 (Shift+O: 向内偏移)
+
+### 遇到的问题
+- 动态 import `await` 在非 async 函数中报错
+  - 解决: 将 scaleShape/offsetShape 函数包装到 store 的 scaleSelectedShapes/offsetSelectedShapes 中
+
+### 明日计划
+- [ ] T2 Day 2/3: Path 路径端点编辑 (端点拖动)
+- [ ] T2 Day 2/3: Edge 线段编辑 (端点拖动)
+- [ ] T5: Cell 数据结构设计
+- [ ] K: 阵列复制 (待开发)

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Layer, BaseShape, Project, ShapeType, ShapeStyle, FillPattern } from '../types/shapes'
-import { moveShape, rotateShape90CW, rotateShape90CCW, mirrorShapeH, mirrorShapeV } from '../utils/transforms'
+import { moveShape, rotateShape90CW, rotateShape90CCW, mirrorShapeH, mirrorShapeV, scaleShape, offsetShape } from '../utils/transforms'
 
 // Generate unique ID
 function generateId(): string {
@@ -40,6 +40,9 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Current tool
   const selectedTool = ref<string>('select')
+  
+  // Clipboard for copy/paste
+  const clipboard = ref<BaseShape[]>([])
   
   // Current layer for new shapes
   const currentLayerId = ref<number>(1)
@@ -234,6 +237,51 @@ export const useEditorStore = defineStore('editor', () => {
     selectedShapeIds.value = newIds
     project.value.modifiedAt = new Date().toISOString()
     pushHistory(getHistorySnapshot())
+  }
+
+  // Copy selected shapes to clipboard
+  function copySelectedShapes() {
+    if (selectedShapeIds.value.length === 0) return
+    
+    clipboard.value = selectedShapes.value.map((s) => JSON.parse(JSON.stringify(s)))
+  }
+
+  // Paste shapes from clipboard
+  function pasteShapes() {
+    if (clipboard.value.length === 0) return
+    
+    pushHistory()
+    const newIds: string[] = []
+    
+    for (const shape of clipboard.value) {
+      const newShape: BaseShape = {
+        ...JSON.parse(JSON.stringify(shape)),
+        id: generateId(),
+        x: shape.x + 10,
+        y: shape.y + 10,
+      }
+      project.value.shapes.push(newShape)
+      newIds.push(newShape.id)
+    }
+    
+    selectedShapeIds.value = newIds
+    project.value.modifiedAt = new Date().toISOString()
+    pushHistory(getHistorySnapshot())
+  }
+
+  // Select all shapes
+  function selectAllShapes() {
+    selectedShapeIds.value = project.value.shapes
+      .filter((s) => {
+        const layer = project.value.layers.find((l) => l.id === s.layerId)
+        return !layer?.locked
+      })
+      .map((s) => s.id)
+  }
+
+  // Clear clipboard
+  function clearClipboard() {
+    clipboard.value = []
   }
 
   // === Layer Management ===
@@ -497,6 +545,36 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /**
+   * Scale selected shapes by (sx, sy) factors.
+   */
+  function scaleSelectedShapes(sx: number, sy: number) {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, scaleShape(shape, sx, sy))
+    }
+  }
+
+  /**
+   * Offset selected shapes by a distance (grow/shrink).
+   */
+  function offsetSelectedShapes(distance: number) {
+    if (selectedShapeIds.value.length === 0) return
+    pushHistory()
+    for (const id of selectedShapeIds.value) {
+      const shape = project.value.shapes.find((s) => s.id === id)
+      if (!shape) continue
+      const layer = project.value.layers.find((l) => l.id === shape.layerId)
+      if (layer?.locked) continue
+      updateShape(id, offsetShape(shape, distance))
+    }
+  }
+
   return {
     // State
     project,
@@ -504,6 +582,7 @@ export const useEditorStore = defineStore('editor', () => {
     currentLayerId,
     currentStyle,
     selectedShapeIds,
+    clipboard,
     gridSize,
     snapToGrid,
     zoom,
@@ -525,6 +604,10 @@ export const useEditorStore = defineStore('editor', () => {
     selectShapesInArea,
     deleteSelectedShapes,
     duplicateSelectedShapes,
+    copySelectedShapes,
+    pasteShapes,
+    selectAllShapes,
+    clearClipboard,
     getShapeAtPoint,
     getShapeStyle,
     
@@ -557,5 +640,7 @@ export const useEditorStore = defineStore('editor', () => {
     rotateSelectedShapes90CCW,
     mirrorSelectedShapesH,
     mirrorSelectedShapesV,
+    scaleSelectedShapes,
+    offsetSelectedShapes,
   }
 })
