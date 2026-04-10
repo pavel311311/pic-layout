@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useEditorStore } from '../../stores/editor'
-import type { Point, ShapeStyle, FillPattern } from '../../types/shapes'
+import type { Point, ShapeStyle, FillPattern, BaseShape } from '../../types/shapes'
 
 const store = useEditorStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -125,6 +125,159 @@ function getSnappedPoint(screenX: number, screenY: number): Point {
   const design = screenToDesign(screenX, screenY)
   return { x: snapToGrid(design.x), y: snapToGrid(design.y) }
 }
+
+// === Canvas Virtualization - Day 1 ===
+
+interface Bounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+/**
+ * Calculate the visible bounds in design coordinates.
+ * This determines which shapes are potentially visible in the current viewport.
+ */
+function getVisibleBounds(): Bounds | null {
+  if (!canvasRef.value) return null
+  
+  const { width, height } = canvasRef.value
+  const topLeft = screenToDesign(0, 0)
+  const bottomRight = screenToDesign(width, height)
+  
+  return {
+    minX: topLeft.x,
+    minY: topLeft.y,
+    maxX: bottomRight.x,
+    maxY: bottomRight.y,
+  }
+}
+
+/**
+ * Get the bounding box of a shape in design coordinates.
+ */
+function getShapeBounds(shape: BaseShape): Bounds {
+  if (shape.type === 'rectangle' || shape.type === 'waveguide') {
+    return {
+      minX: shape.x,
+      minY: shape.y,
+      maxX: shape.x + (shape.width || 0),
+      maxY: shape.y + (shape.height || 0),
+    }
+  }
+  
+  if (shape.type === 'polygon' && shape.points && shape.points.length > 0) {
+    const xs = shape.points.map((p: Point) => p.x)
+    const ys = shape.points.map((p: Point) => p.y)
+    return {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    }
+  }
+  
+  if (shape.type === 'polyline' && shape.points && shape.points.length > 0) {
+    const xs = shape.points.map((p: Point) => p.x)
+    const ys = shape.points.map((p: Point) => p.y)
+    return {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    }
+  }
+  
+  if (shape.type === 'label' && shape.text) {
+    const w = shape.text.length * 8
+    const h = 14
+    return {
+      minX: shape.x,
+      minY: shape.y,
+      maxX: shape.x + w,
+      maxY: shape.y + h,
+    }
+  }
+  
+  if (shape.type === 'circle' || shape.type === 'arc') {
+    const r = (shape as any).radius || 0
+    return {
+      minX: shape.x - r,
+      minY: shape.y - r,
+      maxX: shape.x + r,
+      maxY: shape.y + r,
+    }
+  }
+  
+  if (shape.type === 'ellipse') {
+    return {
+      minX: shape.x - ((shape as any).radiusX || 0),
+      minY: shape.y - ((shape as any).radiusY || 0),
+      maxX: shape.x + ((shape as any).radiusX || 0),
+      maxY: shape.y + ((shape as any).radiusY || 0),
+    }
+  }
+  
+  // Fallback: single point
+  return {
+    minX: shape.x,
+    minY: shape.y,
+    maxX: shape.x,
+    maxY: shape.y,
+  }
+}
+
+/**
+ * Check if two bounding boxes intersect.
+ * Uses a small epsilon to avoid floating point issues.
+ */
+function boundsIntersect(a: Bounds, b: Bounds, epsilon = 0.0001): boolean {
+  return !(
+    a.maxX < b.minX + epsilon ||
+    a.minX > b.maxX - epsilon ||
+    a.maxY < b.minY + epsilon ||
+    a.minY > b.maxY - epsilon
+  )
+}
+
+/**
+ * Clip shapes to the visible viewport.
+ * Returns only shapes that intersect with the visible bounds.
+ * Shapes are also sorted by layer order (lower layer id = rendered first).
+ */
+function clipShapesToViewport(shapes: BaseShape[]): BaseShape[] {
+  const visibleBounds = getVisibleBounds()
+  if (!visibleBounds) return shapes
+  
+  // Add a margin for shapes partially visible at edges
+  const margin = 10 / store.zoom // 10 screen pixels in design units
+  const expandedBounds: Bounds = {
+    minX: visibleBounds.minX - margin,
+    minY: visibleBounds.minY - margin,
+    maxX: visibleBounds.maxX + margin,
+    maxY: visibleBounds.maxY + margin,
+  }
+  
+  // Filter shapes that intersect with expanded viewport
+  const visibleShapes = shapes.filter((shape) => {
+    const shapeBounds = getShapeBounds(shape)
+    return boundsIntersect(shapeBounds, expandedBounds)
+  })
+  
+  // Sort by layer order (ascending layerId = bottom layer rendered first)
+  visibleShapes.sort((a, b) => {
+    const layerA = store.getLayer(a.layerId)
+    const layerB = store.getLayer(b.layerId)
+    const orderA = layerA?.gdsLayer ?? a.layerId
+    const orderB = layerB?.gdsLayer ?? b.layerId
+    return orderA - orderB
+  })
+  
+  return visibleShapes
+}
+
+// === End Canvas Virtualization ===
 
 // Get style for a shape with proper defaults
 function getEffectiveStyle(shape: any): ShapeStyle {
@@ -259,7 +412,10 @@ function drawPattern(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 function drawShapes() {
   if (!ctx) return
 
-  for (const shape of store.visibleShapes) {
+  // Use virtualization: get only visible shapes sorted by layer
+  const visibleShapes = clipShapesToViewport(store.visibleShapes)
+
+  for (const shape of visibleShapes) {
     const layer = store.project.layers.find((l) => l.id === shape.layerId)
     if (!layer || !layer.visible) continue
 
