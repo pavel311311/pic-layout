@@ -24,6 +24,8 @@ const tools = [
   { id: 'polygon', name: 'Polygon', shortcut: 'P', icon: '⬡' },
   { id: 'polyline', name: 'Polyline', shortcut: 'L', icon: '╱' },
   { id: 'waveguide', name: 'Waveguide', shortcut: 'W', icon: '∿' },
+  { id: 'path', name: 'Path', shortcut: 'I', icon: '▬' },
+  { id: 'edge', name: 'Edge', shortcut: 'J', icon: '—' },
   { id: 'label', name: 'Label', shortcut: 'T', icon: 'T' },
   { id: 'ruler', name: 'Ruler', shortcut: 'M', icon: '📏' },
 ]

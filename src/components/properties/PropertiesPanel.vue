@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useEditorStore } from '../../stores/editor'
 import { computed, ref, watch } from 'vue'
-import type { ShapeStyle, FillPattern } from '../../types/shapes'
+import type { ShapeStyle, FillPattern, PathEndStyle, PathJoinStyle } from '../../types/shapes'
+import { getEdgeLength } from '../../utils/transforms'
 
 const store = useEditorStore()
 
@@ -22,10 +23,17 @@ const selectedLayer = computed(() => {
 // Local style editing
 const localStyle = ref<ShapeStyle>({})
 
-// Sync local style when selection changes
+// Sync local style and path properties when selection changes
 watch(selectedShape, (shape) => {
   if (shape) {
     localStyle.value = { ...shape.style }
+    // Sync path properties
+    if (shape.type === 'path') {
+      const p = shape as any
+      pathWidth.value = p.width ?? 1
+      pathEndStyle.value = p.endStyle ?? 'square'
+      pathJoinStyle.value = p.joinStyle ?? 'miter'
+    }
   } else {
     localStyle.value = {}
   }
@@ -35,6 +43,18 @@ watch(selectedShape, (shape) => {
 const rotation = ref(0)
 const scaleX = ref(1)
 const scaleY = ref(1)
+
+// Path property editing
+const pathWidth = ref(1)
+const pathEndStyle = ref<PathEndStyle>('square')
+const pathJoinStyle = ref<PathJoinStyle>('miter')
+
+// Edge computed values (read from shape, no separate state)
+const edgeLength = computed(() => {
+  if (!selectedShape.value || selectedShape.value.type !== 'edge') return 0
+  const shape = selectedShape.value as any
+  return getEdgeLength(shape)
+})
 
 // Pattern options
 const patternOptions: { value: FillPattern; label: string }[] = [
@@ -57,6 +77,34 @@ function updateSize(dimension: 'width' | 'height', value: number) {
   if (selectedShape.value && value > 0) {
     store.pushHistory()
     store.updateShape(selectedShape.value.id, { [dimension]: value }, true)
+  }
+}
+
+function updatePathWidth(value: number) {
+  if (selectedShape.value && selectedShape.value.type === 'path' && value > 0) {
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { width: value } as any, true)
+  }
+}
+
+function updatePathEndStyle(value: PathEndStyle) {
+  if (selectedShape.value && selectedShape.value.type === 'path') {
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { endStyle: value } as any, true)
+  }
+}
+
+function updatePathJoinStyle(value: PathJoinStyle) {
+  if (selectedShape.value && selectedShape.value.type === 'path') {
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { joinStyle: value } as any, true)
+  }
+}
+
+function updateEdgeCoord(coord: 'x1' | 'y1' | 'x2' | 'y2', value: number) {
+  if (selectedShape.value && selectedShape.value.type === 'edge') {
+    store.pushHistory()
+    store.updateShape(selectedShape.value.id, { [coord]: value } as any, true)
   }
 }
 
@@ -249,8 +297,91 @@ function savePoints() {
         </div>
       </div>
 
-      <!-- Points (for polygon/polyline) -->
-      <div v-if="selectedShape.type === 'polygon' || selectedShape.type === 'polyline'" class="prop-section">
+      <!-- Edge properties -->
+      <div v-if="selectedShape.type === 'edge'" class="prop-section">
+        <div class="section-header">
+          <span>Edge</span>
+        </div>
+        <div class="prop-grid coords">
+          <span class="coord-label">X1:</span>
+          <input
+            type="number"
+            :value="(selectedShape as any).x1 ?? selectedShape.x"
+            @change="(e) => updateEdgeCoord('x1', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+          <span class="coord-label">Y1:</span>
+          <input
+            type="number"
+            :value="(selectedShape as any).y1 ?? selectedShape.y"
+            @change="(e) => updateEdgeCoord('y1', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+          <span class="coord-label">X2:</span>
+          <input
+            type="number"
+            :value="(selectedShape as any).x2 ?? selectedShape.x"
+            @change="(e) => updateEdgeCoord('x2', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+          <span class="coord-label">Y2:</span>
+          <input
+            type="number"
+            :value="(selectedShape as any).y2 ?? selectedShape.y"
+            @change="(e) => updateEdgeCoord('y2', parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            class="prop-input"
+          />
+        </div>
+        <div class="prop-grid" style="padding-top: 4px;">
+          <span class="prop-label">Length:</span>
+          <span class="prop-value mono">{{ edgeLength.toFixed(3) }}</span>
+        </div>
+      </div>
+
+      <!-- Path properties -->
+      <div v-if="selectedShape.type === 'path'" class="prop-section">
+        <div class="section-header">
+          <span>Path</span>
+        </div>
+        <div class="prop-grid">
+          <span class="prop-label">Width:</span>
+          <input
+            type="number"
+            :value="pathWidth"
+            @change="(e) => updatePathWidth(parseFloat((e.target as HTMLInputElement).value))"
+            step="0.1"
+            min="0.1"
+            class="prop-input"
+          />
+          <span class="prop-label">End:</span>
+          <select
+            :value="pathEndStyle"
+            @change="(e) => updatePathEndStyle((e.target as HTMLSelectElement).value as PathEndStyle)"
+            class="prop-input"
+          >
+            <option value="square">Square</option>
+            <option value="round">Round</option>
+            <option value="variable">Variable</option>
+          </select>
+          <span class="prop-label">Join:</span>
+          <select
+            :value="pathJoinStyle"
+            @change="(e) => updatePathJoinStyle((e.target as HTMLSelectElement).value as PathJoinStyle)"
+            class="prop-input"
+          >
+            <option value="miter">Miter</option>
+            <option value="round">Round</option>
+            <option value="bevel">Bevel</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Points (for polygon/polyline/path) -->
+      <div v-if="selectedShape.type === 'polygon' || selectedShape.type === 'polyline' || selectedShape.type === 'path'" class="prop-section">
         <div class="section-header">
           <span>Points ({{ selectedShape.points?.length || 0 }})</span>
           <button class="header-btn" @click="startEditingPoints">Edit</button>

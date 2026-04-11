@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import type { Point, ShapeStyle, FillPattern, BaseShape } from '../../types/shapes'
+import ArrayCopyDialog from '../dialogs/ArrayCopyDialog.vue'
+import ShortcutsDialog from '../dialogs/ShortcutsDialog.vue'
 
 const store = useEditorStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -620,6 +622,18 @@ function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: numbe
 const mouseX = ref(0)
 const mouseY = ref(0)
 
+// Handle/endpoint dragging state for path/edge editing
+let draggingEndpoint = ref<{
+  shapeId: string
+  pointIndex: number  // For path: vertex index. For edge: 0=start, 1=end
+} | null>(null)
+
+// Cursor style for handle hover feedback
+const cursorStyle = ref<'crosshair' | 'default' | 'move' | 'grab'>('crosshair')
+
+// Handle radius in screen pixels (for endpoint hit testing)
+const HANDLE_RADIUS = 8
+
 // Drawing state
 const isDrawing = ref(false)       // Currently drawing a shape
 const drawingStart = ref<Point | null>(null)
@@ -635,6 +649,14 @@ const tempHeight = ref(0)
 // Marquee selection
 const marqueeStart = ref<Point | null>(null)
 const marqueeEnd = ref<Point | null>(null)
+
+// Array copy dialog
+const showArrayCopyDialog = ref(false)
+const showShortcutsDialog = ref(false)
+
+// Space key - temporary select tool (hold Space to switch)
+const spacePressed = ref(false)
+const previousToolForSpace = ref<string>('')
 
 // Error handling
 function handleError(error: Error) {
@@ -727,6 +749,138 @@ function snapToGrid(value: number): number {
 function getSnappedPoint(screenX: number, screenY: number): Point {
   const design = screenToDesign(screenX, screenY)
   return { x: snapToGrid(design.x), y: snapToGrid(design.y) }
+}
+
+/**
+ * Find if a screen point is near a path/edge endpoint handle.
+ * Returns { shapeId, pointIndex } if found, null otherwise.
+ * For paths: pointIndex is the vertex index.
+ * For edges: pointIndex is 0 for start, 1 for end.
+ */
+function findEndpointHandle(screenX: number, screenY: number): { shapeId: string; pointIndex: number } | null {
+  const handleRadiusScreen = HANDLE_RADIUS // screen pixels
+  const handleRadiusDesign = handleRadiusScreen / store.zoom // design units
+
+  // Search selected shapes in reverse order (top shapes first)
+  for (const id of store.selectedShapeIds) {
+    const shape = store.project.shapes.find((s) => s.id === id)
+    if (!shape) continue
+
+    if (shape.type === 'path' && shape.points && shape.points.length >= 2) {
+      for (let i = 0; i < shape.points.length; i++) {
+        const pt = shape.points[i]
+        const screenPt = designToScreen(pt.x, pt.y)
+        const dist = Math.sqrt((screenX - screenPt.x) ** 2 + (screenY - screenPt.y) ** 2)
+        if (dist <= handleRadiusScreen) {
+          return { shapeId: id, pointIndex: i }
+        }
+      }
+    }
+
+    // Polyline - check each vertex
+    if (shape.type === 'polyline' && shape.points && shape.points.length >= 2) {
+      for (let i = 0; i < shape.points.length; i++) {
+        const pt = shape.points[i]
+        const screenPt = designToScreen(pt.x, pt.y)
+        const dist = Math.sqrt((screenX - screenPt.x) ** 2 + (screenY - screenPt.y) ** 2)
+        if (dist <= handleRadiusScreen) {
+          return { shapeId: id, pointIndex: i }
+        }
+      }
+    }
+
+    if (shape.type === 'edge') {
+      const x1 = (shape as any).x1 ?? shape.x
+      const y1 = (shape as any).y1 ?? shape.y
+      const x2 = (shape as any).x2 ?? shape.x
+      const y2 = (shape as any).y2 ?? shape.y
+      // Check start point (index 0)
+      const screenStart = designToScreen(x1, y1)
+      let dist = Math.sqrt((screenX - screenStart.x) ** 2 + (screenY - screenStart.y) ** 2)
+      if (dist <= handleRadiusScreen) {
+        return { shapeId: id, pointIndex: 0 }
+      }
+      // Check end point (index 1)
+      const screenEnd = designToScreen(x2, y2)
+      dist = Math.sqrt((screenX - screenEnd.x) ** 2 + (screenY - screenEnd.y) ** 2)
+      if (dist <= handleRadiusScreen) {
+        return { shapeId: id, pointIndex: 1 }
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Find if a screen point is near a path/polyline segment (not near an endpoint).
+ * Used for vertex insertion via double-click.
+ * Returns { shapeId, segmentIndex, insertX, insertY } if found, null otherwise.
+ * segmentIndex is the index of the segment BEFORE the insertion point.
+ */
+function findSegmentHit(screenX: number, screenY: number): { shapeId: string; segmentIndex: number; insertX: number; insertY: number } | null {
+  const hitRadiusScreen = HANDLE_RADIUS * 2  // Wider detection area for segments
+  const hitRadiusDesign = hitRadiusScreen / store.zoom
+
+  // Search selected shapes in reverse order
+  for (const id of store.selectedShapeIds) {
+    const shape = store.project.shapes.find((s) => s.id === id)
+    if (!shape) continue
+
+    // Path - check each segment (between consecutive points)
+    if (shape.type === 'path' && shape.points && shape.points.length >= 2) {
+      for (let i = 0; i < shape.points.length - 1; i++) {
+        const p1 = shape.points[i]
+        const p2 = shape.points[i + 1]
+        const dist = pointToSegmentDistanceScreen(screenX, screenY, p1, p2)
+        if (dist <= hitRadiusScreen) {
+          // Calculate insertion point (midpoint between p1 and p2 in design coords)
+          const insertX = (p1.x + p2.x) / 2
+          const insertY = (p1.y + p2.y) / 2
+          return { shapeId: id, segmentIndex: i, insertX, insertY }
+        }
+      }
+    }
+
+    // Polyline - check each segment
+    if (shape.type === 'polyline' && shape.points && shape.points.length >= 2) {
+      for (let i = 0; i < shape.points.length - 1; i++) {
+        const p1 = shape.points[i]
+        const p2 = shape.points[i + 1]
+        const dist = pointToSegmentDistanceScreen(screenX, screenY, p1, p2)
+        if (dist <= hitRadiusScreen) {
+          const insertX = (p1.x + p2.x) / 2
+          const insertY = (p1.y + p2.y) / 2
+          return { shapeId: id, segmentIndex: i, insertX, insertY }
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Calculate the screen-space distance from a point to a line segment.
+ */
+function pointToSegmentDistanceScreen(
+  screenX: number,
+  screenY: number,
+  p1: { x: number; y: number },
+  p2: { x: number; y: number }
+): number {
+  const sp1 = designToScreen(p1.x, p1.y)
+  const sp2 = designToScreen(p2.x, p2.y)
+  const dx = sp2.x - sp1.x
+  const dy = sp2.y - sp1.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) {
+    return Math.sqrt((screenX - sp1.x) ** 2 + (screenY - sp1.y) ** 2)
+  }
+  const t = Math.max(0, Math.min(1, ((screenX - sp1.x) * dx + (screenY - sp1.y) * dy) / lenSq))
+  const nearX = sp1.x + t * dx
+  const nearY = sp1.y + t * dy
+  return Math.sqrt((screenX - nearX) ** 2 + (screenY - nearY) ** 2)
 }
 
 // === Canvas Virtualization - Day 1 ===
@@ -1165,6 +1319,68 @@ function drawCurrentDrawing() {
     ctx.setLineDash([])
   }
   
+  // Draw path being created
+  if (tool === 'path' && confirmedPoints.value.length > 0) {
+    ctx.strokeStyle = '#BA68C8'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 3])
+    
+    ctx.beginPath()
+    const screenStart = designToScreen(confirmedPoints.value[0].x, confirmedPoints.value[0].y)
+    ctx.moveTo(screenStart.x, screenStart.y)
+    
+    for (let i = 1; i < confirmedPoints.value.length; i++) {
+      const p = designToScreen(confirmedPoints.value[i].x, confirmedPoints.value[i].y)
+      ctx.lineTo(p.x, p.y)
+    }
+    
+    if (previewPoint.value) {
+      const preview = designToScreen(previewPoint.value.x, previewPoint.value.y)
+      ctx.lineTo(preview.x, preview.y)
+    }
+    
+    ctx.stroke()
+    
+    // Draw points
+    for (const pt of confirmedPoints.value) {
+      const screen = designToScreen(pt.x, pt.y)
+      ctx.fillStyle = '#BA68C8'
+      ctx.beginPath()
+      ctx.arc(screen.x, screen.y, 4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    
+    ctx.setLineDash([])
+  }
+  
+  // Draw edge being dragged
+  if (tool === 'edge' && isDrawing.value && drawingStart.value) {
+    ctx.strokeStyle = '#FF7043'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([5, 3])
+    
+    const start = designToScreen(drawingStart.value.x, drawingStart.value.y)
+    const endX = drawingStart.value.x + tempWidth.value
+    const endY = drawingStart.value.y + tempHeight.value
+    const end = designToScreen(endX, endY)
+    
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+    
+    // Draw start and end handles
+    ctx.fillStyle = '#FF7043'
+    ctx.beginPath()
+    ctx.arc(start.x, start.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(end.x, end.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.setLineDash([])
+  }
+  
   // Draw marquee selection
   if (marqueeStart.value && marqueeEnd.value) {
     const start = designToScreen(marqueeStart.value.x, marqueeStart.value.y)
@@ -1217,6 +1433,14 @@ function drawSelection() {
         ctx.lineTo(shape.points[i].x, shape.points[i].y)
       }
       ctx.stroke()
+      // Draw vertex handles for polyline editing
+      const handleSize = 4 / store.zoom
+      ctx.fillStyle = '#4FC3F7'
+      for (const pt of shape.points) {
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, handleSize, 0, Math.PI * 2)
+        ctx.fill()
+      }
     } else if (shape.type === 'label' && shape.text) {
       const w = (shape.text?.length || 0) * 8
       const h = 14
@@ -1231,6 +1455,14 @@ function drawSelection() {
       const maxX = Math.max(...xs) + halfWidth + 2
       const maxY = Math.max(...ys) + halfWidth + 2
       ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+      // Draw vertex handles for path editing
+      const handleSize = 4 / store.zoom
+      ctx.fillStyle = '#4FC3F7'
+      for (const pt of shape.points) {
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, handleSize, 0, Math.PI * 2)
+        ctx.fill()
+      }
     } else if (shape.type === 'edge') {
       const x1 = (shape as any).x1 ?? shape.x
       const y1 = (shape as any).y1 ?? shape.y
@@ -1241,7 +1473,7 @@ function drawSelection() {
       ctx.lineTo(x2, y2)
       ctx.stroke()
       // Draw handles at endpoints
-      const handleSize = 4
+      const handleSize = 4 / store.zoom
       ctx.fillStyle = '#4FC3F7'
       ctx.beginPath()
       ctx.arc(x1, y1, handleSize, 0, Math.PI * 2)
@@ -1431,11 +1663,37 @@ function handleMouseDown(e: MouseEvent) {
 
   const tool = store.selectedTool
   
-  // Select tool - start marquee or shape move
+  // Select tool - start marquee, shape move, or endpoint drag
   if (tool === 'select') {
+    // First check if clicking on an endpoint handle of a selected path/edge
+    const handle = findEndpointHandle(screenX, screenY)
+    if (handle) {
+      // Check if shape is locked
+      const shape = store.project.shapes.find((s) => s.id === handle.shapeId)
+      if (shape) {
+        const layer = store.project.layers.find((l) => l.id === shape.layerId)
+        if (layer?.locked) {
+          announceCanvasChange('图形已锁定，无法编辑')
+          return
+        }
+      }
+      // Start dragging endpoint
+      draggingEndpoint.value = handle
+      store.pushHistory()
+      announceCanvasChange('拖动端点编辑')
+      return
+    }
+    
     const clicked = store.getShapeAtPoint(pt.x, pt.y)
     
     if (clicked) {
+      // Check if shape is locked
+      const layer = store.project.layers.find((l) => l.id === clicked.layerId)
+      if (layer?.locked) {
+        announceCanvasChange('图形已锁定，无法编辑')
+        return
+      }
+      
       if (e.shiftKey) {
         store.selectShape(clicked.id, true) // Add to selection
       } else if (!store.selectedShapeIds.includes(clicked.id)) {
@@ -1504,6 +1762,38 @@ function handleMouseDown(e: MouseEvent) {
     announceCanvasChange('开始绘制波导')
     markDirty()
   }
+  // Path tool - add vertex on click, double-click to finish
+  else if (tool === 'path') {
+    if (!isDrawing.value) {
+      isDrawing.value = true
+      confirmedPoints.value = [pt]
+      announceCanvasChange('开始绘制 Path，点击添加顶点，双击或回车完成')
+    } else {
+      // Check if clicking near first point to close (optional for path)
+      const firstPt = confirmedPoints.value[0]
+      const dist = Math.sqrt((pt.x - firstPt.x) ** 2 + (pt.y - firstPt.y) ** 2)
+      if (dist < store.gridSize && confirmedPoints.value.length >= 2) {
+        // Close the path and finish
+        finishPath()
+        return
+      }
+      confirmedPoints.value.push(pt)
+      announceCanvasChange(`添加顶点 (${pt.x}, ${pt.y})，共 ${confirmedPoints.value.length} 个顶点`)
+    }
+    markDirty()
+  }
+  // Edge tool - click and drag to define start and end
+  else if (tool === 'edge') {
+    if (!isDrawing.value) {
+      store.pushHistory()
+      isDrawing.value = true
+      drawingStart.value = pt
+      tempWidth.value = 0  // Will store end point x offset
+      tempHeight.value = 0  // Will store end point y offset
+      announceCanvasChange('开始绘制 Edge，从起点拖动到终点')
+      markDirty()
+    }
+  }
   // Label tool
   else if (tool === 'label') {
     const text = window.prompt('请输入标签文字:')
@@ -1527,20 +1817,50 @@ function handleMouseDown(e: MouseEvent) {
 function handleMouseMove(e: MouseEvent) {
   const rect = canvasRef.value?.getBoundingClientRect()
   if (!rect) return
-  
+
   mouseX.value = e.clientX - rect.left
   mouseY.value = e.clientY - rect.top
-  
+
   const screenX = e.clientX - rect.left
   const screenY = e.clientY - rect.top
   const pt = getSnappedPoint(screenX, screenY)
-  
+
   if (!isDragging) {
-    // Update preview point for polygon/polyline
-    if (store.selectedTool === 'polygon' || store.selectedTool === 'polyline') {
+    // Update preview point for polygon/polyline/path
+    if (store.selectedTool === 'polygon' || store.selectedTool === 'polyline' || store.selectedTool === 'path') {
       previewPoint.value = pt
       markDirty()
+      return
     }
+
+    // Update cursor when hovering over handles in select mode
+    if (store.selectedTool === 'select') {
+      // Only show grab cursor if there are selected shapes
+      if (store.selectedShapeIds.length > 0) {
+        const handle = findEndpointHandle(screenX, screenY)
+        if (handle) {
+          if (cursorStyle.value !== 'grab') {
+            cursorStyle.value = 'grab'
+            updateCanvasCursor()
+          }
+          return
+        }
+        const segmentHit = findSegmentHit(screenX, screenY)
+        if (segmentHit) {
+          if (cursorStyle.value !== 'crosshair') {
+            cursorStyle.value = 'crosshair'
+            updateCanvasCursor()
+          }
+          return
+        }
+      }
+      // No selected shapes or not over handles - default cursor
+      if (cursorStyle.value !== 'default') {
+        cursorStyle.value = 'default'
+        updateCanvasCursor()
+      }
+    }
+
     return
   }
 
@@ -1552,6 +1872,55 @@ function handleMouseMove(e: MouseEvent) {
   }
 
   const tool = store.selectedTool
+  
+  // Endpoint dragging (path vertex or edge endpoint)
+  if (draggingEndpoint.value) {
+    const handle = draggingEndpoint.value
+    const shape = store.project.shapes.find((s) => s.id === handle.shapeId)
+    if (!shape) return
+
+    // Check if shape is locked
+    const layer = store.project.layers.find((l) => l.id === shape.layerId)
+    if (layer?.locked) {
+      announceCanvasChange('图形已锁定，无法编辑')
+      draggingEndpoint.value = null
+      isDragging = false
+      return
+    }
+
+    if (shape.type === 'path' && shape.points) {
+      // Update the vertex point
+      const newPoints = [...shape.points]
+      newPoints[handle.pointIndex] = { x: pt.x, y: pt.y }
+      store.updateShape(handle.shapeId, { points: newPoints }, true)
+      markDirty()
+      return
+    }
+
+    // Polyline - update the vertex point
+    if (shape.type === 'polyline' && shape.points) {
+      const newPoints = [...shape.points]
+      newPoints[handle.pointIndex] = { x: pt.x, y: pt.y }
+      store.updateShape(handle.shapeId, { points: newPoints }, true)
+      markDirty()
+      return
+    }
+
+    if (shape.type === 'edge') {
+      // Update edge endpoint
+      const updates: any = {}
+      if (handle.pointIndex === 0) {
+        updates.x1 = pt.x
+        updates.y1 = pt.y
+      } else {
+        updates.x2 = pt.x
+        updates.y2 = pt.y
+      }
+      store.updateShape(handle.shapeId, updates, true)
+      markDirty()
+      return
+    }
+  }
   
   // Rectangle drag
   if (tool === 'rectangle' && isDrawing.value && drawingStart.value) {
@@ -1568,6 +1937,14 @@ function handleMouseMove(e: MouseEvent) {
     return
   }
   
+  // Edge drag - update end point preview
+  if (tool === 'edge' && isDrawing.value && drawingStart.value) {
+    tempWidth.value = pt.x - drawingStart.value.x
+    tempHeight.value = pt.y - drawingStart.value.y
+    markDirty()
+    return
+  }
+  
   // Marquee selection
   if (tool === 'select' && marqueeStart.value) {
     marqueeEnd.value = pt
@@ -1575,8 +1952,8 @@ function handleMouseMove(e: MouseEvent) {
     return
   }
   
-  // Move selected shapes
-  if (tool === 'select' && store.selectedShapeIds.length > 0 && !marqueeStart.value) {
+  // Move selected shapes (only if not dragging endpoint)
+  if (tool === 'select' && store.selectedShapeIds.length > 0 && !marqueeStart.value && !draggingEndpoint.value) {
     for (const id of store.selectedShapeIds) {
       const shape = store.project.shapes.find((s) => s.id === id)
       if (shape) {
@@ -1651,6 +2028,39 @@ function handleMouseUp(e: MouseEvent) {
     markDirty()
   }
   
+  // Finish edge - click and drag to define start/end
+  if (tool === 'edge' && isDrawing.value && drawingStart.value) {
+    const dx = tempWidth.value
+    const dy = tempHeight.value
+    
+    // Edge needs at least 2 units of movement or use a default
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      const x1 = drawingStart.value.x
+      const y1 = drawingStart.value.y
+      const x2 = drawingStart.value.x + dx
+      const y2 = drawingStart.value.y + dy
+      
+      store.addShape({
+        id: genId(),
+        type: 'edge',
+        layerId: store.currentLayerId,
+        x: (x1 + x2) / 2,  // center x
+        y: (y1 + y2) / 2,  // center y
+        x1,
+        y1,
+        x2,
+        y2,
+      } as any)
+      announceCanvasChange(`创建 Edge: (${x1.toFixed(1)}, ${y1.toFixed(1)}) → (${x2.toFixed(1)}, ${y2.toFixed(1)})`)
+    }
+    
+    isDrawing.value = false
+    drawingStart.value = null
+    tempWidth.value = 0
+    tempHeight.value = 0
+    markDirty()
+  }
+  
   // Finish marquee selection
   if (tool === 'select' && marqueeStart.value && marqueeEnd.value) {
     store.selectShapesInArea(
@@ -1670,19 +2080,71 @@ function handleMouseUp(e: MouseEvent) {
   }
   
   isDragging = false
+  draggingEndpoint.value = null
 }
 
 function handleDoubleClick(e: MouseEvent) {
+  const rect = canvasRef.value?.getBoundingClientRect()
+  if (!rect) return
+
+  const screenX = e.clientX - rect.left
+  const screenY = e.clientY - rect.top
   const tool = store.selectedTool
-  
+
+  // In select mode: double-click on path/polyline segment inserts a new vertex
+  if (tool === 'select' && store.selectedShapeIds.length > 0) {
+    // Don't insert if clicking near an existing endpoint
+    const handle = findEndpointHandle(screenX, screenY)
+    if (handle) {
+      // If near endpoint, allow the double-click to propagate (no action needed, drag was handled)
+      return
+    }
+
+    // Check if clicking on a path/polyline segment
+    const segmentHit = findSegmentHit(screenX, screenY)
+    if (segmentHit) {
+      const shape = store.project.shapes.find((s) => s.id === segmentHit.shapeId)
+      if (shape && shape.type === 'path' && shape.points) {
+        store.pushHistory()
+        // Insert vertex at midpoint: after segmentIndex, before segmentIndex+1
+        const newPoints = [...shape.points]
+        newPoints.splice(segmentHit.segmentIndex + 1, 0, {
+          x: segmentHit.insertX,
+          y: segmentHit.insertY,
+        })
+        store.updateShape(segmentHit.shapeId, { points: newPoints }, true)
+        announceCanvasChange(`Path 添加顶点 (${segmentHit.insertX.toFixed(1)}, ${segmentHit.insertY.toFixed(1)})`)
+        markDirty()
+        return
+      }
+      if (shape && shape.type === 'polyline' && shape.points) {
+        store.pushHistory()
+        const newPoints = [...shape.points]
+        newPoints.splice(segmentHit.segmentIndex + 1, 0, {
+          x: segmentHit.insertX,
+          y: segmentHit.insertY,
+        })
+        store.updateShape(segmentHit.shapeId, { points: newPoints }, true)
+        announceCanvasChange(`多段线添加顶点 (${segmentHit.insertX.toFixed(1)}, ${segmentHit.insertY.toFixed(1)})`)
+        markDirty()
+        return
+      }
+    }
+  }
+
   if (tool === 'polygon' && isDrawing.value && confirmedPoints.value.length >= 3) {
     e.preventDefault()
     finishPolygon()
   }
-  
+
   if (tool === 'polyline' && isDrawing.value && confirmedPoints.value.length >= 2) {
     e.preventDefault()
     finishPolyline()
+  }
+
+  if (tool === 'path' && isDrawing.value && confirmedPoints.value.length >= 2) {
+    e.preventDefault()
+    finishPath()
   }
 }
 
@@ -1705,6 +2167,15 @@ function handleContextMenu(e: MouseEvent) {
     } else {
       cancelDrawing()
       announceCanvasChange('取消了多段线绘制')
+    }
+  }
+  
+  if (tool === 'path' && isDrawing.value) {
+    if (confirmedPoints.value.length >= 2) {
+      finishPath()
+    } else {
+      cancelDrawing()
+      announceCanvasChange('取消了 Path 绘制')
     }
   }
 }
@@ -1752,6 +2223,34 @@ function finishPolyline() {
   cancelDrawing()
 }
 
+function finishPath() {
+  if (confirmedPoints.value.length >= 2) {
+    store.pushHistory()
+    // Calculate centroid for path position
+    const centroid = confirmedPoints.value.reduce(
+      (acc, pt) => ({ x: acc.x + pt.x / confirmedPoints.value.length, y: acc.y + pt.y / confirmedPoints.value.length }),
+      { x: 0, y: 0 }
+    )
+    // Prompt for path width
+    const widthStr = window.prompt('请输入 Path 宽度 (μm):', '1.0')
+    const width = parseFloat(widthStr || '1.0') || 1.0
+    
+    store.addShape({
+      id: genId(),
+      type: 'path',
+      layerId: store.currentLayerId,
+      x: centroid.x,
+      y: centroid.y,
+      points: [...confirmedPoints.value],
+      width,
+      endStyle: 'square',
+      joinStyle: 'miter',
+    } as any)
+    announceCanvasChange(`创建 Path，顶点数: ${confirmedPoints.value.length}，宽度: ${width} μm`)
+  }
+  cancelDrawing()
+}
+
 function cancelDrawing() {
   isDrawing.value = false
   drawingStart.value = null
@@ -1784,31 +2283,57 @@ function handleKeyDown(e: KeyboardEvent) {
     switch (e.key.toLowerCase()) {
       case 'v':
         store.setTool('select')
+        cursorStyle.value = store.selectedShapeIds.length > 0 ? 'default' : 'default'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 选择')
         markDirty()
         return
       case 'e':
         store.setTool('rectangle')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 矩形')
         markDirty()
         return
       case 'p':
         store.setTool('polygon')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 多边形')
         markDirty()
         return
       case 'l':
         store.setTool('polyline')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 多段线')
         markDirty()
         return
       case 'w':
         store.setTool('waveguide')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 波导')
+        markDirty()
+        return
+      case 'i':
+        store.setTool('path')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
+        announceCanvasChange('选择工具: Path')
+        markDirty()
+        return
+      case 'j':
+        store.setTool('edge')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
+        announceCanvasChange('选择工具: Edge')
         markDirty()
         return
       case 't':
         store.setTool('label')
+        cursorStyle.value = 'crosshair'
+        updateCanvasCursor()
         announceCanvasChange('选择工具: 标签')
         markDirty()
         return
@@ -1864,10 +2389,31 @@ function handleKeyDown(e: KeyboardEvent) {
           markDirty()
         }
         return
+      case 'g':
+        // G: Toggle grid snap
+        store.snapToGrid = !store.snapToGrid
+        announceCanvasChange(store.snapToGrid ? '网格吸附已开启' : '网格吸附已关闭')
+        markDirty()
+        return
+      case 'k':
+        // K: Array copy (M×N copies)
+        if (store.selectedShapeIds.length > 0) {
+          showArrayCopyDialog.value = true
+        }
+        return
+      case ' ':
+        // Space: Temporarily switch to select tool (hold)
+        if (!spacePressed.value && !isDrawing.value) {
+          spacePressed.value = true
+          previousToolForSpace.value = store.selectedTool
+          store.setTool('select')
+          markDirty()
+        }
+        return
     }
   }
 
-  // Finish polygon/polyline with Enter
+  // Finish polygon/polyline/path with Enter
   if (e.key === 'Enter') {
     if (store.selectedTool === 'polygon' && isDrawing.value) {
       finishPolygon()
@@ -1875,6 +2421,10 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     if (store.selectedTool === 'polyline' && isDrawing.value) {
       finishPolyline()
+      return
+    }
+    if (store.selectedTool === 'path' && isDrawing.value) {
+      finishPath()
       return
     }
   }
@@ -1950,6 +2500,76 @@ function handleKeyDown(e: KeyboardEvent) {
     return
   }
 
+  // Alignment shortcuts: Ctrl+Shift+[key]
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+    switch (e.key.toLowerCase()) {
+      case 'l': // Ctrl+Shift+L: Align Left
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('left')
+          announceCanvasChange('左对齐')
+          markDirty()
+        }
+        return
+      case 'h': // Ctrl+Shift+H: Align Center Horizontal
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('centerX')
+          announceCanvasChange('水平居中对齐')
+          markDirty()
+        }
+        return
+      case 'r': // Ctrl+Shift+R: Align Right
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('right')
+          announceCanvasChange('右对齐')
+          markDirty()
+        }
+        return
+      case 't': // Ctrl+Shift+T: Align Top
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('top')
+          announceCanvasChange('顶对齐')
+          markDirty()
+        }
+        return
+      case 'm': // Ctrl+Shift+M: Align Center Vertical (Middle)
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('centerY')
+          announceCanvasChange('垂直居中对齐')
+          markDirty()
+        }
+        return
+      case 'b': // Ctrl+Shift+B: Align Bottom
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 2) {
+          store.alignSelectedShapes('bottom')
+          announceCanvasChange('底对齐')
+          markDirty()
+        }
+        return
+      case 'd': // Ctrl+Shift+D: Distribute Horizontally
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 3) {
+          store.distributeSelectedShapes('horizontal')
+          announceCanvasChange('水平等距分布')
+          markDirty()
+        }
+        return
+      case 'v': // Ctrl+Shift+V: Distribute Vertically
+        e.preventDefault()
+        if (store.selectedShapeIds.length >= 3) {
+          store.distributeSelectedShapes('vertical')
+          announceCanvasChange('垂直等距分布')
+          markDirty()
+        }
+        return
+    }
+  }
+
   // Delete selected
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (store.selectedShapeIds.length > 0) {
@@ -1958,6 +2578,20 @@ function handleKeyDown(e: KeyboardEvent) {
       store.deleteSelectedShapes()
       markDirty()
     }
+    return
+  }
+
+  // ?: Show shortcuts help dialog
+  if (e.key === '?') {
+    e.preventDefault()
+    showShortcutsDialog.value = true
+    announceCanvasChange('显示快捷键帮助')
+    return
+  }
+
+  // Space: prevent default for space key
+  if (e.key === ' ') {
+    e.preventDefault()
     return
   }
 
@@ -1981,6 +2615,17 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
+function handleKeyUp(e: KeyboardEvent) {
+  // Space: restore previous tool when Space is released
+  if (e.key === ' ' && spacePressed.value) {
+    spacePressed.value = false
+    if (previousToolForSpace.value && store.selectedTool === 'select') {
+      store.setTool(previousToolForSpace.value)
+      markDirty()
+    }
+  }
+}
+
 function handleResize() {
   initCanvas()
   markDirty()
@@ -1990,6 +2635,7 @@ onMounted(() => {
   initCanvas()
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
   canvasRef.value?.setAttribute('tabindex', '0')
   canvasRef.value?.focus()
   announceCanvasChange(getCanvasDescription())
@@ -1998,12 +2644,20 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId)
   }
   ctx = null
   animationFrameId = null
 })
+
+// Update canvas cursor style dynamically
+function updateCanvasCursor() {
+  if (canvasRef.value) {
+    canvasRef.value.style.cursor = cursorStyle.value
+  }
+}
 
 defineExpose({
   mouseX,
@@ -2041,6 +2695,13 @@ defineExpose({
     <div v-if="isLoading" class="loading-overlay">
       <span>Loading...</span>
     </div>
+    <ArrayCopyDialog
+      v-model:show="showArrayCopyDialog"
+      @confirm="(rows, cols) => { store.arrayCopySelectedShapes(rows, cols); markDirty() }"
+    />
+    <ShortcutsDialog
+      v-model:show="showShortcutsDialog"
+    />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">
         <span class="error-icon" aria-hidden="true">⚠️</span>

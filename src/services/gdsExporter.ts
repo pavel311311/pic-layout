@@ -88,7 +88,15 @@ export interface GDSPath extends GDSElement {
   pathtype?: number // 0=square, 1=round, 2=extended
 }
 
-export type GDSElementUnion = GDSBoundary | GDSText | GDSPath
+export interface GDSEdge extends GDSElement {
+  elementType: 'edge'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+export type GDSElementUnion = GDSBoundary | GDSText | GDSPath | GDSEdge
 
 export interface GDSCell {
   name: string
@@ -163,6 +171,35 @@ export function shapesToGDS(
             { x: shape.x, y: shape.y },
           ],
         })
+      } else if (shape.type === 'path' && shape.points) {
+        // Path shape: GDSII PATH element
+        // Map endStyle to pathtype: 0=square, 1=round, 2=variable
+        const endStyle = (shape as any).endStyle || 'square'
+        const pathtype = endStyle === 'round' ? 1 : endStyle === 'variable' ? 2 : 0
+        elements.push({
+          elementType: 'path',
+          layer: gdsLayer,
+          datatype: gdsDatatype,
+          width: (shape as any).width || 1,
+          points: [...shape.points],
+          pathtype,
+        } as GDSPath)
+      } else if (shape.type === 'edge') {
+        // Edge shape: single line segment
+        // GDSII doesn't have a native edge element, so we export as a thin path
+        const x1 = (shape as any).x1 ?? shape.x
+        const y1 = (shape as any).y1 ?? shape.y
+        const x2 = (shape as any).x2 ?? shape.x
+        const y2 = (shape as any).y2 ?? shape.y
+        elements.push({
+          elementType: 'edge',
+          layer: gdsLayer,
+          datatype: gdsDatatype,
+          x1,
+          y1,
+          x2,
+          y2,
+        } as GDSEdge)
       } else if (shape.type === 'label' && shape.text) {
         elements.push({
           elementType: 'text',
@@ -306,6 +343,18 @@ export async function exportGDS(
         parts.push(encodeInteger16(el.datatype))
         parts.push(encodeInteger32(Math.round(el.width * scale))) // WIDTH
         parts.push(encodeXY(el.points, scale))
+        parts.push(new Uint8Array([0x11, 0x00, 0x00, 0x04])) // ENDEL
+      } else if (el.elementType === 'edge') {
+        // Edge: export as very thin path (1 nm wide)
+        const edgeEl = el as GDSEdge
+        // Convert edge to a path with 2 points and minimal width
+        const pathHeader = new Uint8Array([0x09, 0x00, 0x00, 0x04])
+        parts.push(pathHeader)
+        parts.push(encodeInteger16(edgeEl.layer))
+        parts.push(encodeInteger16(edgeEl.datatype))
+        // Use 1 database unit (1 nm) as minimum width for edge
+        parts.push(encodeInteger32(1))
+        parts.push(encodeXY([{ x: edgeEl.x1, y: edgeEl.y1 }, { x: edgeEl.x2, y: edgeEl.y2 }], scale))
         parts.push(new Uint8Array([0x11, 0x00, 0x00, 0x04])) // ENDEL
       } else if (el.elementType === 'text') {
         // TEXT
