@@ -46,10 +46,9 @@ const toolShortcuts = [
   { key: 'P', description: '多边形工具 (Polygon)' },
   { key: 'L', description: '多段线工具 (Polyline)' },
   { key: 'W', description: '波导工具 (Waveguide)' },
-  { key: 'I', description: 'Path 工具' },
-  { key: 'J', description: 'Edge 工具' },
+  { key: 'I', description: 'Path 工具 (Path)' },
+  { key: 'J', description: 'Edge 工具 (Edge)' },
   { key: 'T', description: '标签工具 (Label)' },
-  { key: 'M', description: '标尺工具 (Ruler)' },
 ]
 
 const transformShortcuts = [
@@ -85,8 +84,8 @@ const alignShortcuts = [
   { key: 'Ctrl+Shift+T', description: '顶对齐' },
   { key: 'Ctrl+Shift+M', description: '垂直居中对齐' },
   { key: 'Ctrl+Shift+B', description: '底对齐' },
-  { key: 'Ctrl+Shift+,', description: '水平均匀分布' },
-  { key: 'Ctrl+Shift+.', description: '垂直均匀分布' },
+  { key: 'Ctrl+Shift+D', description: '水平等距分布' },
+  { key: 'Ctrl+Shift+V', description: '垂直等距分布' },
 ]
 
 const viewShortcuts = [

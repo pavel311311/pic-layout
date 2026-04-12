@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NModal, NInputNumber, NButton, NSpace, NText } from 'naive-ui'
+import { NModal, NInputNumber, NButton, NSpace, NText } from '@/plugins/naive'
 
 const props = defineProps<{
   show: boolean
@@ -31,7 +31,7 @@ function handleCancel() {
     title="阵列复制"
     positive-text="复制"
     negative-text="取消"
-    @update:show="(v) => emit('update:show', v)"
+    @update:show="(v: boolean) => emit('update:show', v)"
     @positive-click="handleConfirm"
     @negative-click="handleCancel"
     style="width: 320px"

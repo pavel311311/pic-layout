@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Layer, BaseShape, Project, ShapeType, ShapeStyle, FillPattern } from '../types/shapes'
-import { moveShape, rotateShape90CW, rotateShape90CCW, mirrorShapeH, mirrorShapeV, scaleShape, offsetShape, alignShapesLeft, alignShapesCenterX, alignShapesRight, alignShapesTop, alignShapesCenterY, alignShapesBottom, distributeShapesHorizontally, distributeShapesVertically } from '../utils/transforms'
+import { moveShape, rotateShape90CW, rotateShape90CCW, mirrorShapeH, mirrorShapeV, scaleShape, offsetShape, alignShapesLeft, alignShapesCenterX, alignShapesRight, alignShapesTop, alignShapesCenterY, alignShapesBottom, distributeShapesHorizontally, distributeShapesVertically, getShapeBounds } from '../utils/transforms'
 
 // Generate unique ID
 function generateId(): string {
@@ -67,6 +67,23 @@ export const useEditorStore = defineStore('editor', () => {
   const snapToGrid = ref(true)
   const zoom = ref(1)
   const panOffset = ref({ x: 0, y: 0 })
+
+  // Theme settings ('light' | 'dark')
+  const theme = ref<'light' | 'dark'>('light')
+
+  // Apply theme to document
+  function applyTheme(newTheme: 'light' | 'dark') {
+    theme.value = newTheme
+    const html = document.documentElement
+    html.classList.remove('theme-light', 'theme-dark')
+    html.classList.add(`theme-${newTheme}`)
+  }
+
+  // Toggle between light and dark
+  function toggleTheme() {
+    const newTheme = theme.value === 'light' ? 'dark' : 'light'
+    applyTheme(newTheme)
+  }
 
   // === Undo/Redo History ===
   const MAX_HISTORY = 50
@@ -303,7 +320,7 @@ export const useEditorStore = defineStore('editor', () => {
       const shape = project.value.shapes.find((s) => s.id === id)
       if (!shape) continue
 
-      const bounds = getShapeBoundsLocal(shape)
+      const bounds = getShapeBounds(shape)
       if (bounds.minX < minX) minX = bounds.minX
       if (bounds.minY < minY) minY = bounds.minY
       if (bounds.maxX > maxX) maxX = bounds.maxX
@@ -343,70 +360,6 @@ export const useEditorStore = defineStore('editor', () => {
     selectedShapeIds.value = newIds
     project.value.modifiedAt = new Date().toISOString()
     pushHistory(getHistorySnapshot())
-  }
-
-  /**
-   * Compute bounding box of a shape (local helper, mirrors Canvas logic).
-   */
-  function getShapeBoundsLocal(shape: BaseShape): { minX: number; minY: number; maxX: number; maxY: number } {
-    if (shape.type === 'rectangle' || shape.type === 'waveguide') {
-      return {
-        minX: shape.x,
-        minY: shape.y,
-        maxX: shape.x + (shape.width || 0),
-        maxY: shape.y + (shape.height || 0),
-      }
-    }
-    if (shape.type === 'polygon' || shape.type === 'polyline') {
-      if (!shape.points || shape.points.length === 0) {
-        return { minX: shape.x, minY: shape.y, maxX: shape.x, maxY: shape.y }
-      }
-      const xs = shape.points.map((p) => p.x)
-      const ys = shape.points.map((p) => p.y)
-      return {
-        minX: Math.min(...xs),
-        minY: Math.min(...ys),
-        maxX: Math.max(...xs),
-        maxY: Math.max(...ys),
-      }
-    }
-    if (shape.type === 'path') {
-      if (!shape.points || shape.points.length === 0) {
-        return { minX: shape.x, minY: shape.y, maxX: shape.x, maxY: shape.y }
-      }
-      const xs = shape.points.map((p) => p.x)
-      const ys = shape.points.map((p) => p.y)
-      const hw = (shape.width || 1) / 2
-      return {
-        minX: Math.min(...xs) - hw,
-        minY: Math.min(...ys) - hw,
-        maxX: Math.max(...xs) + hw,
-        maxY: Math.max(...ys) + hw,
-      }
-    }
-    if (shape.type === 'edge') {
-      const x1 = (shape as any).x1 ?? shape.x
-      const y1 = (shape as any).y1 ?? shape.y
-      const x2 = (shape as any).x2 ?? shape.x
-      const y2 = (shape as any).y2 ?? shape.y
-      return {
-        minX: Math.min(x1, x2),
-        minY: Math.min(y1, y2),
-        maxX: Math.max(x1, x2),
-        maxY: Math.max(y1, y2),
-      }
-    }
-    if (shape.type === 'circle' || shape.type === 'arc') {
-      const r = (shape as any).radius ?? 1
-      return { minX: shape.x - r, minY: shape.y - r, maxX: shape.x + r, maxY: shape.y + r }
-    }
-    if (shape.type === 'ellipse') {
-      const rx = (shape as any).radiusX ?? 1
-      const ry = (shape as any).radiusY ?? 1
-      return { minX: shape.x - rx, minY: shape.y - ry, maxX: shape.x + rx, maxY: shape.y + ry }
-    }
-    // Default fallback for label, arc, etc.
-    return { minX: shape.x, minY: shape.y, maxX: shape.x + (shape.width || 10), maxY: shape.y + (shape.height || 10) }
   }
 
   // === Layer Management ===
@@ -752,6 +705,7 @@ export const useEditorStore = defineStore('editor', () => {
     snapToGrid,
     zoom,
     panOffset,
+    theme,
     
     // Computed
     selectedShapes,
@@ -790,6 +744,10 @@ export const useEditorStore = defineStore('editor', () => {
     setTool,
     setZoom,
     setPan,
+    
+    // Theme Actions
+    applyTheme,
+    toggleTheme,
     
     // History
     undo,

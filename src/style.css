@@ -1,4 +1,10 @@
-:root {
+/* ============================================
+   Theme System - Light & Dark Mode
+   KLayout-style professional color scheme
+   ============================================ */
+
+/* Light Theme (default) */
+:root, .theme-light {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 12px;
   line-height: 1.4;
@@ -13,13 +19,16 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* KLayout-style colors */
+  /* KLayout-style colors - Light */
   --bg-primary: #f0f0f0;
   --bg-secondary: #e8e8e8;
   --bg-panel: #ffffff;
   --bg-toolbar: #e0e0e0;
   --bg-header: #d4d4d4;
   --bg-header-gradient: linear-gradient(180deg, #e8e8e8 0%, #d0d0d0 100%);
+  --bg-canvas: #ffffff;
+  --bg-ruler: #e0e0e0;
+  --bg-ruler-corner: #d8d8d8;
   
   --border-color: #a0a0a0;
   --border-light: #c0c0c0;
@@ -32,8 +41,54 @@
   --accent-blue: #4FC3F7;
   --accent-orange: #FF9800;
   --accent-green: #4CAF50;
+  --accent-red: #E57373;
   
   --shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  --shadow-panel: 2px 2px 4px rgba(0,0,0,0.15);
+  
+  /* Scrollbar colors */
+  --scrollbar-track: #e0e0e0;
+  --scrollbar-thumb: #c0c0c0;
+  --scrollbar-thumb-hover: #a0a0a0;
+}
+
+/* Dark Theme - Professional dark mode for PIC editors */
+.theme-dark {
+  color-scheme: dark;
+  color: #e0e0e0;
+  background-color: #1e1e1e;
+
+  /* KLayout-style colors - Dark */
+  --bg-primary: #252526;
+  --bg-secondary: #2d2d30;
+  --bg-panel: #333333;
+  --bg-toolbar: #2d2d30;
+  --bg-header: #252526;
+  --bg-header-gradient: linear-gradient(180deg, #333333 0%, #252526 100%);
+  --bg-canvas: #1e1e1e;
+  --bg-ruler: #252526;
+  --bg-ruler-corner: #1e1e1e;
+  
+  --border-color: #404040;
+  --border-light: #505050;
+  --border-dark: #303030;
+  
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #606060;
+  
+  --accent-blue: #4FC3F7;
+  --accent-orange: #FF9800;
+  --accent-green: #81C784;
+  --accent-red: #E57373;
+  
+  --shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  --shadow-panel: 2px 2px 4px rgba(0,0,0,0.3);
+  
+  /* Dark scrollbar */
+  --scrollbar-track: #252526;
+  --scrollbar-thumb: #404040;
+  --scrollbar-thumb-hover: #505050;
 }
 
 * {
@@ -48,27 +103,27 @@ html, body, #app {
   overflow: hidden;
 }
 
-/* KLayout-style scrollbar */
+/* KLayout-style scrollbar - respects theme */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #e0e0e0;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c0c0c0;
-  border: 1px solid #a0a0a0;
+  background: var(--scrollbar-thumb);
+  border: 1px solid var(--border-color);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
+  background: var(--scrollbar-thumb-hover);
 }
 
 ::-webkit-scrollbar-corner {
-  background: #e0e0e0;
+  background: var(--scrollbar-track);
 }
 
 /* Input styles */

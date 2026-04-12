@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { NButton, NColorPicker, NScrollbar } from 'naive-ui'
+import { NButton, NColorPicker, NScrollbar } from '@/plugins/naive'
 import { useEditorStore } from '../../stores/editor'
 import { ref, computed } from 'vue'
 
 const store = useEditorStore()
+
+// Count shapes per layer
+const shapesPerLayer = computed(() => {
+  const counts: Record<number, number> = {}
+  for (const shape of store.project.shapes) {
+    counts[shape.layerId] = (counts[shape.layerId] || 0) + 1
+  }
+  return counts
+})
 
 const showAddLayer = ref(false)
 const newLayerName = ref('')
@@ -250,6 +259,7 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
             <div class="layer-info">
               <span class="layer-name">{{ layer.name }}</span>
               <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
+              <span class="layer-count">{{ shapesPerLayer[layer.id] || 0 }} shapes</span>
             </div>
 
             <!-- 锁定按钮 -->
@@ -560,6 +570,12 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 .layer-gds {
   font-size: 9px;
   color: #808080;
+  font-family: monospace;
+}
+
+.layer-count {
+  font-size: 9px;
+  color: #4FC3F7;
   font-family: monospace;
 }
 

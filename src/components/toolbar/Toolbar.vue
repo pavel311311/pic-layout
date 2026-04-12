@@ -45,6 +45,14 @@ function selectTool(toolId: string) {
     measurementEnd.value = null
   }
 }
+
+function openAlignDialog() {
+  window.dispatchEvent(new CustomEvent('open-align-dialog'))
+}
+
+function openArrayCopyDialog() {
+  window.dispatchEvent(new CustomEvent('open-array-copy-dialog'))
+}
 </script>
 
 <template>
@@ -83,6 +91,22 @@ function selectTool(toolId: string) {
         <span class="btn-icon">↷</span>
         <span class="btn-label">Redo</span>
       </button>
+      <button 
+        class="tool-btn" 
+        @click="openAlignDialog"
+        title="Align & Distribute (Ctrl+Shift+L)"
+      >
+        <span class="btn-icon">≡</span>
+        <span class="btn-label">Align</span>
+      </button>
+      <button 
+        class="tool-btn" 
+        @click="openArrayCopyDialog"
+        title="Array Copy (K)"
+      >
+        <span class="btn-icon">⊞</span>
+        <span class="btn-label">Array</span>
+      </button>
     </div>
     
     <div class="divider"></div>
@@ -117,6 +141,14 @@ function selectTool(toolId: string) {
       <button class="tool-btn" @click="store.setZoom(1)" title="Reset Zoom">
         <span class="btn-icon">⟳</span>
         <span class="btn-label">Fit</span>
+      </button>
+      <button 
+        class="tool-btn" 
+        @click="store.toggleTheme"
+        :title="store.theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
+      >
+        <span class="btn-icon">{{ store.theme === 'light' ? '🌙' : '☀️' }}</span>
+        <span class="btn-label">{{ store.theme === 'light' ? 'Dark' : 'Light' }}</span>
       </button>
     </div>
     
@@ -175,7 +207,7 @@ function selectTool(toolId: string) {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  background: #e0e0e0;
+  background: var(--bg-toolbar);
   gap: 4px;
 }
 
@@ -192,25 +224,27 @@ function selectTool(toolId: string) {
   width: 52px;
   height: 48px;
   padding: 4px;
-  background: #f0f0f0;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   cursor: pointer;
   transition: all 0.1s;
+  color: var(--text-primary);
 }
 
 .tool-btn:hover:not(:disabled) {
-  background: #e8e8e8;
-  border-color: #a0a0a0;
+  background: var(--bg-primary);
+  border-color: var(--border-color);
 }
 
 .tool-btn:active:not(:disabled) {
-  background: #d8d8d8;
+  background: var(--bg-header);
 }
 
 .tool-btn.active {
-  background: #d0e8ff;
-  border-color: #4FC3F7;
+  background: var(--accent-blue);
+  background: color-mix(in srgb, var(--accent-blue) 30%, var(--bg-panel));
+  border-color: var(--accent-blue);
 }
 
 .tool-btn:disabled {
@@ -226,19 +260,19 @@ function selectTool(toolId: string) {
 
 .btn-label {
   font-size: 9px;
-  color: #404040;
+  color: var(--text-secondary);
   text-align: center;
   line-height: 1;
 }
 
 .tool-btn.active .btn-label {
-  color: #0066cc;
+  color: var(--accent-blue);
 }
 
 .divider {
   width: 1px;
   height: 40px;
-  background: #c0c0c0;
+  background: var(--border-light);
   margin: 0 6px;
 }
 
@@ -247,8 +281,8 @@ function selectTool(toolId: string) {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: #fff;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
 }
 
@@ -259,7 +293,7 @@ function selectTool(toolId: string) {
 .measure-value {
   font-size: 12px;
   font-family: monospace;
-  color: #000;
+  color: var(--text-primary);
 }
 
 .spacer {
@@ -271,21 +305,21 @@ function selectTool(toolId: string) {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #f8f8f8;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
 }
 
 .layer-color-box {
   width: 16px;
   height: 16px;
-  border: 1px solid #808080;
+  border: 1px solid var(--border-dark);
   border-radius: 2px;
 }
 
 .layer-name {
   font-size: 11px;
-  color: #404040;
+  color: var(--text-secondary);
 }
 
 .grid-settings {
@@ -293,23 +327,24 @@ function selectTool(toolId: string) {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #f8f8f8;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
 }
 
 .grid-label {
   font-size: 10px;
-  color: #606060;
+  color: var(--text-muted);
 }
 
 .grid-select {
   height: 20px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 10px;
-  background: #fff;
+  background: var(--bg-panel);
+  color: var(--text-primary);
 }
 
 .snap-toggle {
@@ -317,7 +352,7 @@ function selectTool(toolId: string) {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #404040;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -327,13 +362,13 @@ function selectTool(toolId: string) {
 
 .project-info {
   padding: 4px 12px;
-  background: #f8f8f8;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
 }
 
 .project-name {
   font-size: 11px;
-  color: #404040;
+  color: var(--text-secondary);
 }
 </style>

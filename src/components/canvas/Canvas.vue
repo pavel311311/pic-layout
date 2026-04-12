@@ -1,13 +1,62 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useEditorStore } from '../../stores/editor'
-import type { Point, ShapeStyle, FillPattern, BaseShape } from '../../types/shapes'
-import ArrayCopyDialog from '../dialogs/ArrayCopyDialog.vue'
-import ShortcutsDialog from '../dialogs/ShortcutsDialog.vue'
+import { useCanvasCoordinates, genId } from '../../composables/useCanvasCoordinates'
+import { useCanvasVirtualization } from '../../composables/useCanvasVirtualization'
+import type { DirtyRect, RenderBatch } from '../../composables/useCanvasVirtualization'
+import { useCanvasRenderer } from '../../composables/useCanvasRenderer'
+import type { Point, ShapeStyle, FillPattern, BaseShape, Bounds } from '../../types/shapes'
+import { getShapeBounds } from '../../utils/transforms'
+
+// Dialogs: lazy-loaded via defineAsyncComponent (only loaded when first opened)
+// This reduces initial bundle size since dialogs are conditionally shown
+const ArrayCopyDialog = defineAsyncComponent(() =>
+  import('../dialogs/ArrayCopyDialog.vue')
+)
+const ShortcutsDialog = defineAsyncComponent(() =>
+  import('../dialogs/ShortcutsDialog.vue')
+)
+const AlignDialog = defineAsyncComponent(() =>
+  import('../dialogs/AlignDialog.vue')
+)
 
 const store = useEditorStore()
+
+// Canvas coordinate system - extracted to composable for better code organization
+const { screenToDesign, designToScreen, snapToGrid, getSnappedPoint } = useCanvasCoordinates({
+  zoom: computed(() => store.zoom),
+  panOffset: computed(() => store.panOffset),
+  snapToGrid: computed(() => store.snapToGrid),
+  gridSize: computed(() => store.gridSize),
+})
+
+// Canvas element refs - declared early for composable initialization
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
+
+// Canvas virtualization composable - manages offscreen canvas, layer cache, dirty rects, and memory
+// This replaces the duplicated virtualization logic that was previously inline in Canvas.vue
+const virtualization = useCanvasVirtualization({
+  zoom: computed(() => store.zoom),
+  getShapeBounds,
+  designToScreen,
+  getLayer: (id: number) => store.getLayer(id),
+  getAllShapes: () => store.project.shapes,
+})
+
+// Canvas renderer composable - handles all shape rendering, grid, crosshair, selection
+// Extracted from Canvas.vue as part of v0.2.5 code restructuring
+const renderer = useCanvasRenderer({
+  canvasRef,
+  zoom: computed(() => store.zoom),
+  panOffset: computed(() => store.panOffset),
+  gridSize: computed(() => store.gridSize),
+  getShapeBounds,
+  getEffectiveStyle,
+  designToScreen,
+  getLayer: (id: number) => store.getLayer(id),
+  visibleShapes: computed(() => store.project.shapes),
+})
 const isLoading = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
@@ -15,489 +64,6 @@ const errorMessage = ref('')
 let ctx: CanvasRenderingContext2D | null = null
 let animationFrameId: number | null = null
 
-// === Canvas Virtualization - Day 3: Offscreen Canvas & Layer Cache ===
-
-// Offscreen canvas for caching static content (grid, labels, etc.)
-let offscreenCanvas: OffscreenCanvas | null = null
-let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null
-
-// Layer cache - cache rendered layers to avoid re-rendering
-interface LayerCacheEntry {
-  layerId: number
-  bitmap: ImageBitmap | null
-  dirty: boolean
-  version: number
-}
-
-const layerCache: Map<number, LayerCacheEntry> = new Map()
-let cacheVersion = 0  // Increment when shapes change
-
-// Zoom quality settings
-const LOW_QUALITY_ZOOM = 0.3
-const HIGH_QUALITY_ZOOM = 1.0
-const QUALITY_TRANSITION_ZOOM = 0.6
-
-let isLowQuality = false
-
-/**
- * Check if zoom level requires low-quality rendering.
- * Low quality (lower resolution) for faster rendering when zoomed out.
- */
-function needsLowQuality(): boolean {
-  return store.zoom < QUALITY_TRANSITION_ZOOM
-}
-
-/**
- * Update zoom quality setting based on current zoom level.
- */
-function updateZoomQuality() {
-  const newQuality = needsLowQuality()
-  if (newQuality !== isLowQuality) {
-    isLowQuality = newQuality
-    // Clear cache when quality changes
-    layerCache.clear()
-    markDirty()
-  }
-}
-
-/**
- * Create or resize offscreen canvas.
- */
-function initOffscreenCanvas(width: number, height: number) {
-  if (typeof OffscreenCanvas === 'undefined') {
-    console.warn('[Canvas] OffscreenCanvas not supported, skipping layer cache')
-    return
-  }
-
-  const quality = isLowQuality ? 0.5 : 1.0  // Downscale for low quality
-  const scaledWidth = Math.ceil(width * quality)
-  const scaledHeight = Math.ceil(height * quality)
-
-  if (!offscreenCanvas || offscreenCanvas.width !== scaledWidth || offscreenCanvas.height !== scaledHeight) {
-    offscreenCanvas = new OffscreenCanvas(scaledWidth, scaledHeight)
-    offscreenCtx = offscreenCanvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null
-    if (offscreenCtx) {
-      offscreenCtx.scale(quality, quality)
-    }
-  }
-}
-
-/**
- * Cache a layer's rendered content.
- */
-function cacheLayer(layerId: number, shapes: BaseShape[]): void {
-  if (!offscreenCtx || !offscreenCanvas) return
-
-  // Update or create cache entry
-  let entry = layerCache.get(layerId)
-  if (!entry) {
-    entry = { layerId, bitmap: null, dirty: false, version: cacheVersion }
-    layerCache.set(layerId, entry)
-  }
-
-  // Check if we need to re-render
-  const needsCache = entry.dirty || entry.version !== cacheVersion
-  if (!needsCache) return
-
-  // Clear previous bitmap if exists
-  if (entry.bitmap) {
-    entry.bitmap.close()
-    entry.bitmap = null
-  }
-
-  // Clear offscreen canvas
-  offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
-
-  // Render shapes to offscreen canvas
-  const batch: RenderBatch = { layerId, shapes }
-  renderBatch(offscreenCtx, batch)
-
-  // Create ImageBitmap for fast blitting (synchronous)
-  try {
-    const bitmap = offscreenCanvas.transferToImageBitmap()
-    entry.bitmap = bitmap
-    entry.dirty = false
-    entry.version = cacheVersion
-  } catch (e) {
-    console.warn('[Canvas] Failed to create ImageBitmap:', e)
-  }
-}
-
-/**
- * Get cached layer bitmap, rendering if necessary.
- */
-function getCachedLayerBitmap(layerId: number, shapes: BaseShape[]): ImageBitmap | null {
-  // Ensure cache entry exists
-  let entry = layerCache.get(layerId)
-  if (!entry) {
-    entry = { layerId, bitmap: null, dirty: false, version: cacheVersion }
-    layerCache.set(layerId, entry)
-  }
-
-  // If cache miss or dirty, render and cache
-  if (entry.dirty || entry.version !== cacheVersion) {
-    cacheLayer(layerId, shapes)
-  }
-
-  return entry.bitmap
-}
-
-/**
- * Invalidate all layer caches.
- */
-function invalidateLayerCache() {
-  layerCache.forEach((entry) => {
-    entry.dirty = true
-    entry.bitmap = null
-  })
-  cacheVersion++
-}
-
-/**
- * Clear all layer caches.
- */
-function clearLayerCache() {
-  layerCache.forEach((entry) => {
-    if (entry.bitmap) {
-      entry.bitmap.close()
-      entry.bitmap = null
-    }
-  })
-  layerCache.clear()
-  cacheVersion = 0
-}
-
-// === Canvas Virtualization - Day 4: Memory Optimization & Performance ===
-
-// Memory management settings
-const MAX_CACHED_LAYERS = 20  // Maximum number of layer caches to keep
-const MEMORY_CHECK_INTERVAL = 5000  // Check memory every 5 seconds
-const INVISIBLE_LAYER_DISTANCE = 5000  // Design units - layers beyond this are considered "invisible"
-
-let lastMemoryCheck = 0
-let totalBitmapMemory = 0  // Estimated memory used by bitmaps in bytes
-
-/**
- * Get effective zoom for rendering (considering quality setting).
- */
-function getEffectiveZoom(): number {
-  return isLowQuality ? store.zoom * 0.5 : store.zoom
-}
-
-/**
- * Calculate estimated memory usage of an ImageBitmap.
- */
-function estimateBitmapMemory(bitmap: ImageBitmap): number {
-  // ImageBitmap stores RGBA pixels, 4 bytes per pixel
-  return bitmap.width * bitmap.height * 4
-}
-
-/**
- * Release caches for layers that are far from the current viewport.
- * This helps manage memory when working with large designs.
- */
-function releaseDistantLayerCaches() {
-  const visibleBounds = getVisibleBounds()
-  if (!visibleBounds) return
-
-  // Expand bounds by the invisible distance threshold
-  const expandedBounds = {
-    minX: visibleBounds.minX - INVISIBLE_LAYER_DISTANCE,
-    minY: visibleBounds.minY - INVISIBLE_LAYER_DISTANCE,
-    maxX: visibleBounds.maxX + INVISIBLE_LAYER_DISTANCE,
-    maxY: visibleBounds.maxY + INVISIBLE_LAYER_DISTANCE,
-  }
-
-  let releasedCount = 0
-  let releasedMemory = 0
-
-  layerCache.forEach((entry, layerId) => {
-    if (!entry.bitmap) return
-
-    // Get layer bounds (approximate - layers don't have explicit bounds)
-    // Instead, we'll release caches based on layer ID distance from visible layers
-    // This is a heuristic - in practice, we track which layers have shapes near viewport
-
-    // Check if this layer has shapes in the visible area
-    const shapesInLayer = store.project.shapes.filter(s => s.layerId === layerId)
-    let hasVisibleShapes = false
-
-    for (const shape of shapesInLayer) {
-      const bounds = getShapeBounds(shape)
-      if (boundsIntersect(bounds, expandedBounds)) {
-        hasVisibleShapes = true
-        break
-      }
-    }
-
-    // Release cache if layer has no visible shapes
-    if (!hasVisibleShapes && shapesInLayer.length > 0) {
-      releasedMemory += estimateBitmapMemory(entry.bitmap)
-      entry.bitmap.close()
-      entry.bitmap = null
-      entry.dirty = true  // Mark for re-render if needed later
-      releasedCount++
-    }
-  })
-
-  totalBitmapMemory -= releasedMemory
-
-  if (releasedCount > 0) {
-    console.log(`[Canvas] Released ${releasedCount} distant layer caches (freed ~${(releasedMemory / 1024 / 1024).toFixed(2)}MB)`)
-  }
-}
-
-/**
- * Evict least recently used layer caches when memory limit is approached.
- * Uses a simple LRU strategy - removes oldest entries first.
- */
-function evictLeastUsedCaches(targetCount: number) {
-  if (layerCache.size <= targetCount) return
-
-  const toRemove: number[] = []
-  let removedCount = 0
-  let freedMemory = 0
-
-  // Sort by version (lower version = older/less recently used)
-  const entries = Array.from(layerCache.entries())
-    .filter(([_, entry]) => entry.bitmap !== null)
-    .sort((a, b) => a[1].version - b[1].version)
-
-  // Remove oldest entries until we reach target count
-  const removeCount = entries.length - targetCount
-  for (let i = 0; i < removeCount && i < entries.length; i++) {
-    const [layerId, entry] = entries[i]
-    if (entry.bitmap) {
-      freedMemory += estimateBitmapMemory(entry.bitmap)
-      entry.bitmap.close()
-      entry.bitmap = null
-      entry.dirty = true
-      toRemove.push(layerId)
-      removedCount++
-    }
-  }
-
-  totalBitmapMemory -= freedMemory
-
-  if (removedCount > 0) {
-    console.log(`[Canvas] Evicted ${removedCount} LRU layer caches (freed ~${(freedMemory / 1024 / 1024).toFixed(2)}MB)`)
-  }
-}
-
-/**
- * Periodically check and optimize memory usage.
- * Called during render loop.
- */
-function checkMemoryUsage(timestamp: number) {
-  // Only check periodically, not every frame
-  if (timestamp - lastMemoryCheck < MEMORY_CHECK_INTERVAL) return
-  lastMemoryCheck = timestamp
-
-  // Evict caches if we have too many
-  if (layerCache.size > MAX_CACHED_LAYERS) {
-    evictLeastUsedCaches(MAX_CACHED_LAYERS)
-  }
-
-  // Release distant layer caches
-  releaseDistantLayerCaches()
-
-  // Log memory stats (in development)
-  if (import.meta.env.DEV && totalBitmapMemory > 1024 * 1024) {
-    console.log(`[Canvas] Layer cache memory: ~${(totalBitmapMemory / 1024 / 1024).toFixed(2)}MB across ${layerCache.size} layers`)
-  }
-}
-
-/**
- * Get performance statistics for debugging.
- */
-function getPerformanceStats() {
-  return {
-    totalShapes: store.project.shapes.length,
-    visibleLayers: new Set(store.visibleShapes.map(s => s.layerId)).size,
-    cachedLayers: layerCache.size,
-    estimatedMemoryMB: (totalBitmapMemory / 1024 / 1024).toFixed(2),
-    currentZoom: store.zoom,
-    isLowQuality,
-    isFullDirty,
-    pendingDirtyRects: dirtyRects.length,
-  }
-}
-
-/**
- * Reset all virtualization state (for testing or recovery).
- */
-function resetVirtualizationState() {
-  clearLayerCache()
-  clearDirty()
-  isLowQuality = false
-  totalBitmapMemory = 0
-  lastMemoryCheck = 0
-  offscreenCanvas = null
-  offscreenCtx = null
-  markDirty()
-}
-
-// === Canvas Virtualization - Day 2: Dirty Rectangles & Incremental Rendering ===
-
-/**
- * Dirty rectangle tracking for incremental rendering.
- * Instead of redrawing the entire canvas, we only redraw regions that changed.
- */
-interface DirtyRect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-// Full canvas dirty flag (when everything needs redraw)
-let isFullDirty = true
-
-// Dirty rectangles list (when specific regions changed)
-const dirtyRects: DirtyRect[] = []
-
-// Batched shape render groups (by layer)
-interface RenderBatch {
-  layerId: number
-  shapes: BaseShape[]
-}
-
-/**
- * Mark the entire canvas as dirty (full redraw needed).
- */
-function markDirty() {
-  isFullDirty = true
-  dirtyRects.length = 0
-}
-
-/**
- * Mark a specific region as dirty (incremental redraw).
- * Uses screen coordinates for pixel-accurate dirty tracking.
- */
-function markDirtyRect(screenX: number, screenY: number, width: number, height: number) {
-  // Normalize to positive dimensions
-  const x = width < 0 ? screenX + width : screenX
-  const y = height < 0 ? screenY + height : screenY
-  const w = Math.abs(width)
-  const h = Math.abs(height)
-
-  // Skip tiny updates (less than 1 pixel)
-  if (w < 1 || h < 1) return
-
-  // Expand the rect slightly to account for stroke widths and anti-aliasing
-  const padding = 4
-  dirtyRects.push({
-    x: x - padding,
-    y: y - padding,
-    width: w + padding * 2,
-    height: h + padding * 2,
-  })
-}
-
-/**
- * Mark a shape's bounding box as dirty (in design coordinates, converted to screen).
- */
-function markShapeDirty(shape: BaseShape) {
-  const bounds = getShapeBounds(shape)
-  const topLeft = designToScreen(bounds.minX, bounds.minY)
-  const bottomRight = designToScreen(bounds.maxX, bounds.maxY)
-
-  markDirtyRect(
-    topLeft.x,
-    topLeft.y,
-    bottomRight.x - topLeft.x,
-    bottomRight.y - topLeft.y
-  )
-}
-
-/**
- * Merge overlapping dirty rectangles to reduce redraw area.
- */
-function mergeDirtyRects(): DirtyRect[] {
-  if (dirtyRects.length === 0) return []
-  if (dirtyRects.length === 1) return [...dirtyRects]
-
-  // Sort by y then x for sweep-line merging
-  const sorted = [...dirtyRects].sort((a, b) => a.y - b.y || a.x - b.x)
-  const merged: DirtyRect[] = []
-  let current = { ...sorted[0] }
-
-  for (let i = 1; i < sorted.length; i++) {
-    const rect = sorted[i]
-
-    // Check if current and rect overlap or are adjacent
-    const overlapX = current.x <= rect.x + rect.width && current.x + current.width >= rect.x
-    const overlapY = current.y <= rect.y + rect.height && current.y + current.height >= rect.y
-    const adjacentX = Math.abs((current.x + current.width) - rect.x) <= 2
-    const adjacentY = Math.abs((current.y + current.height) - rect.y) <= 2
-
-    if (overlapX && overlapY) {
-      // Merge by taking bounding box
-      current.x = Math.min(current.x, rect.x)
-      current.y = Math.min(current.y, rect.y)
-      current.width = Math.max(current.x + current.width, rect.x + rect.width) - current.x
-      current.height = Math.max(current.y + current.height, rect.y + rect.height) - current.y
-    } else if (overlapX && adjacentY) {
-      // Same column, adjacent vertically
-      current.y = Math.min(current.y, rect.y)
-      current.height = Math.max(current.y + current.height, rect.y + rect.height) - current.y
-    } else if (overlapY && adjacentX) {
-      // Same row, adjacent horizontally
-      current.x = Math.min(current.x, rect.x)
-      current.width = Math.max(current.x + current.width, rect.x + rect.width) - current.x
-    } else {
-      // Non-overlapping, push current and start new
-      merged.push(current)
-      current = { ...rect }
-    }
-  }
-  merged.push(current)
-
-  return merged
-}
-
-/**
- * Clear the dirty tracking state.
- */
-function clearDirty() {
-  isFullDirty = false
-  dirtyRects.length = 0
-}
-
-/**
- * Batch shapes by layer for efficient rendering.
- * Shapes in the same layer can be rendered together with fewer state changes.
- */
-function batchShapesByLayer(shapes: BaseShape[]): RenderBatch[] {
-  const batches: Map<number, BaseShape[]> = new Map()
-
-  for (const shape of shapes) {
-    const existing = batches.get(shape.layerId)
-    if (existing) {
-      existing.push(shape)
-    } else {
-      batches.set(shape.layerId, [shape])
-    }
-  }
-
-  // Convert to array and sort by layer order
-  const result: RenderBatch[] = []
-  for (const [layerId, layerShapes] of batches) {
-    result.push({ layerId, shapes: layerShapes })
-  }
-
-  // Sort batches by layer order (ascending)
-  result.sort((a, b) => {
-    const layerA = store.getLayer(a.layerId)
-    const layerB = store.getLayer(b.layerId)
-    // Use gdsLayer if available (from layer definition), fallback to layerId
-    const orderA = layerA?.gdsLayer ?? a.layerId
-    const orderB = layerB?.gdsLayer ?? b.layerId
-    return orderA - orderB
-  })
-
-  return result
-}
 
 /**
  * Render a batch of shapes in a single layer.
@@ -653,6 +219,7 @@ const marqueeEnd = ref<Point | null>(null)
 // Array copy dialog
 const showArrayCopyDialog = ref(false)
 const showShortcutsDialog = ref(false)
+const showAlignDialog = ref(false)
 
 // Space key - temporary select tool (hold Space to switch)
 const spacePressed = ref(false)
@@ -712,43 +279,6 @@ function getCanvasDescription() {
   const shapeCount = store.project.shapes.length
   const layerCount = store.project.layers.filter(l => l.visible).length
   return `画布包含 ${shapeCount} 个图形，${layerCount} 个可见图层。使用工具栏选择绘图工具开始创建图形。`
-}
-
-// Generate ID
-function genId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-// Coordinate conversion
-function screenToDesign(screenX: number, screenY: number): Point {
-  return {
-    x: (screenX - store.panOffset.x) / store.zoom,
-    y: (screenY - store.panOffset.y) / store.zoom,
-  }
-}
-
-function designToScreen(designX: number, designY: number): Point {
-  return {
-    x: designX * store.zoom + store.panOffset.x,
-    y: designY * store.zoom + store.panOffset.y,
-  }
-}
-
-function snapToGrid(value: number): number {
-  if (!store.snapToGrid) return value
-  return Math.round(value / store.gridSize) * store.gridSize
-}
-
-function getSnappedPoint(screenX: number, screenY: number): Point {
-  const design = screenToDesign(screenX, screenY)
-  return { x: snapToGrid(design.x), y: snapToGrid(design.y) }
 }
 
 /**
@@ -885,13 +415,6 @@ function pointToSegmentDistanceScreen(
 
 // === Canvas Virtualization - Day 1 ===
 
-interface Bounds {
-  minX: number
-  minY: number
-  maxX: number
-  maxY: number
-}
-
 /**
  * Calculate the visible bounds in design coordinates.
  * This determines which shapes are potentially visible in the current viewport.
@@ -908,105 +431,6 @@ function getVisibleBounds(): Bounds | null {
     minY: topLeft.y,
     maxX: bottomRight.x,
     maxY: bottomRight.y,
-  }
-}
-
-/**
- * Get the bounding box of a shape in design coordinates.
- */
-function getShapeBounds(shape: BaseShape): Bounds {
-  if (shape.type === 'rectangle' || shape.type === 'waveguide') {
-    return {
-      minX: shape.x,
-      minY: shape.y,
-      maxX: shape.x + (shape.width || 0),
-      maxY: shape.y + (shape.height || 0),
-    }
-  }
-  
-  if (shape.type === 'polygon' && shape.points && shape.points.length > 0) {
-    const xs = shape.points.map((p: Point) => p.x)
-    const ys = shape.points.map((p: Point) => p.y)
-    return {
-      minX: Math.min(...xs),
-      minY: Math.min(...ys),
-      maxX: Math.max(...xs),
-      maxY: Math.max(...ys),
-    }
-  }
-  
-  if (shape.type === 'polyline' && shape.points && shape.points.length > 0) {
-    const xs = shape.points.map((p: Point) => p.x)
-    const ys = shape.points.map((p: Point) => p.y)
-    return {
-      minX: Math.min(...xs),
-      minY: Math.min(...ys),
-      maxX: Math.max(...xs),
-      maxY: Math.max(...ys),
-    }
-  }
-  
-  if (shape.type === 'label' && shape.text) {
-    const w = shape.text.length * 8
-    const h = 14
-    return {
-      minX: shape.x,
-      minY: shape.y,
-      maxX: shape.x + w,
-      maxY: shape.y + h,
-    }
-  }
-  
-  if (shape.type === 'circle' || shape.type === 'arc') {
-    const r = (shape as any).radius || 0
-    return {
-      minX: shape.x - r,
-      minY: shape.y - r,
-      maxX: shape.x + r,
-      maxY: shape.y + r,
-    }
-  }
-  
-  if (shape.type === 'ellipse') {
-    return {
-      minX: shape.x - ((shape as any).radiusX || 0),
-      minY: shape.y - ((shape as any).radiusY || 0),
-      maxX: shape.x + ((shape as any).radiusX || 0),
-      maxY: shape.y + ((shape as any).radiusY || 0),
-    }
-  }
-  
-  if (shape.type === 'path' && shape.points && shape.points.length > 0) {
-    const halfWidth = ((shape as any).width || 1) / 2
-    const xs = shape.points.map((p: Point) => p.x)
-    const ys = shape.points.map((p: Point) => p.y)
-    return {
-      minX: Math.min(...xs) - halfWidth,
-      minY: Math.min(...ys) - halfWidth,
-      maxX: Math.max(...xs) + halfWidth,
-      maxY: Math.max(...ys) + halfWidth,
-    }
-  }
-  
-  if (shape.type === 'edge') {
-    const x1 = (shape as any).x1 ?? shape.x
-    const y1 = (shape as any).y1 ?? shape.y
-    const x2 = (shape as any).x2 ?? shape.x
-    const y2 = (shape as any).y2 ?? shape.y
-    return {
-      minX: Math.min(x1, x2),
-      minY: Math.min(y1, y2),
-      maxX: Math.max(x1, x2),
-      maxY: Math.max(y1, y2),
-    }
-  }
-  
-  // Fallback: single point
-  return {
-    minX: shape.x,
-    minY: shape.y,
-    maxX: shape.x,
-    maxY: shape.y,
   }
 }
 
@@ -1085,13 +509,6 @@ function drawGrid() {
   const gridSize = store.gridSize * store.zoom
 
   if (gridSize < 5) return
-
-  // Cache grid rendering
-  if (offscreenCtx && offscreenCanvas) {
-    const cacheKey = `grid_${store.panOffset.x}_${store.panOffset.y}_${gridSize}`
-    // Note: Grid is dynamic, so we don't cache it permanently
-    // We'll just draw it directly for now
-  }
 
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'
   ctx.lineWidth = 0.5
@@ -1205,11 +622,11 @@ function drawShapes() {
   const visibleShapes = clipShapesToViewport(store.visibleShapes)
 
   // Batch shapes by layer for cache optimization
-  const batches = batchShapesByLayer(visibleShapes)
+  const batches = virtualization.batchShapesByLayer(visibleShapes)
 
   // Render cached layers first (fast blit)
   for (const batch of batches) {
-    const bitmap = getCachedLayerBitmap(batch.layerId, batch.shapes)
+    const bitmap = virtualization.getCachedLayerBitmap(batch.layerId, batch.shapes)
     if (bitmap) {
       // Draw cached bitmap at current zoom level
       const screenX = batch.shapes[0].x * store.zoom + store.panOffset.x
@@ -1220,7 +637,7 @@ function drawShapes() {
 
   // Render uncached shapes directly
   for (const batch of batches) {
-    const bitmap = getCachedLayerBitmap(batch.layerId, batch.shapes)
+    const bitmap = virtualization.getCachedLayerBitmap(batch.layerId, batch.shapes)
     if (!bitmap) {
       renderBatch(ctx, batch)
     }
@@ -1524,9 +941,6 @@ function drawScaleBar() {
   ctx.fillText(`${displayLength.toFixed(2)} ${unit}`, x, y + barHeight + 6)
 }
 
-// Dirty flag for rendering (legacy, replaced by isFullDirty + dirtyRects)
-let isDirty = true
-
 // === Incremental Rendering ===
 
 /**
@@ -1535,11 +949,6 @@ let isDirty = true
  * When specific regions are dirty, only redraws those regions.
  */
 function render() {
-  const timestamp = performance.now()
-
-  // Periodic memory optimization check
-  checkMemoryUsage(timestamp)
-
   if (!ctx || !canvasRef.value) {
     animationFrameId = requestAnimationFrame(render)
     return
@@ -1549,19 +958,19 @@ function render() {
 
   // Always draw dynamic elements (crosshair) on top, but shapes are cached
   // For full dirty: redraw entire canvas
-  if (isFullDirty) {
+  if (virtualization.isFullDirty()) {
     // Full canvas clear
     clearCanvas(ctx, width, height)
 
     // Draw static elements (grid + shapes)
-    drawGrid()
+    renderer.drawGrid(ctx!)
     drawShapes()
 
     // Clear full dirty flag
-    clearDirty()
-  } else if (dirtyRects.length > 0) {
+    virtualization.clearDirty()
+  } else if (virtualization.getDirtyRects().length > 0) {
     // Incremental: only redraw dirty regions
-    const mergedRects = mergeDirtyRects()
+    const mergedRects = virtualization.mergeDirtyRects()
 
     for (const rect of mergedRects) {
       // Clip to canvas bounds
@@ -1580,7 +989,7 @@ function render() {
 
       // Redraw grid in this region (may need full grid redraw for pan)
       clearRegion(ctx, { x: clippedX, y: clippedY, width: clippedW, height: clippedH })
-      drawGrid()
+      renderer.drawGrid(ctx)
 
       // Find shapes that intersect with this dirty region and redraw
       const dirtyBounds: Bounds = {
@@ -1597,7 +1006,7 @@ function render() {
       })
 
       if (affectedShapes.length > 0) {
-        const batches = batchShapesByLayer(affectedShapes)
+        const batches = virtualization.batchShapesByLayer(affectedShapes)
         for (const batch of batches) {
           renderBatch(ctx, batch)
         }
@@ -1605,9 +1014,6 @@ function render() {
 
       ctx.restore()
     }
-
-    // Clear dirty rectangles after processing
-    dirtyRects.length = 0
   }
 
   // Always redraw dynamic UI elements (these change frequently)
@@ -1635,8 +1041,8 @@ async function initCanvas() {
   ctx = canvasRef.value.getContext('2d')
   if (ctx) {
     // Initialize offscreen canvas for layer caching
-    updateZoomQuality()
-    initOffscreenCanvas(rect.width, rect.height)
+    virtualization.updateZoomQuality()
+    virtualization.initOffscreenCanvas(rect.width, rect.height)
     render()
   }
 
@@ -1708,7 +1114,7 @@ function handleMouseDown(e: MouseEvent) {
       marqueeStart.value = pt
       marqueeEnd.value = pt
     }
-    markDirty()
+    virtualization.markDirty()
   }
   // Rectangle tool
   else if (tool === 'rectangle') {
@@ -1718,7 +1124,7 @@ function handleMouseDown(e: MouseEvent) {
     tempWidth.value = 0
     tempHeight.value = 0
     announceCanvasChange('开始绘制矩形，拖动定义尺寸')
-    markDirty()
+    virtualization.markDirty()
   }
   // Polygon tool - add vertex on click
   else if (tool === 'polygon') {
@@ -1738,7 +1144,7 @@ function handleMouseDown(e: MouseEvent) {
       confirmedPoints.value.push(pt)
       announceCanvasChange(`添加顶点 (${pt.x}, ${pt.y})，共 ${confirmedPoints.value.length} 个顶点`)
     }
-    markDirty()
+    virtualization.markDirty()
   }
   // Polyline tool - add vertex on click
   else if (tool === 'polyline') {
@@ -1750,7 +1156,7 @@ function handleMouseDown(e: MouseEvent) {
       confirmedPoints.value.push(pt)
       announceCanvasChange(`添加顶点 (${pt.x}, ${pt.y})，共 ${confirmedPoints.value.length} 个顶点`)
     }
-    markDirty()
+    virtualization.markDirty()
   }
   // Waveguide tool
   else if (tool === 'waveguide') {
@@ -1760,7 +1166,7 @@ function handleMouseDown(e: MouseEvent) {
     tempWidth.value = 0.5  // Default waveguide width
     tempHeight.value = 10
     announceCanvasChange('开始绘制波导')
-    markDirty()
+    virtualization.markDirty()
   }
   // Path tool - add vertex on click, double-click to finish
   else if (tool === 'path') {
@@ -1780,7 +1186,7 @@ function handleMouseDown(e: MouseEvent) {
       confirmedPoints.value.push(pt)
       announceCanvasChange(`添加顶点 (${pt.x}, ${pt.y})，共 ${confirmedPoints.value.length} 个顶点`)
     }
-    markDirty()
+    virtualization.markDirty()
   }
   // Edge tool - click and drag to define start and end
   else if (tool === 'edge') {
@@ -1791,7 +1197,7 @@ function handleMouseDown(e: MouseEvent) {
       tempWidth.value = 0  // Will store end point x offset
       tempHeight.value = 0  // Will store end point y offset
       announceCanvasChange('开始绘制 Edge，从起点拖动到终点')
-      markDirty()
+      virtualization.markDirty()
     }
   }
   // Label tool
@@ -1809,7 +1215,7 @@ function handleMouseDown(e: MouseEvent) {
       })
       announceCanvasChange(`创建标签: ${text.trim()}`)
       store.setTool('select')
-      markDirty()
+      virtualization.markDirty()
     }
   }
 }
@@ -1829,7 +1235,7 @@ function handleMouseMove(e: MouseEvent) {
     // Update preview point for polygon/polyline/path
     if (store.selectedTool === 'polygon' || store.selectedTool === 'polyline' || store.selectedTool === 'path') {
       previewPoint.value = pt
-      markDirty()
+      virtualization.markDirty()
       return
     }
 
@@ -1893,7 +1299,7 @@ function handleMouseMove(e: MouseEvent) {
       const newPoints = [...shape.points]
       newPoints[handle.pointIndex] = { x: pt.x, y: pt.y }
       store.updateShape(handle.shapeId, { points: newPoints }, true)
-      markDirty()
+      virtualization.markDirty()
       return
     }
 
@@ -1902,7 +1308,7 @@ function handleMouseMove(e: MouseEvent) {
       const newPoints = [...shape.points]
       newPoints[handle.pointIndex] = { x: pt.x, y: pt.y }
       store.updateShape(handle.shapeId, { points: newPoints }, true)
-      markDirty()
+      virtualization.markDirty()
       return
     }
 
@@ -1917,7 +1323,7 @@ function handleMouseMove(e: MouseEvent) {
         updates.y2 = pt.y
       }
       store.updateShape(handle.shapeId, updates, true)
-      markDirty()
+      virtualization.markDirty()
       return
     }
   }
@@ -1926,14 +1332,14 @@ function handleMouseMove(e: MouseEvent) {
   if (tool === 'rectangle' && isDrawing.value && drawingStart.value) {
     tempWidth.value = pt.x - drawingStart.value.x
     tempHeight.value = pt.y - drawingStart.value.y
-    markDirty()
+    virtualization.markDirty()
     return
   }
   
   // Waveguide drag
   if (tool === 'waveguide' && isDrawing.value && drawingStart.value) {
     tempHeight.value = Math.max(1, pt.y - drawingStart.value.y)
-    markDirty()
+    virtualization.markDirty()
     return
   }
   
@@ -1941,14 +1347,14 @@ function handleMouseMove(e: MouseEvent) {
   if (tool === 'edge' && isDrawing.value && drawingStart.value) {
     tempWidth.value = pt.x - drawingStart.value.x
     tempHeight.value = pt.y - drawingStart.value.y
-    markDirty()
+    virtualization.markDirty()
     return
   }
   
   // Marquee selection
   if (tool === 'select' && marqueeStart.value) {
     marqueeEnd.value = pt
-    markDirty()
+    virtualization.markDirty()
     return
   }
   
@@ -1965,7 +1371,7 @@ function handleMouseMove(e: MouseEvent) {
         })
       }
     }
-    markDirty()
+    virtualization.markDirty()
     dragStartScreen = { x: e.clientX, y: e.clientY }
   }
 }
@@ -2003,7 +1409,7 @@ function handleMouseUp(e: MouseEvent) {
     
     isDrawing.value = false
     drawingStart.value = null
-    markDirty()
+    virtualization.markDirty()
   }
   
   // Finish waveguide
@@ -2025,7 +1431,7 @@ function handleMouseUp(e: MouseEvent) {
     
     isDrawing.value = false
     drawingStart.value = null
-    markDirty()
+    virtualization.markDirty()
   }
   
   // Finish edge - click and drag to define start/end
@@ -2058,7 +1464,7 @@ function handleMouseUp(e: MouseEvent) {
     drawingStart.value = null
     tempWidth.value = 0
     tempHeight.value = 0
-    markDirty()
+    virtualization.markDirty()
   }
   
   // Finish marquee selection
@@ -2071,7 +1477,7 @@ function handleMouseUp(e: MouseEvent) {
     )
     marqueeStart.value = null
     marqueeEnd.value = null
-    markDirty()
+    virtualization.markDirty()
   }
   
   if (wasDragging) {
@@ -2114,7 +1520,7 @@ function handleDoubleClick(e: MouseEvent) {
         })
         store.updateShape(segmentHit.shapeId, { points: newPoints }, true)
         announceCanvasChange(`Path 添加顶点 (${segmentHit.insertX.toFixed(1)}, ${segmentHit.insertY.toFixed(1)})`)
-        markDirty()
+        virtualization.markDirty()
         return
       }
       if (shape && shape.type === 'polyline' && shape.points) {
@@ -2126,7 +1532,7 @@ function handleDoubleClick(e: MouseEvent) {
         })
         store.updateShape(segmentHit.shapeId, { points: newPoints }, true)
         announceCanvasChange(`多段线添加顶点 (${segmentHit.insertX.toFixed(1)}, ${segmentHit.insertY.toFixed(1)})`)
-        markDirty()
+        virtualization.markDirty()
         return
       }
     }
@@ -2260,7 +1666,7 @@ function cancelDrawing() {
   tempHeight.value = 0
   marqueeStart.value = null
   marqueeEnd.value = null
-  markDirty()
+  virtualization.markDirty()
 }
 
 function handleWheel(e: WheelEvent) {
@@ -2268,8 +1674,8 @@ function handleWheel(e: WheelEvent) {
   const delta = e.deltaY > 0 ? 0.9 : 1.1
   store.setZoom(store.zoom * delta)
   // Update zoom quality based on new zoom level
-  updateZoomQuality()
-  markDirty()
+  virtualization.updateZoomQuality()
+  virtualization.markDirty()
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -2286,62 +1692,62 @@ function handleKeyDown(e: KeyboardEvent) {
         cursorStyle.value = store.selectedShapeIds.length > 0 ? 'default' : 'default'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 选择')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'e':
         store.setTool('rectangle')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 矩形')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'p':
         store.setTool('polygon')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 多边形')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'l':
         store.setTool('polyline')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 多段线')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'w':
         store.setTool('waveguide')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 波导')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'i':
         store.setTool('path')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: Path')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'j':
         store.setTool('edge')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: Edge')
-        markDirty()
+        virtualization.markDirty()
         return
       case 't':
         store.setTool('label')
         cursorStyle.value = 'crosshair'
         updateCanvasCursor()
         announceCanvasChange('选择工具: 标签')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'm':
         // Move selected shapes by 1 grid unit in direction of last pan, or right
         if (store.selectedShapeIds.length > 0) {
           store.moveSelectedShapes(store.gridSize, 0)
-          markDirty()
+          virtualization.markDirty()
           announceCanvasChange('移动选中图形')
         }
         return
@@ -2355,7 +1761,7 @@ function handleKeyDown(e: KeyboardEvent) {
             store.rotateSelectedShapes90CW()
             announceCanvasChange('顺时针旋转 90°')
           }
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'f':
@@ -2368,7 +1774,7 @@ function handleKeyDown(e: KeyboardEvent) {
             store.mirrorSelectedShapesH()
             announceCanvasChange('水平镜像')
           }
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 's':
@@ -2377,7 +1783,7 @@ function handleKeyDown(e: KeyboardEvent) {
           const factor = e.shiftKey ? 0.9 : 1.1
           store.scaleSelectedShapes(factor, factor)
           announceCanvasChange(e.shiftKey ? '缩小选中图形' : '放大选中图形')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'o':
@@ -2386,14 +1792,14 @@ function handleKeyDown(e: KeyboardEvent) {
           const offsetAmount = e.shiftKey ? -0.5 : 0.5
           store.offsetSelectedShapes(offsetAmount)
           announceCanvasChange(e.shiftKey ? '缩小选中图形边缘' : '放大选中图形边缘')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'g':
         // G: Toggle grid snap
         store.snapToGrid = !store.snapToGrid
         announceCanvasChange(store.snapToGrid ? '网格吸附已开启' : '网格吸附已关闭')
-        markDirty()
+        virtualization.markDirty()
         return
       case 'k':
         // K: Array copy (M×N copies)
@@ -2407,7 +1813,7 @@ function handleKeyDown(e: KeyboardEvent) {
           spacePressed.value = true
           previousToolForSpace.value = store.selectedTool
           store.setTool('select')
-          markDirty()
+          virtualization.markDirty()
         }
         return
     }
@@ -2437,7 +1843,7 @@ function handleKeyDown(e: KeyboardEvent) {
       return
     }
     store.clearSelection()
-    markDirty()
+    virtualization.markDirty()
     return
   }
 
@@ -2446,7 +1852,7 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     if (store.canUndo) {
       store.undo()
-      markDirty()
+      virtualization.markDirty()
     }
     return
   }
@@ -2454,7 +1860,7 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     if (store.canRedo) {
       store.redo()
-      markDirty()
+      virtualization.markDirty()
     }
     return
   }
@@ -2465,7 +1871,7 @@ function handleKeyDown(e: KeyboardEvent) {
     if (store.selectedShapeIds.length > 0) {
       store.pushHistory()
       store.duplicateSelectedShapes()
-      markDirty()
+      virtualization.markDirty()
     }
     return
   }
@@ -2486,7 +1892,7 @@ function handleKeyDown(e: KeyboardEvent) {
     if (store.clipboard.length > 0) {
       store.pasteShapes()
       announceCanvasChange(`已粘贴 ${store.clipboard.length} 个图形`)
-      markDirty()
+      virtualization.markDirty()
     }
     return
   }
@@ -2496,7 +1902,7 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     store.selectAllShapes()
     announceCanvasChange(`已选择 ${store.selectedShapeIds.length} 个图形`)
-    markDirty()
+    virtualization.markDirty()
     return
   }
 
@@ -2508,7 +1914,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('left')
           announceCanvasChange('左对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'h': // Ctrl+Shift+H: Align Center Horizontal
@@ -2516,7 +1922,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('centerX')
           announceCanvasChange('水平居中对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'r': // Ctrl+Shift+R: Align Right
@@ -2524,7 +1930,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('right')
           announceCanvasChange('右对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 't': // Ctrl+Shift+T: Align Top
@@ -2532,7 +1938,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('top')
           announceCanvasChange('顶对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'm': // Ctrl+Shift+M: Align Center Vertical (Middle)
@@ -2540,7 +1946,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('centerY')
           announceCanvasChange('垂直居中对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'b': // Ctrl+Shift+B: Align Bottom
@@ -2548,7 +1954,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 2) {
           store.alignSelectedShapes('bottom')
           announceCanvasChange('底对齐')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'd': // Ctrl+Shift+D: Distribute Horizontally
@@ -2556,7 +1962,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 3) {
           store.distributeSelectedShapes('horizontal')
           announceCanvasChange('水平等距分布')
-          markDirty()
+          virtualization.markDirty()
         }
         return
       case 'v': // Ctrl+Shift+V: Distribute Vertically
@@ -2564,7 +1970,7 @@ function handleKeyDown(e: KeyboardEvent) {
         if (store.selectedShapeIds.length >= 3) {
           store.distributeSelectedShapes('vertical')
           announceCanvasChange('垂直等距分布')
-          markDirty()
+          virtualization.markDirty()
         }
         return
     }
@@ -2576,7 +1982,7 @@ function handleKeyDown(e: KeyboardEvent) {
       e.preventDefault()
       store.pushHistory()
       store.deleteSelectedShapes()
-      markDirty()
+      virtualization.markDirty()
     }
     return
   }
@@ -2599,19 +2005,19 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'ArrowUp') {
     e.preventDefault()
     store.setPan(store.panOffset.x, store.panOffset.y - 10)
-    markDirty()
+    virtualization.markDirty()
   } else if (e.key === 'ArrowDown') {
     e.preventDefault()
     store.setPan(store.panOffset.x, store.panOffset.y + 10)
-    markDirty()
+    virtualization.markDirty()
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault()
     store.setPan(store.panOffset.x - 10, store.panOffset.y)
-    markDirty()
+    virtualization.markDirty()
   } else if (e.key === 'ArrowRight') {
     e.preventDefault()
     store.setPan(store.panOffset.x + 10, store.panOffset.y)
-    markDirty()
+    virtualization.markDirty()
   }
 }
 
@@ -2621,14 +2027,70 @@ function handleKeyUp(e: KeyboardEvent) {
     spacePressed.value = false
     if (previousToolForSpace.value && store.selectedTool === 'select') {
       store.setTool(previousToolForSpace.value)
-      markDirty()
+      virtualization.markDirty()
     }
   }
 }
 
 function handleResize() {
   initCanvas()
-  markDirty()
+  virtualization.markDirty()
+}
+
+// Handle align commands from AlignDialog
+function handleAlignCommand(event: Event) {
+  const customEvent = event as CustomEvent<string>
+  const alignType = customEvent.detail
+  
+  if (store.selectedShapeIds.length < 2) {
+    announceCanvasChange('对齐需要选择 2 个或以上图形')
+    return
+  }
+  
+  store.pushHistory()
+  
+  switch (alignType) {
+    case 'left':
+      store.alignSelectedShapes('left')
+      break
+    case 'centerX':
+      store.alignSelectedShapes('centerX')
+      break
+    case 'right':
+      store.alignSelectedShapes('right')
+      break
+    case 'top':
+      store.alignSelectedShapes('top')
+      break
+    case 'centerY':
+      store.alignSelectedShapes('centerY')
+      break
+    case 'bottom':
+      store.alignSelectedShapes('bottom')
+      break
+    case 'distributeH':
+      store.distributeSelectedShapes('horizontal')
+      break
+    case 'distributeV':
+      store.distributeSelectedShapes('vertical')
+      break
+  }
+  
+  virtualization.markDirty()
+}
+
+// Handle open align dialog command from Toolbar
+function handleOpenAlignDialog() {
+  showAlignDialog.value = true
+}
+
+// Handle open array copy dialog command from Toolbar
+function handleOpenArrayCopyDialog() {
+  if (store.selectedShapeIds.length > 0) {
+    showArrayCopyDialog.value = true
+  } else {
+    announceCanvasChange('请先选择要复制的图形')
+  }
 }
 
 onMounted(() => {
@@ -2636,6 +2098,9 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
+  window.addEventListener('align-shapes', handleAlignCommand)
+  window.addEventListener('open-align-dialog', handleOpenAlignDialog)
+  window.addEventListener('open-array-copy-dialog', handleOpenArrayCopyDialog)
   canvasRef.value?.setAttribute('tabindex', '0')
   canvasRef.value?.focus()
   announceCanvasChange(getCanvasDescription())
@@ -2645,6 +2110,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('keyup', handleKeyUp)
+  window.removeEventListener('align-shapes', handleAlignCommand)
+  window.removeEventListener('open-align-dialog', handleOpenAlignDialog)
+  window.removeEventListener('open-array-copy-dialog', handleOpenArrayCopyDialog)
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId)
   }
@@ -2662,9 +2130,9 @@ function updateCanvasCursor() {
 defineExpose({
   mouseX,
   mouseY,
-  getPerformanceStats,
-  resetVirtualizationState,
-  markDirty,
+  getPerformanceStats: () => virtualization.getPerformanceStats(),
+  resetVirtualizationState: () => virtualization.resetVirtualizationState(),
+  markDirty: () => virtualization.markDirty(),
 })
 </script>
 
@@ -2697,10 +2165,13 @@ defineExpose({
     </div>
     <ArrayCopyDialog
       v-model:show="showArrayCopyDialog"
-      @confirm="(rows, cols) => { store.arrayCopySelectedShapes(rows, cols); markDirty() }"
+      @confirm="(rows, cols) => { store.arrayCopySelectedShapes(rows, cols); virtualization.markDirty() }"
     />
     <ShortcutsDialog
       v-model:show="showShortcutsDialog"
+    />
+    <AlignDialog
+      v-model:show="showAlignDialog"
     />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">

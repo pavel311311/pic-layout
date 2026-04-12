@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import naive from 'naive-ui'
+import { setupNaiveUI } from './plugins/naive'
 import './style.css'
 import App from './App.vue'
 
@@ -8,5 +8,5 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
-app.use(naive)
+setupNaiveUI(app)
 app.mount('#app')

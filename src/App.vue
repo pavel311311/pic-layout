@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { NConfigProvider } from 'naive-ui'
-import Toolbar from './components/toolbar/Toolbar.vue'
-import LayerPanel from './components/layers/LayerPanel.vue'
-import PropertiesPanel from './components/properties/PropertiesPanel.vue'
-import Canvas from './components/canvas/Canvas.vue'
-import StatusBar from './components/StatusBar.vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { NConfigProvider } from './plugins/naive'
 import { useEditorStore } from './stores/editor'
+
+// Lazy-loaded panels to reduce initial bundle size
+// These are conditionally rendered and only loaded when first displayed
+const Toolbar = defineAsyncComponent(() =>
+  import('./components/toolbar/Toolbar.vue')
+)
+const LayerPanel = defineAsyncComponent(() =>
+  import('./components/layers/LayerPanel.vue')
+)
+const PropertiesPanel = defineAsyncComponent(() =>
+  import('./components/properties/PropertiesPanel.vue')
+)
+const Canvas = defineAsyncComponent(() =>
+  import('./components/canvas/Canvas.vue')
+)
+const StatusBar = defineAsyncComponent(() =>
+  import('./components/StatusBar.vue')
+)
 
 const store = useEditorStore()
 const canvasRef = ref<InstanceType<typeof Canvas> | null>(null)
@@ -70,6 +83,8 @@ function updateCursor(e: MouseEvent) {
 
 onMounted(() => {
   window.addEventListener('mousemove', updateCursor)
+  // Apply saved theme on mount
+  store.applyTheme(store.theme)
 })
 
 onUnmounted(() => {
@@ -165,14 +180,14 @@ const themeOverrides = {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #d4d4d4;
+  background: var(--bg-primary);
 }
 
 .toolbar-header {
   flex-shrink: 0;
   height: 56px;
-  background: #e0e0e0;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border-color);
   overflow: hidden;
 }
 
@@ -186,8 +201,8 @@ const themeOverrides = {
 .left-panel {
   width: 200px;
   flex-shrink: 0;
-  background: #f5f5f5;
-  border-right: 1px solid #a0a0a0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-color);
   overflow-y: auto;
 }
 
@@ -203,15 +218,15 @@ const themeOverrides = {
   height: 24px;
   flex-shrink: 0;
   display: flex;
-  background: #e0e0e0;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--bg-ruler);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .corner-spacer {
   width: 24px;
   flex-shrink: 0;
-  background: #d8d8d8;
-  border-right: 1px solid #a0a0a0;
+  background: var(--bg-ruler-corner);
+  border-right: 1px solid var(--border-color);
 }
 
 .ruler-content {
@@ -231,7 +246,7 @@ const themeOverrides = {
 
 .ruler-mark {
   position: absolute;
-  background: #a0a0a0;
+  background: var(--border-color);
 }
 
 .ruler-content.top .ruler-mark {
@@ -257,7 +272,7 @@ const themeOverrides = {
 .mark-label {
   position: absolute;
   font-size: 8px;
-  color: #606060;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -280,14 +295,14 @@ const themeOverrides = {
 .left-ruler {
   width: 24px;
   flex-shrink: 0;
-  background: #d8d8d8;
-  border-right: 1px solid #a0a0a0;
+  background: var(--bg-ruler-corner);
+  border-right: 1px solid var(--border-color);
   overflow: hidden;
 }
 
 .canvas-container {
   flex: 1;
-  background: #ffffff;
+  background: var(--bg-canvas);
   overflow: hidden;
   position: relative;
 }
@@ -295,16 +310,16 @@ const themeOverrides = {
 .right-panel {
   width: 220px;
   flex-shrink: 0;
-  background: #f5f5f5;
-  border-left: 1px solid #a0a0a0;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-color);
   overflow-y: auto;
 }
 
 .status-footer {
   flex-shrink: 0;
   height: 24px;
-  background: #e0e0e0;
-  border-top: 1px solid #a0a0a0;
+  background: var(--bg-header);
+  border-top: 1px solid var(--border-color);
   overflow: hidden;
 }
 </style>

@@ -7,6 +7,14 @@ export interface Point {
   y: number
 }
 
+// Bounding box for shapes
+export interface Bounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
 // Fill pattern types
 export type FillPattern = 'solid' | 'diagonal' | 'horizontal' | 'vertical' | 'cross' | 'dots' | 'diagonal_cross'
 
