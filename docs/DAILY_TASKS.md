@@ -232,3 +232,25 @@
 - Hour 4: Gzip/Brotli 压缩配置
 - Hour 5-6: Canvas.vue composables 拆分
 - Hour 7-8: Store 拆分
+
+## 2026-04-12 10:00
+
+### 当前任务
+- [x] v0.2.5 Bundle优化 - Naive UI 按需引入集中化 (第1小时)
+
+### 完成内容
+- [x] 发现 LayerPanel/AlignDialog/ArrayCopyDialog 直接导入 naive-ui 的问题
+- [x] 统一 naive-ui 导入：所有组件改为从 @/plugins/naive 导入
+- [x] plugins/naive.ts 添加 NInputNumber, NModal 到按需引入列表
+- [x] tsconfig.app.json 添加 @/ 路径别名
+- [x] 修复 ArrayCopyDialog.vue 隐式 any 类型错误
+- [x] 构建测试通过（naive-ui 66.43KB gzipped，分割正常）
+- [x] Git 提交并推送
+
+### 遇到的问题
+- TypeScript 无法解析 @/ 别名
+  - 解决：添加 baseUrl + paths 到 tsconfig.app.json
+
+### 下小时计划
+- [ ] v0.2.5 第2小时: Canvas.vue 继续拆分（目标 < 500行）
+- [ ] v0.2.5 第2小时: editor.ts store 拆分

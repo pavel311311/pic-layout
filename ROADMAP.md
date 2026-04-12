@@ -2,7 +2,7 @@
 
 > 版本: 1.0.0
 > 创建时间: 2026-04-10
-> 最后更新: 2026-04-11
+> 最后更新: 2026-04-12
 > 状态: 规划中
 
 ---
@@ -422,6 +422,27 @@ chore: 构建/工具
 - T3: 变换工具 - 对齐面板 UI 开发
 - T5: Cell 数据结构设计 (v0.2.7 准备)
 - 开始优化任务：v0.2.5 Bundle 体积优化
+
+---
+
+## 开发进度记录
+
+### 2026-04-12
+
+**完成内容**:
+- v0.2.5 Bundle优化 第1小时：Naive UI 按需引入集中化
+  - 发现 LayerPanel/AlignDialog/ArrayCopyDialog 直接导入 naive-ui
+  - 统一通过 plugins/naive.ts 集中管理按需引入
+  - 添加 @/ 路径别名到 tsconfig.app.json
+  - 构建通过，Bundle 分割正常（naive-ui 66.43KB gzipped）
+  - Git 提交并推送
+
+**遇到的问题**:
+- TypeScript 无法解析 @/ 路径别名 → tsconfig.app.json 添加 baseUrl + paths
+
+**次日计划**:
+- v0.2.5 第2小时: Canvas.vue 继续拆分（目标 < 500行）
+- v0.2.5 第2小时: editor.ts Store 拆分（目标 < 300行/模块）
 
 ---
 
