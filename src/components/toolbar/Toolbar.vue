@@ -2,6 +2,28 @@
 import { ref } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { downloadGDS } from '../../services/gdsExporter'
+import {
+  Save,
+  Upload,
+  Undo2,
+  Redo2,
+  AlignHorizontalJustifyCenter,
+  CopySlash,
+  MousePointer2,
+  Square,
+  Pentagon,
+  ArrowRight,
+  Waves,
+  Minus,
+  GripHorizontal,
+  Type,
+  Ruler,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Moon,
+  Sun,
+} from 'lucide-vue-next'
 
 const store = useEditorStore()
 
@@ -18,16 +40,17 @@ async function handleExportGDS() {
   }
 }
 
-const tools = [
-  { id: 'select', name: 'Select', shortcut: 'V', icon: '◇' },
-  { id: 'rectangle', name: 'Rectangle', shortcut: 'R', icon: '▭' },
-  { id: 'polygon', name: 'Polygon', shortcut: 'P', icon: '⬡' },
-  { id: 'polyline', name: 'Polyline', shortcut: 'L', icon: '╱' },
-  { id: 'waveguide', name: 'Waveguide', shortcut: 'W', icon: '∿' },
-  { id: 'path', name: 'Path', shortcut: 'I', icon: '▬' },
-  { id: 'edge', name: 'Edge', shortcut: 'J', icon: '—' },
-  { id: 'label', name: 'Label', shortcut: 'T', icon: 'T' },
-  { id: 'ruler', name: 'Ruler', shortcut: 'M', icon: '📏' },
+// Tool definitions with Lucide icon components
+const toolDefs = [
+  { id: 'select', name: 'Select', shortcut: 'V', IconComponent: MousePointer2 },
+  { id: 'rectangle', name: 'Rectangle', shortcut: 'R', IconComponent: Square },
+  { id: 'polygon', name: 'Polygon', shortcut: 'P', IconComponent: Pentagon },
+  { id: 'polyline', name: 'Polyline', shortcut: 'L', IconComponent: ArrowRight },
+  { id: 'waveguide', name: 'Waveguide', shortcut: 'W', IconComponent: Waves },
+  { id: 'path', name: 'Path', shortcut: 'I', IconComponent: Minus },
+  { id: 'edge', name: 'Edge', shortcut: 'J', IconComponent: GripHorizontal },
+  { id: 'label', name: 'Label', shortcut: 'T', IconComponent: Type },
+  { id: 'ruler', name: 'Ruler', shortcut: 'M', IconComponent: Ruler },
 ]
 
 const isRulerMode = ref(false)
@@ -60,11 +83,11 @@ function openArrayCopyDialog() {
     <!-- File Operations -->
     <div class="tool-group">
       <button class="tool-btn" @click="store.saveProject" title="Save Project">
-        <span class="btn-icon">💾</span>
+        <Save :size="16" class="btn-icon-svg" />
         <span class="btn-label">Save</span>
       </button>
       <button class="tool-btn" @click="handleExportGDS" title="Export GDS (KLayout)">
-        <span class="btn-icon">📤</span>
+        <Upload :size="16" class="btn-icon-svg" />
         <span class="btn-label">GDS</span>
       </button>
     </div>
@@ -79,16 +102,16 @@ function openArrayCopyDialog() {
         :disabled="!store.canUndo"
         title="Undo (Ctrl+Z)"
       >
-        <span class="btn-icon">↶</span>
+        <Undo2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Undo</span>
       </button>
-      <button 
-        class="tool-btn" 
+      <button
+        class="tool-btn"
         @click="store.redo"
         :disabled="!store.canRedo"
         title="Redo (Ctrl+Y)"
       >
-        <span class="btn-icon">↷</span>
+        <Redo2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Redo</span>
       </button>
       <button 
@@ -96,15 +119,15 @@ function openArrayCopyDialog() {
         @click="openAlignDialog"
         title="Align & Distribute (Ctrl+Shift+L)"
       >
-        <span class="btn-icon">≡</span>
+        <AlignHorizontalJustifyCenter :size="16" class="btn-icon-svg" />
         <span class="btn-label">Align</span>
       </button>
-      <button 
-        class="tool-btn" 
+      <button
+        class="tool-btn"
         @click="openArrayCopyDialog"
         title="Array Copy (K)"
       >
-        <span class="btn-icon">⊞</span>
+        <CopySlash :size="16" class="btn-icon-svg" />
         <span class="btn-label">Array</span>
       </button>
     </div>
@@ -113,15 +136,15 @@ function openArrayCopyDialog() {
     
     <!-- Drawing Tools -->
     <div class="tool-group">
-      <button 
-        v-for="tool in tools" 
+      <button
+        v-for="tool in toolDefs"
         :key="tool.id"
         class="tool-btn"
         :class="{ active: store.selectedTool === tool.id }"
         @click="selectTool(tool.id)"
         :title="`${tool.name} (${tool.shortcut})`"
       >
-        <span class="btn-icon">{{ tool.icon }}</span>
+        <component :is="tool.IconComponent" :size="16" class="btn-icon-svg" />
         <span class="btn-label">{{ tool.name }}</span>
       </button>
     </div>
@@ -131,15 +154,15 @@ function openArrayCopyDialog() {
     <!-- View Operations -->
     <div class="tool-group">
       <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In">
-        <span class="btn-icon">🔍+</span>
+        <ZoomIn :size="16" class="btn-icon-svg" />
         <span class="btn-label">In</span>
       </button>
       <button class="tool-btn" @click="store.setZoom(store.zoom * 0.8)" title="Zoom Out">
-        <span class="btn-icon">🔍-</span>
+        <ZoomOut :size="16" class="btn-icon-svg" />
         <span class="btn-label">Out</span>
       </button>
       <button class="tool-btn" @click="store.setZoom(1)" title="Reset Zoom">
-        <span class="btn-icon">⟳</span>
+        <RotateCcw :size="16" class="btn-icon-svg" />
         <span class="btn-label">Fit</span>
       </button>
       <button 
@@ -147,7 +170,11 @@ function openArrayCopyDialog() {
         @click="store.toggleTheme"
         :title="store.theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
       >
-        <span class="btn-icon">{{ store.theme === 'light' ? '🌙' : '☀️' }}</span>
+        <component
+          :is="store.theme === 'light' ? Moon : Sun"
+          :size="16"
+          class="btn-icon-svg"
+        />
         <span class="btn-label">{{ store.theme === 'light' ? 'Dark' : 'Light' }}</span>
       </button>
     </div>
@@ -156,7 +183,7 @@ function openArrayCopyDialog() {
     
     <!-- Measurement Display -->
     <div v-if="isRulerMode && measurementDistance > 0" class="measurement-display">
-      <span class="measure-icon">📏</span>
+      <Ruler :size="14" class="measure-icon-svg" />
       <span class="measure-value">{{ measurementDistance.toFixed(2) }} μm</span>
     </div>
     
@@ -252,10 +279,16 @@ function openArrayCopyDialog() {
   cursor: not-allowed;
 }
 
-.btn-icon {
-  font-size: 16px;
-  line-height: 1;
+.btn-icon-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2px;
+  color: var(--text-primary);
+}
+
+.btn-icon-svg svg {
+  stroke: currentColor;
 }
 
 .btn-label {
@@ -286,8 +319,10 @@ function openArrayCopyDialog() {
   border-radius: 2px;
 }
 
-.measure-icon {
-  font-size: 14px;
+.measure-icon-svg {
+  display: flex;
+  align-items: center;
+  color: var(--accent-blue);
 }
 
 .measure-value {

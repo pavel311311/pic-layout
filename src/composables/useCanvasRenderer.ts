@@ -15,6 +15,7 @@
 import { computed } from 'vue'
 import type { Ref } from 'vue'
 import type { BaseShape, Point, Bounds, ShapeStyle, Layer } from '../types/shapes'
+import type { RenderBatch } from './useCanvasVirtualization'
 
 export interface CanvasRendererOptions {
   /** Canvas element ref */
@@ -298,6 +299,48 @@ export function useCanvasRenderer(options: CanvasRendererOptions) {
   }
 
   /**
+   * Draw a scale bar in the bottom-left corner of the canvas.
+   * Shows real-world length with unit conversion (μm/mm).
+   */
+  function drawScaleBar(ctx: CanvasRenderingContext2D) {
+    const canvas = options.canvasRef.value
+    if (!canvas) return
+
+    const barWidth = 100
+    const barHeight = 6
+    const x = 20
+    const y = canvas.height - 30
+
+    const realLength = barWidth / zoom.value
+    let unit = 'μm'
+    let displayLength = realLength
+
+    if (realLength >= 1000) {
+      displayLength = realLength / 1000
+      unit = 'mm'
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.fillRect(x - 5, y - 15, barWidth + 10, barHeight + 25)
+    ctx.strokeStyle = '#a0a0a0'
+    ctx.lineWidth = 1
+    ctx.strokeRect(x - 5, y - 15, barWidth + 10, barHeight + 25)
+
+    ctx.fillStyle = '#000'
+    ctx.fillRect(x, y, barWidth / 2, barHeight)
+    ctx.fillRect(x + barWidth / 2 + 1, y, barWidth / 2, barHeight)
+
+    ctx.fillRect(x, y + barHeight, 1, 4)
+    ctx.fillRect(x + barWidth / 2, y + barHeight, 1, 4)
+    ctx.fillRect(x + barWidth, y + barHeight, 1, 4)
+
+    ctx.font = '10px Arial'
+    ctx.fillStyle = '#000'
+    ctx.textBaseline = 'top'
+    ctx.fillText(`${displayLength.toFixed(2)} ${unit}`, x, y + barHeight + 6)
+  }
+
+  /**
    * Draw selection highlight and handles for selected shapes
    */
   function drawSelection(
@@ -378,11 +421,79 @@ export function useCanvasRenderer(options: CanvasRendererOptions) {
     }
   }
 
+  /**
+   * Render a batch of shapes for a given layer.
+   * Checks layer visibility before rendering.
+   */
+  function renderBatch(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    batch: RenderBatch
+  ) {
+    if (!options.getLayer(batch.layerId)?.visible) return
+    for (const shape of batch.shapes) {
+      renderShape(ctx, shape)
+    }
+  }
+
+  /**
+   * Render multiple batches.
+   */
+  function renderBatches(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    batches: RenderBatch[]
+  ) {
+    for (const batch of batches) {
+      renderBatch(ctx, batch)
+    }
+  }
+
+  /**
+   * Draw all visible shapes using layer batching and caching.
+   * This replaces the inline drawShapes() function from Canvas.vue.
+   *
+   * @param ctx - Canvas rendering context
+   * @param batches - Shape batches from virtualization.batchShapesByLayer()
+   * @param getCachedBitmap - Function to get cached layer bitmap from virtualization
+   */
+  function drawShapes(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    batches: RenderBatch[],
+    getCachedBitmap: (layerId: number, shapes: BaseShape[]) => ImageBitmap | null
+  ): void {
+    const pan = panOffset.value
+    const zoomValue = zoom.value
+
+    // Render cached layers first (fast ImageBitmap blit)
+    for (const batch of batches) {
+      const bitmap = getCachedBitmap(batch.layerId, batch.shapes)
+      if (bitmap) {
+        const screenX = batch.shapes[0].x * zoomValue + pan.x
+        const screenY = batch.shapes[0].y * zoomValue + pan.y
+        ctx.drawImage(bitmap, screenX, screenY)
+      }
+    }
+
+    // Render uncached shapes directly
+    for (const batch of batches) {
+      const bitmap = getCachedBitmap(batch.layerId, batch.shapes)
+      if (!bitmap) {
+        renderBatch(ctx, batch)
+      }
+    }
+
+    ctx.globalAlpha = 1
+    ctx.setLineDash([])
+  }
+
   return {
     renderShape,
+    renderBatch,
+    renderBatches,
+    drawShapes,
     drawPattern,
     drawGrid,
     drawCrosshair,
     drawSelection,
+    drawScaleBar,
   }
 }

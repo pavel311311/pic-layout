@@ -10,10 +10,17 @@
  * - Selection state
  * - Keyboard modifier state (space for pan)
  * - Marquee selection
+ * - Endpoint drag state (path/edge vertex editing)
  */
 
 import { ref, computed, type Ref } from 'vue'
 import type { Point } from '../types/shapes'
+
+/** Handle for endpoint dragging (path vertex or edge endpoint) */
+export interface EndpointDragHandle {
+  shapeId: string
+  pointIndex: number // For path: vertex index. For edge: 0=start, 1=end
+}
 
 export interface UseCanvasInteractionOptions {
   /** Snap to grid function */
@@ -29,7 +36,7 @@ export interface UseCanvasInteractionReturn {
   mouseDesignX: Ref<number>
   mouseDesignY: Ref<number>
   cursorStyle: Ref<'crosshair' | 'default' | 'move' | 'grab' | 'grabbing'>
-  
+
   // Drawing state
   isDrawing: Ref<boolean>
   drawingStart: Ref<Point | null>
@@ -37,22 +44,26 @@ export interface UseCanvasInteractionReturn {
   previewPoint: Ref<Point | null>
   tempWidth: Ref<number>
   tempHeight: Ref<number>
-  
+
   // Selection state
   selectedIds: Ref<Set<string>>
   isMultiSelect: Ref<boolean>
-  
+
   // Marquee selection
   marqueeStart: Ref<Point | null>
   marqueeEnd: Ref<Point | null>
   isMarqueeSelecting: Ref<boolean>
-  
+
+  // Endpoint drag state (path/edge vertex editing)
+  draggingEndpoint: Ref<EndpointDragHandle | null>
+  endpointHandleRadius: number
+
   // Keyboard modifiers
   spacePressed: Ref<boolean>
   previousToolForSpace: Ref<string>
   shiftPressed: Ref<boolean>
   ctrlPressed: Ref<boolean>
-  
+
   // Actions
   updateMousePosition: (screenX: number, screenY: number, designX: number, designY: number) => void
   startDrawing: (point: Point) => void
@@ -65,20 +76,26 @@ export interface UseCanvasInteractionReturn {
   endMarquee: () => { start: Point; end: Point } | null
   setSpacePressed: (pressed: boolean, previousTool?: string) => void
   setModifiers: (shift: boolean, ctrl: boolean) => void
+
+  // Endpoint drag actions
+  startEndpointDrag: (handle: EndpointDragHandle) => void
+  updateEndpointDrag: (point: Point) => EndpointDragHandle | null
+  endEndpointDrag: () => EndpointDragHandle | null
+  cancelEndpointDrag: () => void
 }
 
 export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}): UseCanvasInteractionReturn {
   // Mouse position in screen coordinates
   const mouseX = ref(0)
   const mouseY = ref(0)
-  
+
   // Mouse position in design coordinates
   const mouseDesignX = ref(0)
   const mouseDesignY = ref(0)
-  
+
   // Cursor style
   const cursorStyle = ref<'crosshair' | 'default' | 'move' | 'grab' | 'grabbing'>('crosshair')
-  
+
   // Drawing state
   const isDrawing = ref(false)
   const drawingStart = ref<Point | null>(null)
@@ -86,29 +103,33 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
   const previewPoint = ref<Point | null>(null)
   const tempWidth = ref(0)
   const tempHeight = ref(0)
-  
+
   // Selection state
   const selectedIds = ref<Set<string>>(new Set())
   const isMultiSelect = ref(false)
-  
+
   // Marquee selection
   const marqueeStart = ref<Point | null>(null)
   const marqueeEnd = ref<Point | null>(null)
   const isMarqueeSelecting = ref(false)
-  
+
+  // Endpoint drag state (path/edge vertex editing)
+  const draggingEndpoint = ref<EndpointDragHandle | null>(null)
+  const endpointHandleRadius = 8
+
   // Keyboard modifiers
   const spacePressed = ref(false)
   const previousToolForSpace = ref('')
   const shiftPressed = ref(false)
   const ctrlPressed = ref(false)
-  
+
   // Actions
   function updateMousePosition(screenX: number, screenY: number, designX: number, designY: number) {
     mouseX.value = screenX
     mouseY.value = screenY
     mouseDesignX.value = designX
     mouseDesignY.value = designY
-    
+
     // Update preview point if snapping
     if (options.getSnappedPoint) {
       previewPoint.value = options.getSnappedPoint(designX, designY)
@@ -118,7 +139,7 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
       previewPoint.value = { x: designX, y: designY }
     }
   }
-  
+
   function startDrawing(point: Point) {
     isDrawing.value = true
     drawingStart.value = point
@@ -127,26 +148,26 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
     tempWidth.value = 0
     tempHeight.value = 0
   }
-  
+
   function updateDrawing(point: Point) {
     if (!isDrawing.value || !drawingStart.value) return
-    
+
     previewPoint.value = point
     tempWidth.value = Math.abs(point.x - drawingStart.value.x)
     tempHeight.value = Math.abs(point.y - drawingStart.value.y)
   }
-  
+
   function confirmDrawingPoint(point: Point) {
     if (!isDrawing.value) return
-    
+
     // Snap the point if needed
     const snappedPoint = options.getSnappedPoint
       ? options.getSnappedPoint(point.x, point.y)
       : point
-    
+
     confirmedPoints.value.push(snappedPoint)
   }
-  
+
   function cancelDrawing() {
     isDrawing.value = false
     drawingStart.value = null
@@ -155,72 +176,96 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
     tempWidth.value = 0
     tempHeight.value = 0
   }
-  
+
   function finishDrawing(): { start: Point; points: Point[]; width: number; height: number } | null {
     if (!isDrawing.value || !drawingStart.value) return null
-    
+
     const result = {
       start: drawingStart.value,
       points: [...confirmedPoints.value],
       width: tempWidth.value,
       height: tempHeight.value
     }
-    
+
     isDrawing.value = false
     drawingStart.value = null
     confirmedPoints.value = []
     previewPoint.value = null
     tempWidth.value = 0
     tempHeight.value = 0
-    
+
     return result
   }
-  
+
   function startMarquee(point: Point) {
     isMarqueeSelecting.value = true
     marqueeStart.value = point
     marqueeEnd.value = point
   }
-  
+
   function updateMarquee(point: Point) {
     if (!isMarqueeSelecting.value) return
     marqueeEnd.value = point
   }
-  
+
   function endMarquee(): { start: Point; end: Point } | null {
     if (!isMarqueeSelecting.value || !marqueeStart.value || !marqueeEnd.value) {
       isMarqueeSelecting.value = false
       return null
     }
-    
+
     const result = {
       start: marqueeStart.value,
       end: marqueeEnd.value
     }
-    
+
     isMarqueeSelecting.value = false
     marqueeStart.value = null
     marqueeEnd.value = null
-    
+
     return result
   }
-  
+
   function setSpacePressed(pressed: boolean, previousTool = '') {
     spacePressed.value = pressed
     if (pressed && previousTool) {
       previousToolForSpace.value = previousTool
     }
   }
-  
+
   function setModifiers(shift: boolean, ctrl: boolean) {
     shiftPressed.value = shift
     ctrlPressed.value = ctrl
   }
-  
+
+  // --- Endpoint Drag Actions ---
+  // These manage the draggingEndpoint state. The actual shape update
+  // (store.updateShape) is done by the caller (Canvas.vue) to allow
+  // proper history tracking and announcements.
+
+  function startEndpointDrag(handle: EndpointDragHandle) {
+    draggingEndpoint.value = handle
+  }
+
+  function updateEndpointDrag(_point: Point): EndpointDragHandle | null {
+    // Returns current handle; actual point update is done by caller
+    return draggingEndpoint.value
+  }
+
+  function endEndpointDrag(): EndpointDragHandle | null {
+    const handle = draggingEndpoint.value
+    draggingEndpoint.value = null
+    return handle
+  }
+
+  function cancelEndpointDrag() {
+    draggingEndpoint.value = null
+  }
+
   // Computed
   const hasSelection = computed(() => selectedIds.value.size > 0)
   const selectionCount = computed(() => selectedIds.value.size)
-  
+
   return {
     // State
     mouseX,
@@ -239,11 +284,13 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
     marqueeStart,
     marqueeEnd,
     isMarqueeSelecting,
+    draggingEndpoint,
+    endpointHandleRadius,
     spacePressed,
     previousToolForSpace,
     shiftPressed,
     ctrlPressed,
-    
+
     // Actions
     updateMousePosition,
     startDrawing,
@@ -256,5 +303,9 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
     endMarquee,
     setSpacePressed,
     setModifiers,
+    startEndpointDrag,
+    updateEndpointDrag,
+    endEndpointDrag,
+    cancelEndpointDrag,
   }
 }

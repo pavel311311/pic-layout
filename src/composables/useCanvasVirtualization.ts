@@ -50,6 +50,8 @@ export interface UseCanvasVirtualizationOptions {
   getShapeBounds: (shape: BaseShape) => Bounds
   /** Convert design coordinates to screen coordinates */
   designToScreen: (x: number, y: number) => Point
+  /** Convert screen coordinates to design coordinates */
+  screenToDesign: (screenX: number, screenY: number) => Point
   /** Get layer by id */
   getLayer: (layerId: number) => Layer | undefined
   /** Get all shapes in the project (for distance checks) */
@@ -92,6 +94,10 @@ export interface UseCanvasVirtualizationReturn {
   needsLowQuality: () => boolean
   updateZoomQuality: () => void
   getEffectiveZoom: () => number
+
+  // Viewport & clipping
+  clipShapesToViewport: (shapes: BaseShape[], canvasWidth?: number, canvasHeight?: number) => BaseShape[]
+  clipShapesToViewportWithBounds: (shapes: BaseShape[], bounds: Bounds | null) => BaseShape[]
 }
 
 export function useCanvasVirtualization(
@@ -441,6 +447,88 @@ export function useCanvasVirtualization(
     dirtyRects.length = 0
   }
 
+  // === Viewport & Clipping ===
+
+  function getVisibleBounds(): Bounds | null {
+    // This requires canvas dimensions, which this composable doesn't have.
+    // Instead, clipShapesToViewport computes bounds on demand using screenToDesign.
+    // Returns null if zoom is invalid.
+    const zoom = getValue(options.zoom)
+    if (zoom <= 0) return null
+    // Canvas dimensions are not available here — caller must provide canvas size
+    // when calling clipShapesToViewport. This function is a placeholder for docs.
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 0,
+      maxY: 0,
+    }
+  }
+
+  /**
+   * Clip shapes to the visible viewport.
+   * Returns only shapes that intersect with the visible bounds,
+   * sorted by layer order (lower gdsLayer = rendered first).
+   *
+   * Note: Requires canvas dimensions via the canvasRef option.
+   * For shapes-only clipping, use the variant below that takes explicit bounds.
+   */
+  function clipShapesToViewportWithBounds(shapes: BaseShape[], bounds: Bounds | null): BaseShape[] {
+    if (!bounds) return shapes
+
+    // Add a margin for shapes partially visible at edges (10 screen pixels in design units)
+    const zoom = getValue(options.zoom)
+    const margin = 10 / zoom
+    const expandedBounds: Bounds = {
+      minX: bounds.minX - margin,
+      minY: bounds.minY - margin,
+      maxX: bounds.maxX + margin,
+      maxY: bounds.maxY + margin,
+    }
+
+    // Filter shapes that intersect with expanded viewport
+    const visibleShapes = shapes.filter((shape) => {
+      const shapeBounds = options.getShapeBounds(shape)
+      const ax1 = shapeBounds.minX, ay1 = shapeBounds.minY, ax2 = shapeBounds.maxX, ay2 = shapeBounds.maxY
+      const bx1 = expandedBounds.minX, by1 = expandedBounds.minY, bx2 = expandedBounds.maxX, by2 = expandedBounds.maxY
+      return ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1
+    })
+
+    // Sort by layer order (ascending gdsLayer = bottom layer rendered first)
+    visibleShapes.sort((a, b) => {
+      const layerA = options.getLayer(a.layerId)
+      const layerB = options.getLayer(b.layerId)
+      const orderA = layerA?.gdsLayer ?? a.layerId
+      const orderB = layerB?.gdsLayer ?? b.layerId
+      return orderA - orderB
+    })
+
+    return visibleShapes
+  }
+
+  /**
+   * Clip shapes to viewport using canvas dimensions.
+   * Converts screen bounds to design bounds using screenToDesign.
+   */
+  function clipShapesToViewport(shapes: BaseShape[], canvasWidth?: number, canvasHeight?: number): BaseShape[] {
+    if (canvasWidth === undefined || canvasHeight === undefined) {
+      // Fall back to full rendering if no canvas size provided
+      return shapes
+    }
+
+    const topLeft = options.screenToDesign(0, 0)
+    const bottomRight = options.screenToDesign(canvasWidth, canvasHeight)
+
+    const bounds: Bounds = {
+      minX: topLeft.x,
+      minY: topLeft.y,
+      maxX: bottomRight.x,
+      maxY: bottomRight.y,
+    }
+
+    return clipShapesToViewportWithBounds(shapes, bounds)
+  }
+
   // === Batch Rendering ===
 
   function batchShapesByLayer(shapes: BaseShape[]): RenderBatch[] {
@@ -497,6 +585,10 @@ export function useCanvasVirtualization(
 
     // Batch rendering
     batchShapesByLayer,
+
+    // Viewport & clipping
+    clipShapesToViewportWithBounds,
+    clipShapesToViewport,
 
     // Zoom quality
     needsLowQuality,

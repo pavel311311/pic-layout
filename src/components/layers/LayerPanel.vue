@@ -306,25 +306,25 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--bg-panel);
   overflow-y: auto;
 }
 
 .panel-section {
-  border-bottom: 1px solid #c0c0c0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .section-header {
   height: 22px;
-  background: linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%);
-  border-bottom: 1px solid #c0c0c0;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-primary)) 100%);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
   font-size: 10px;
   font-weight: 600;
-  color: #404040;
+  color: var(--text-primary);
 }
 
 /* Navigator */
@@ -334,8 +334,8 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .navigator-view {
   height: 78px;
-  background: #fff;
-  border: 1px solid #c0c0c0;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-light);
   margin: 4px;
 }
 
@@ -359,26 +359,26 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 }
 
 .cell-item:hover {
-  background: #e8e8e8;
+  background: var(--bg-secondary);
 }
 
 .cell-item.selected {
-  background: #d0e8ff;
-  border-color: #a0c8e0;
+  background: color-mix(in srgb, var(--accent-blue) 20%, var(--bg-panel));
+  border-color: var(--accent-blue);
 }
 
 .cell-arrow {
   font-size: 8px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .cell-icon {
   font-size: 10px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .cell-name {
-  color: #000;
+  color: var(--text-primary);
 }
 
 /* Libraries */
@@ -399,16 +399,16 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   align-items: center;
   justify-content: center;
   padding: 4px 2px;
-  background: #f0f0f0;
-  border: 1px solid #d0d0d0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   cursor: pointer;
   font-size: 9px;
 }
 
 .lib-item:hover {
-  background: #e8e8e8;
-  border-color: #a0a0a0;
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 .lib-icon {
@@ -419,7 +419,7 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .lib-name {
   font-size: 8px;
-  color: #606060;
+  color: var(--text-secondary);
   text-align: center;
   line-height: 1;
 }
@@ -440,19 +440,19 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   border: 1px solid transparent;
   border-radius: 2px;
   font-size: 12px;
-  color: #404040;
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .add-btn:hover {
-  background: #d0d0d0;
-  border-color: #a0a0a0;
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 .add-layer-form {
   padding: 8px;
-  background: #fff;
-  border-bottom: 1px solid #c0c0c0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -466,7 +466,7 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .form-row label {
   font-size: 10px;
-  color: #404040;
+  color: var(--text-primary);
   width: 40px;
 }
 
@@ -474,10 +474,10 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   flex: 1;
   height: 20px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 11px;
-  background: #fff;
+  background: var(--bg-panel);
 }
 
 .layer-input.small {
@@ -494,20 +494,20 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .btn-cancel, .btn-add {
   padding: 2px 10px;
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   font-size: 10px;
   cursor: pointer;
 }
 
 .btn-cancel {
-  background: #f0f0f0;
-  color: #404040;
+  background: var(--bg-panel);
+  color: var(--text-primary);
 }
 
 .btn-add {
-  background: #e0e0e0;
-  color: #000;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .layer-list {
@@ -525,8 +525,8 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 }
 
 .layer-item:hover {
-  background: #e8e8e8;
-  border-color: #c0c0c0;
+  background: var(--bg-secondary);
+  border-color: var(--border-light);
 }
 
 .layer-item.hidden {
@@ -542,7 +542,7 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 .layer-color {
   width: 20px;
   height: 14px;
-  border: 1px solid #808080;
+  border: 1px solid var(--border-color);
   border-radius: 1px;
   overflow: hidden;
   position: relative;
@@ -564,28 +564,28 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .layer-name {
   font-size: 11px;
-  color: #000;
+  color: var(--text-primary);
 }
 
 .layer-gds {
   font-size: 9px;
-  color: #808080;
+  color: var(--text-muted);
   font-family: monospace;
 }
 
 .layer-count {
   font-size: 9px;
-  color: #4FC3F7;
+  color: var(--accent-blue);
   font-family: monospace;
 }
 
 .layer-footer {
   margin-top: auto;
   padding: 6px 8px;
-  background: #e8e8e8;
-  border-top: 1px solid #c0c0c0;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-light);
   font-size: 10px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .layer-item {
@@ -616,22 +616,22 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
 
 .lock-btn.locked {
   opacity: 1;
-  color: #c04040;
+  color: var(--accent-red);
 }
 
 .lock-btn:hover {
-  background: #e0e0e0;
-  border-color: #c0c0c0;
+  background: var(--bg-secondary);
+  border-color: var(--border-light);
 }
 
 .rename-btn:hover {
-  background: #e0e0e0;
-  border-color: #c0c0c0;
+  background: var(--bg-secondary);
+  border-color: var(--border-light);
 }
 
 .delete-btn:hover {
-  background: #ffe0e0;
-  border-color: #e08080;
+  background: color-mix(in srgb, var(--accent-red) 20%, var(--bg-panel));
+  border-color: var(--accent-red);
 }
 
 .layer-item.hidden .layer-action-btn {

@@ -857,3 +857,20 @@ export function distributeShapesVertically(shapes: BaseShape[]): BaseShape[] {
     return moveShape(shape, 0, dy)
   })
 }
+
+/**
+ * Check if two bounding boxes intersect.
+ * Uses a small epsilon to avoid floating point issues.
+ */
+export function boundsIntersect(
+  a: { minX: number; minY: number; maxX: number; maxY: number },
+  b: { minX: number; minY: number; maxX: number; maxY: number },
+  epsilon = 0.0001
+): boolean {
+  return !(
+    a.maxX < b.minX + epsilon ||
+    a.minX > b.maxX - epsilon ||
+    a.maxY < b.minY + epsilon ||
+    a.minY > b.maxY - epsilon
+  )
+}

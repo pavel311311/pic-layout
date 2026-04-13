@@ -528,13 +528,13 @@ function savePoints() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--bg-panel);
 }
 
 .panel-header {
   height: 24px;
-  background: linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%);
-  border-bottom: 1px solid #a0a0a0;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-primary)) 100%);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -543,7 +543,7 @@ function savePoints() {
 .panel-title {
   font-size: 11px;
   font-weight: 600;
-  color: #000;
+  color: var(--text-primary);
 }
 
 .empty-state {
@@ -558,13 +558,13 @@ function savePoints() {
 
 .empty-state p {
   font-size: 12px;
-  color: #606060;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .empty-state span {
   font-size: 10px;
-  color: #808080;
+  color: var(--text-muted);
 }
 
 .properties-content {
@@ -573,33 +573,33 @@ function savePoints() {
 }
 
 .prop-section {
-  border-bottom: 1px solid #d0d0d0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .section-header {
   height: 20px;
-  background: #e8e8e8;
-  border-bottom: 1px solid #d0d0d0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
   font-size: 10px;
   font-weight: 600;
-  color: #404040;
+  color: var(--text-primary);
 }
 
 .header-btn {
   padding: 1px 6px;
-  background: #d0d0d0;
-  border: 1px solid #a0a0a0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   font-size: 9px;
   cursor: pointer;
 }
 
 .header-btn:hover {
-  background: #c0c0c0;
+  background: var(--border-light);
 }
 
 .prop-grid {
@@ -615,11 +615,11 @@ function savePoints() {
 }
 
 .prop-label {
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .prop-value {
-  color: #000;
+  color: var(--text-primary);
 }
 
 .prop-value.mono {
@@ -632,7 +632,7 @@ function savePoints() {
 }
 
 .coord-label {
-  color: #606060;
+  color: var(--text-secondary);
   font-size: 10px;
   text-align: right;
 }
@@ -640,16 +640,16 @@ function savePoints() {
 .prop-input {
   height: 20px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 11px;
   font-family: monospace;
-  background: #fff;
+  background: var(--bg-panel);
   width: 100%;
 }
 
 .prop-input:focus {
-  outline: 1px solid #4FC3F7;
+  outline: 1px solid var(--accent-blue);
 }
 
 .quick-size {
@@ -661,16 +661,16 @@ function savePoints() {
 .size-btn {
   flex: 1;
   padding: 3px 6px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 9px;
-  background: #f0f0f0;
-  color: #404040;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .size-btn:hover {
-  background: #e8e8e8;
+  background: var(--bg-secondary);
 }
 
 /* Points Editor */
@@ -682,7 +682,7 @@ function savePoints() {
   width: 100%;
   height: 80px;
   padding: 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-family: monospace;
   font-size: 10px;
@@ -698,18 +698,18 @@ function savePoints() {
 
 .points-btn {
   padding: 3px 10px;
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   font-size: 10px;
   cursor: pointer;
 }
 
 .points-btn.cancel {
-  background: #f0f0f0;
+  background: var(--bg-panel);
 }
 
 .points-btn.save {
-  background: #d0e8ff;
+  background: color-mix(in srgb, var(--accent-blue) 20%, var(--bg-panel));
 }
 
 .points-list {
@@ -722,12 +722,12 @@ function savePoints() {
   font-family: monospace;
   font-size: 10px;
   padding: 2px 0;
-  color: #404040;
+  color: var(--text-primary);
 }
 
 .point-more {
   font-size: 9px;
-  color: #808080;
+  color: var(--text-muted);
   padding: 2px 0;
 }
 
@@ -748,14 +748,14 @@ function savePoints() {
 
 .style-row label {
   width: 50px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .color-input {
   width: 28px;
   height: 20px;
   padding: 0;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -764,7 +764,7 @@ function savePoints() {
   width: 45px;
   height: 18px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 10px;
   font-family: monospace;
@@ -774,10 +774,10 @@ function savePoints() {
   flex: 1;
   height: 20px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 10px;
-  background: #fff;
+  background: var(--bg-panel);
 }
 
 /* Transform */
@@ -797,27 +797,27 @@ function savePoints() {
 
 .transform-row label {
   width: 60px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .transform-input {
   width: 60px;
   height: 18px;
   padding: 0 4px;
-  border: 1px solid #c0c0c0;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   font-size: 10px;
   font-family: monospace;
-  background: #fff;
+  background: var(--bg-panel);
 }
 
 .transform-input:focus {
-  outline: 1px solid #4FC3F7;
+  outline: 1px solid var(--accent-blue);
 }
 
 .unit {
   font-size: 10px;
-  color: #606060;
+  color: var(--text-secondary);
 }
 
 .transform-actions {
@@ -829,16 +829,16 @@ function savePoints() {
 .transform-btn {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   font-size: 10px;
-  background: #f0f0f0;
-  color: #404040;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .transform-btn:hover {
-  background: #e8e8e8;
+  background: var(--bg-secondary);
 }
 
 /* Actions */
@@ -851,24 +851,24 @@ function savePoints() {
 .action-btn {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   font-size: 10px;
-  background: #f0f0f0;
-  color: #404040;
+  background: var(--bg-panel);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .action-btn:hover {
-  background: #e8e8e8;
+  background: var(--bg-secondary);
 }
 
 .action-btn.delete {
-  background: #f8e0e0;
-  color: #c04040;
+  background: color-mix(in srgb, var(--accent-red) 15%, var(--bg-panel));
+  color: var(--accent-red);
 }
 
 .action-btn.delete:hover {
-  background: #f0d0d0;
+  background: color-mix(in srgb, var(--accent-red) 25%, var(--bg-panel));
 }
 </style>
