@@ -445,6 +445,27 @@ chore: 构建/工具
 - v0.2.5 第2小时: Canvas.vue 继续拆分（目标 < 500行）
 - v0.2.5 第2小时: editor.ts Store 拆分（目标 < 300行/模块）
 
+### 2026-04-13
+
+**完成内容**:
+- v0.2.5 Bundle优化 第2小时：Canvas.vue 生命周期提取 + Store 拆分完成
+  - 创建 useCanvasLifecycle composable (81行)，提取 window 事件监听
+  - Canvas.vue 从 526 行精简到 446 行 (< 500 目标)
+  - Store 已拆分：shapes.ts(291行) + layers.ts(80行) + ui.ts(85行) + editor.ts(220行)
+  - 新增 utils: shapeId, shapeProject, shapeBatchOps, pointTesting
+  - 新增 composables: useHistory, useShapeTransforms, useArrayCopy
+  - composables/index.ts 导出新增 composables
+  - canvas chunk: 156KB / 51.84KB gzipped
+  - Git 提交并推送 (33 files, +3938/-2921 lines)
+
+**遇到的问题**:
+- useCanvasLifecycle 必须在 toolHandlers 定义后调用 → 调整代码顺序
+- defineAsyncComponent 移除导致懒加载失效 → 保留 import
+
+**次日计划**:
+- v0.2.5 第3小时: Vite 代码分割配置优化
+- v0.2.5 第3小时: Gzip/Brotli 压缩验证
+
 ---
 
 ## 资源链接

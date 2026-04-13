@@ -254,3 +254,37 @@
 ### 下小时计划
 - [ ] v0.2.5 第2小时: Canvas.vue 继续拆分（目标 < 500行）
 - [ ] v0.2.5 第2小时: editor.ts store 拆分
+
+## 2026-04-13 10:00
+
+### 当前任务
+- [x] v0.2.5 Bundle优化 - Canvas.vue 生命周期提取 + Store 拆分 (第2小时)
+
+### 完成内容
+- [x] 创建 useCanvasLifecycle composable (81行)
+  - 提取所有 window 事件监听器 (resize/keydown/keyup/align-shapes等)
+  - 集成 initCanvas、handleAlignCommand、announceCanvasChange
+- [x] Canvas.vue 从 526 行精简到 446 行 (< 500 目标)
+  - 移除未使用的 updateCanvasCursor() 和 genId
+  - CSS 压缩到单行格式
+- [x] composables/index.ts 导出新增 composables 和类型
+- [x] 构建测试通过 (canvas chunk: 156KB / 51.84KB gzipped)
+- [x] Git 提交并推送 (33 files, +3938/-2921 lines)
+
+### v0.2.5 Store 拆分完成
+- shapes.ts (291行): shapes/selection/clipboard/history CRUD
+- layers.ts (80行): 图层管理
+- ui.ts (85行): UI 状态
+- editor.ts (220行): 聚合层 (backward-compatible API)
+- 新增 utils: shapeId, shapeProject, shapeBatchOps, pointTesting
+- 新增 composables: useHistory, useShapeTransforms, useArrayCopy
+
+### 遇到的问题
+- useCanvasLifecycle 必须在 toolHandlers 定义后调用
+  - 解决：调整代码顺序，确保依赖关系正确
+- 移除 defineAsyncComponent 导入导致懒加载失效
+  - 解决：保留 defineAsyncComponent 包装
+
+### 下小时计划
+- [ ] v0.2.5 第3小时: Vite 代码分割配置优化
+- [ ] v0.2.5 第3小时: Gzip/Brotli 压缩验证
