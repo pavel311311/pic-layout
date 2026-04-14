@@ -178,6 +178,7 @@ const viewShortcuts = [
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  /* Overlay uses fixed opacity since it's a backdrop, not a theme surface */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,9 +186,9 @@ const viewShortcuts = [
 }
 
 .shortcuts-dialog {
-  background: white;
+  background: var(--bg-panel, white);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   max-width: 700px;
   max-height: 80vh;
   overflow: hidden;
@@ -200,14 +201,14 @@ const viewShortcuts = [
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f5f5f5;
+  border-bottom: 1px solid var(--border-light, #e0e0e0);
+  background: var(--bg-secondary, #f5f5f5);
 }
 
 .dialog-header h2 {
   margin: 0;
   font-size: 18px;
-  color: #333;
+  color: var(--text-primary, #333);
 }
 
 .close-btn {
@@ -216,7 +217,7 @@ const viewShortcuts = [
   border: none;
   background: transparent;
   font-size: 24px;
-  color: #666;
+  color: var(--text-secondary, #666);
   cursor: pointer;
   border-radius: 4px;
   display: flex;
@@ -225,8 +226,8 @@ const viewShortcuts = [
 }
 
 .close-btn:hover {
-  background: #e0e0e0;
-  color: #333;
+  background: var(--border-light, #e0e0e0);
+  color: var(--text-primary, #333);
 }
 
 .dialog-content {
@@ -245,7 +246,7 @@ const viewShortcuts = [
 
 .shortcut-section h3 {
   font-size: 14px;
-  color: #1976d2;
+  color: var(--accent-blue, #1976d2);
   margin: 0 0 10px 0;
   font-weight: 600;
 }
@@ -261,33 +262,33 @@ const viewShortcuts = [
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-secondary, #555);
   padding: 4px 0;
 }
 
 kbd {
-  background: #f5f5f5;
-  border: 1px solid #d0d0d0;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-light, #d0d0d0);
   border-radius: 4px;
   padding: 2px 8px;
   font-family: monospace;
   font-size: 12px;
-  color: #333;
+  color: var(--text-primary, #333);
   min-width: 80px;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .dialog-footer {
   padding: 12px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #fafafa;
+  border-top: 1px solid var(--border-light, #e0e0e0);
+  background: var(--bg-secondary, #fafafa);
   text-align: center;
 }
 
 .hint {
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted, #888);
 }
 
 .hint kbd {

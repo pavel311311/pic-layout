@@ -34,6 +34,7 @@ export interface UseCanvasLifecycleOptions {
 export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
   const {
     canvasRef,
+    containerRef,
     toolHandlers,
     initCanvas,
     handleAlignCommand,
@@ -41,6 +42,9 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     announceCanvasChange,
     showAlignDialog,
   } = options
+
+  // ResizeObserver to handle container size changes (e.g., panel resize)
+  let resizeObserver: ResizeObserver | null = null
 
   function handleOpenAlignDialog() {
     showAlignDialog.value = true
@@ -54,6 +58,15 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
   onMounted(() => {
     initCanvas()
     window.addEventListener('resize', toolHandlers.handleResize)
+
+    // Observe container size changes for Navigator + canvas resize updates
+    if (containerRef.value) {
+      resizeObserver = new ResizeObserver(() => {
+        initCanvas()
+      })
+      resizeObserver.observe(containerRef.value)
+    }
+
     window.addEventListener('keydown', toolHandlers.handleKeyDown)
     window.addEventListener('keyup', toolHandlers.handleKeyUp)
     window.addEventListener('align-shapes', handleAlignCommand)
@@ -66,6 +79,7 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
 
   // Unmount: cleanup all listeners
   onUnmounted(() => {
+    resizeObserver?.disconnect()
     window.removeEventListener('resize', toolHandlers.handleResize)
     window.removeEventListener('keydown', toolHandlers.handleKeyDown)
     window.removeEventListener('keyup', toolHandlers.handleKeyUp)

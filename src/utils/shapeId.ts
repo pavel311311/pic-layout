@@ -1,9 +1,10 @@
-// Shape ID generation utility
+// ID generation utility
 
 /**
- * Generate a unique shape ID using crypto.randomUUID or fallback
+ * Generate a unique ID using crypto.randomUUID or fallback.
+ * Used for shapes, projects, cells, etc.
  */
-export function generateShapeId(): string {
+export function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }

@@ -26,15 +26,22 @@ export const useUiStore = defineStore('ui', () => {
   const snapToGrid = ref(true)
   const zoom = ref(1)
   const panOffset = ref({ x: 0, y: 0 })
+  const canvasWidth = ref(800)     // Canvas container width (updated by Canvas.vue)
+  const canvasHeight = ref(600)    // Canvas container height (updated by Canvas.vue)
 
   // === Theme ===
-  const theme = ref<'light' | 'dark'>('light')
+  const theme = ref<'light' | 'dark'>(
+    (typeof localStorage !== 'undefined' && localStorage.getItem('piclayout-theme') as 'light' | 'dark') || 'light'
+  )
 
   function applyTheme(newTheme: 'light' | 'dark') {
     theme.value = newTheme
     const html = document.documentElement
     html.classList.remove('theme-light', 'theme-dark')
     html.classList.add(`theme-${newTheme}`)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('piclayout-theme', newTheme)
+    }
   }
 
   function toggleTheme() {
@@ -63,6 +70,27 @@ export const useUiStore = defineStore('ui', () => {
     panOffset.value = { x, y }
   }
 
+  function setCanvasSize(width: number, height: number) {
+    canvasWidth.value = width
+    canvasHeight.value = height
+  }
+
+  // === Computed: visible bounds in design coordinates ===
+  const visibleBounds = computed(() => {
+    const { x: panX, y: panY } = panOffset.value
+    const z = zoom.value
+    const w = canvasWidth.value
+    const h = canvasHeight.value
+    return {
+      // Top-left corner in design coords
+      minX: -panX / z,
+      minY: -panY / z,
+      // Bottom-right corner in design coords
+      maxX: (w - panX) / z,
+      maxY: (h - panY) / z,
+    }
+  })
+
   return {
     // State
     selectedTool,
@@ -72,7 +100,11 @@ export const useUiStore = defineStore('ui', () => {
     snapToGrid,
     zoom,
     panOffset,
+    canvasWidth,
+    canvasHeight,
     theme,
+    // Computed
+    visibleBounds,
     // Actions
     applyTheme,
     toggleTheme,
@@ -81,5 +113,6 @@ export const useUiStore = defineStore('ui', () => {
     setCurrentStyle,
     setZoom,
     setPan,
+    setCanvasSize,
   }
 })

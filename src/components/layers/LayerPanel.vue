@@ -2,8 +2,27 @@
 import { NButton, NColorPicker, NScrollbar } from '@/plugins/naive'
 import { useEditorStore } from '../../stores/editor'
 import { ref, computed } from 'vue'
+import { useNavigator } from '../../composables/useNavigator'
+
+const NAV_WIDTH = 160
+const NAV_HEIGHT = 78
 
 const store = useEditorStore()
+
+// Navigator composable - provides viewport tracking and drag-to-pan
+const navigator = useNavigator({
+  store: {
+    project: store.project,
+    zoom: store.zoom,
+    panOffset: store.panOffset,
+    canvasWidth: store.canvasWidth,
+    canvasHeight: store.canvasHeight,
+    getLayer: (id: number) => store.getLayer(id),
+    setPan: (x: number, y: number) => store.setPan(x, y),
+  },
+  navWidth: NAV_WIDTH,
+  navHeight: NAV_HEIGHT,
+})
 
 // Count shapes per layer
 const shapesPerLayer = computed(() => {
@@ -73,32 +92,6 @@ function renameLayer(layerId: number, e: Event) {
   }
 }
 
-// 计算所有图形的边界框
-const boundingBox = computed(() => {
-  const shapes = store.project.shapes
-  if (shapes.length === 0) {
-    return { minX: 0, minY: 0, maxX: 100, maxY: 100 }
-  }
-  
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-  
-  for (const shape of shapes) {
-    minX = Math.min(minX, shape.x)
-    minY = Math.min(minY, shape.y)
-    maxX = Math.max(maxX, shape.x + (shape.width || 0))
-    maxY = Math.max(maxY, shape.y + (shape.height || 0))
-  }
-  
-  // 添加边距
-  const padding = 10
-  return {
-    minX: minX - padding,
-    minY: minY - padding,
-    maxX: maxX + padding,
-    maxY: maxY + padding
-  }
-})
-
 // 基本图元库
 const libraries = [
   { name: 'ARC', icon: '⌒', description: '圆弧' },
@@ -127,40 +120,55 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
           <!-- 背景 -->
           <rect width="160" height="120" fill="#fff"/>
           
-          <!-- 绘制所有图形轮廓 -->
-          <template v-for="shape in store.project.shapes" :key="shape.id">
-            <rect
-              v-if="shape.type === 'rectangle'"
-              :x="(shape.x - boundingBox.minX) * 1.5 + 10"
-              :y="(shape.y - boundingBox.minY) * 1.5 + 10"
-              :width="(shape.width || 10) * 1.5"
-              :height="(shape.height || 10) * 1.5"
+          <!-- 绘制所有图形轮廓 (all shape types) -->
+          <template v-for="ns in navigator.navShapes.value" :key="ns.shape.id">
+            <!-- Polygon / Polyline / Path -->
+            <polyline
+              v-if="ns.navPoints && ns.navPoints.length >= 2 && (ns.shape.type === 'polygon' || ns.shape.type === 'polyline' || ns.shape.type === 'path')"
+              :points="ns.navPoints.map(p => `${p.x},${p.y}`).join(' ')"
               fill="none"
-              stroke="#666"
-              stroke-width="0.5"
+              :stroke="ns.stroke"
+              :stroke-width="ns.strokeWidth"
+              stroke-linejoin="round"
             />
+            <!-- Edge (single line) -->
+            <line
+              v-else-if="ns.shape.type === 'edge'"
+              :x1="ns.navX"
+              :y1="ns.navY"
+              :x2="ns.navX + ns.navWidth"
+              :y2="ns.navY + ns.navHeight"
+              :stroke="ns.stroke"
+              :stroke-width="ns.strokeWidth"
+            />
+            <!-- Rectangle / Waveguide / Label / etc -->
             <rect
-              v-else-if="shape.type === 'waveguide'"
-              :x="(shape.x - boundingBox.minX) * 1.5 + 10"
-              :y="(shape.y - boundingBox.minY) * 1.5 + 10"
-              :width="Math.max((shape.width || 0.5) * 1.5, 2)"
-              :height="(shape.height || 10) * 1.5"
+              v-else
+              :x="ns.navX"
+              :y="ns.navY"
+              :width="ns.navWidth"
+              :height="ns.navHeight"
               fill="none"
-              stroke="#666"
-              stroke-width="0.5"
+              :stroke="ns.stroke"
+              :stroke-width="ns.strokeWidth"
             />
           </template>
-          
-          <!-- 当前视口框 -->
+
+          <!-- 当前视口框 (draggable) -->
           <rect
-            x="10"
-            y="10"
-            width="140"
-            height="100"
-            fill="none"
+            :x="navigator.viewportRect.value.x"
+            :y="navigator.viewportRect.value.y"
+            :width="navigator.viewportRect.value.width"
+            :height="navigator.viewportRect.value.height"
+            fill="rgba(79, 195, 247, 0.1)"
             stroke="#4FC3F7"
             stroke-width="1"
             stroke-dasharray="3,2"
+            cursor="move"
+            @mousedown="navigator.onViewportMouseDown"
+            @mousemove="navigator.onViewportMouseMove"
+            @mouseup="navigator.onViewportMouseUp"
+            @mouseleave="navigator.onViewportMouseUp"
           />
         </svg>
       </div>

@@ -37,3 +37,9 @@ export type { MenuItem } from './useContextMenu'
 
 export { useCanvasToolHandlers } from './useCanvasToolHandlers'
 export type { ToolHandlersOptions } from './useCanvasToolHandlers'
+
+export { useNavigator } from './useNavigator'
+export type { NavigatorOptions, NavigatorShape } from './useNavigator'
+
+export { useCanvasTheme } from './useCanvasTheme'
+export type { CanvasThemeColors } from './useCanvasTheme'

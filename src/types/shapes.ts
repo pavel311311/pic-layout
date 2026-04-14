@@ -150,6 +150,9 @@ export interface Project {
   modifiedAt: string
   layers: Layer[]
   shapes: BaseShape[]
+  cells: import('./cell').Cell[]
+  /** ID of the top cell (entry point for GDS export). Undefined = flat layout (v0.2 and earlier) */
+  topCellId?: string
 }
 
 // Drawing tool types

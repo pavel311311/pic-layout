@@ -12,7 +12,7 @@ import { arrayCopyShapes } from '../composables/useArrayCopy'
 import { useHistory } from '../composables/useHistory'
 import { shapeTransforms } from '../utils/shapeBatchOps'
 import { useShapeTransforms } from '../composables/useShapeTransforms'
-import { generateShapeId } from '../utils/shapeId'
+import { generateId } from '../utils/shapeId'
 import { saveShapesToFile } from '../utils/shapeProject'
 
 export const useShapesStore = defineStore('shapes', () => {
@@ -130,7 +130,7 @@ export const useShapesStore = defineStore('shapes', () => {
     for (const shape of clipboard.value) {
       const newShape: BaseShape = {
         ...JSON.parse(JSON.stringify(shape)),
-        id: generateShapeId(),
+        id: generateId(),
         x: shape.x + 10,
         y: shape.y + 10,
       }
@@ -153,7 +153,7 @@ export const useShapesStore = defineStore('shapes', () => {
       if (shape) {
         const newShape: BaseShape = {
           ...JSON.parse(JSON.stringify(shape)),
-          id: generateShapeId(),
+          id: generateId(),
           x: shape.x + 10,
           y: shape.y + 10,
         }
@@ -286,6 +286,6 @@ export const useShapesStore = defineStore('shapes', () => {
     saveProject,
     loadProject,
     // Exported for use by editor store
-    generateId: generateShapeId,
+    generateId,
   }
 })

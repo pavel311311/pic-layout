@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0d0d0d" />
     <title>PicLayout - 硅光芯片版图编辑器</title>
+    <!--
+      Vite Modulepreload Strategy:
+      - Critical chunks (canvas, naive-ui) are preloaded as modules
+      - This allows browser to fetch them earlier while parsing HTML
+      - Dialog/Panel chunks are lazy-loaded on demand (no preload needed)
+    -->
+    <link rel="modulepreload" href="/src/main.ts" />
   </head>
   <body>
     <div id="app"></div>

@@ -13,6 +13,7 @@ import { useCanvasToolHandlers } from '../../composables/useCanvasToolHandlers'
 import { useCanvasStyle } from '../../composables/useCanvasStyle'
 import { useContextMenu } from '../../composables/useContextMenu'
 import { useCanvasLifecycle } from '../../composables/useCanvasLifecycle'
+import { useCanvasTheme } from '../../composables/useCanvasTheme'
 import type { BaseShape, Bounds } from '../../types/shapes'
 import { getShapeBounds, boundsIntersect } from '../../utils/transforms'
 import ContextMenu from '../contextmenu/ContextMenu.vue'
@@ -99,6 +100,9 @@ const showAlignDialog = ref(false)
 
 // === Context Menu composable ===
 const ctxMenu = useContextMenu(store)
+
+// === Theme-aware canvas rendering ===
+const canvasTheme = useCanvasTheme()
 
 // === Context menu handlers wired to local dialog state ===
 function onContextMenu(e: MouseEvent) {
@@ -218,13 +222,11 @@ function reloadCanvas() {
 const { renderBatch, drawScaleBar: renderScaleBar } = renderer
 
 function clearRegion(ctx: CanvasRenderingContext2D, rect: DirtyRect) {
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+  canvasTheme.clearRegionWithTheme(ctx, rect.x, rect.y, rect.width, rect.height)
 }
 
 function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, width, height)
+  canvasTheme.clearCanvasWithTheme(ctx, width, height)
 }
 
 // === Clip shapes to viewport ===
@@ -311,6 +313,8 @@ async function initCanvas() {
   canvasRef.value.width = rect.width
   canvasRef.value.height = rect.height
   ctx = canvasRef.value.getContext('2d')
+  // Notify UI store of canvas size (for Navigator viewport calculation)
+  store.setCanvasSize(rect.width, rect.height)
   if (ctx) {
     virtualization.updateZoomQuality()
     virtualization.initOffscreenCanvas(rect.width, rect.height)
@@ -375,7 +379,7 @@ defineExpose({
 <template>
   <div
     ref="containerRef"
-    class="canvas-container"
+    class="canvas-container" :style="{ cursor: interaction.cursorStyle.value }"
     role="application"
     aria-label="光子芯片布局编辑器画布"
     aria-describedby="canvas-description"
@@ -411,7 +415,9 @@ defineExpose({
     />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">
-        <span class="error-icon" aria-hidden="true">⚠️</span>
+        <svg class="error-icon" viewBox="0 0 24 24" width="48" height="48" aria-hidden="true">
+          <path fill="var(--accent-orange)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
         <span class="error-message">{{ errorMessage }}</span>
         <button class="error-button" @click="reloadCanvas" aria-label="重试加载画布">
           重试
@@ -435,12 +441,12 @@ defineExpose({
 .canvas-container { width: 100%; height: 100%; overflow: hidden; cursor: crosshair; position: relative; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 canvas { display: block; }
-.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.8); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #606060; }
-.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.9); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #d32f2f; }
-.error-content { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 400px; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-.error-icon { font-size: 48px; }
-.error-message { text-align: center; color: #333; }
-.error-button { padding: 8px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-.error-button:hover { background: #2563eb; }
-.error-button:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--loading-bg, rgba(255,255,255,0.8)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-secondary, #606060); }
+.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--error-bg, rgba(255,255,255,0.9)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent-red, #d32f2f); }
+.error-content { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 400px; padding: 24px; background: var(--bg-panel, #fff); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+.error-icon { display: flex; align-items: center; justify-content: center; }
+.error-message { text-align: center; color: var(--text-primary, #333); }
+.error-button { padding: 8px 24px; background: var(--accent-blue, #3b82f6); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+.error-button:hover { background: color-mix(in srgb, var(--accent-blue, #3b82f6) 80%, black); }
+.error-button:focus { outline: 2px solid var(--accent-blue, #3b82f6); outline-offset: 2px; }
 </style>

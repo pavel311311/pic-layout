@@ -14,6 +14,9 @@ const LayerPanel = defineAsyncComponent(() =>
 const PropertiesPanel = defineAsyncComponent(() =>
   import('./components/properties/PropertiesPanel.vue')
 )
+const Navigator = defineAsyncComponent(() =>
+  import('./components/navigator/Navigator.vue')
+)
 const Canvas = defineAsyncComponent(() =>
   import('./components/canvas/Canvas.vue')
 )
@@ -161,7 +164,10 @@ const themeOverrides = {
 
         <!-- 右侧面板 -->
         <aside class="right-panel">
-          <PropertiesPanel />
+          <div class="right-panel-content">
+            <PropertiesPanel />
+            <Navigator />
+          </div>
         </aside>
       </div>
 
@@ -313,6 +319,16 @@ const themeOverrides = {
   background: var(--bg-panel);
   border-left: 1px solid var(--border-color);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .status-footer {

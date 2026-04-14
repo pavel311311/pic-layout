@@ -175,7 +175,9 @@ function getActiveSubmenuItems(): MenuItem[] {
         >
           <span class="item-label">{{ item.label }}</span>
           <span v-if="item.shortcut && !item.submenu" class="item-shortcut">{{ item.shortcut }}</span>
-          <span v-if="item.submenu" class="submenu-arrow">▶</span>
+          <svg v-if="item.submenu" class="submenu-arrow" viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
       </template>
 
@@ -255,7 +257,7 @@ function getActiveSubmenuItems(): MenuItem[] {
 .context-item:hover:not(.is-disabled),
 .context-item.is-active {
   background: var(--accent-blue);
-  color: #ffffff;
+  color: var(--text-on-accent, #ffffff);
 }
 
 .context-item.is-disabled {
@@ -282,7 +284,11 @@ function getActiveSubmenuItems(): MenuItem[] {
 }
 
 .submenu-arrow {
-  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
   color: var(--text-muted);
 }
 

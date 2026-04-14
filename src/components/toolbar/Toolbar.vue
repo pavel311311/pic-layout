@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+/**
+ * Toolbar.vue - Main toolbar for PicLayout
+ * Part of v0.2.6 - UI beautification
+ *
+ * Features:
+ * - Tool groups with Lucide SVG icons
+ * - Theme-aware styling
+ * - Tooltip on hover (title attribute)
+ * - Active tool indicator
+ */
+import { ref, computed } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { downloadGDS } from '../../services/gdsExporter'
 import {
@@ -53,6 +63,18 @@ const toolDefs = [
   { id: 'ruler', name: 'Ruler', shortcut: 'M', IconComponent: Ruler },
 ]
 
+// Compact tooltips for each group
+const fileOps = [
+  { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
+  { label: 'Export GDS', shortcut: '', action: 'export' },
+]
+const editOps = [
+  { label: 'Undo', shortcut: 'Ctrl+Z', action: 'undo' },
+  { label: 'Redo', shortcut: 'Ctrl+Y', action: 'redo' },
+  { label: 'Align', shortcut: 'Ctrl+Shift+L', action: 'align' },
+  { label: 'Array', shortcut: 'K', action: 'array' },
+]
+
 const isRulerMode = ref(false)
 const measurementStart = ref<{ x: number; y: number } | null>(null)
 const measurementEnd = ref<{ x: number; y: number } | null>(null)
@@ -69,6 +91,14 @@ function selectTool(toolId: string) {
   }
 }
 
+function getToolTip(tool: { name: string; shortcut: string }): string {
+  return `${tool.name} (${tool.shortcut})`
+}
+
+function getEditTooltip(op: { label: string; shortcut: string }): string {
+  return op.shortcut ? `${op.label} (${op.shortcut})` : op.label
+}
+
 function openAlignDialog() {
   window.dispatchEvent(new CustomEvent('open-align-dialog'))
 }
@@ -82,11 +112,11 @@ function openArrayCopyDialog() {
   <div class="toolbar">
     <!-- File Operations -->
     <div class="tool-group">
-      <button class="tool-btn" @click="store.saveProject" title="Save Project">
+      <button class="tool-btn" @click="store.saveProject" :title="getEditTooltip(fileOps[0])" aria-label="Save Project">
         <Save :size="16" class="btn-icon-svg" />
         <span class="btn-label">Save</span>
       </button>
-      <button class="tool-btn" @click="handleExportGDS" title="Export GDS (KLayout)">
+      <button class="tool-btn" @click="handleExportGDS" :title="getEditTooltip(fileOps[1])" aria-label="Export GDS">
         <Upload :size="16" class="btn-icon-svg" />
         <span class="btn-label">GDS</span>
       </button>
@@ -100,7 +130,8 @@ function openArrayCopyDialog() {
         class="tool-btn" 
         @click="store.undo"
         :disabled="!store.canUndo"
-        title="Undo (Ctrl+Z)"
+        :title="getEditTooltip(editOps[0])"
+        aria-label="Undo"
       >
         <Undo2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Undo</span>
@@ -109,7 +140,8 @@ function openArrayCopyDialog() {
         class="tool-btn"
         @click="store.redo"
         :disabled="!store.canRedo"
-        title="Redo (Ctrl+Y)"
+        :title="getEditTooltip(editOps[1])"
+        aria-label="Redo"
       >
         <Redo2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Redo</span>
@@ -117,7 +149,8 @@ function openArrayCopyDialog() {
       <button 
         class="tool-btn" 
         @click="openAlignDialog"
-        title="Align & Distribute (Ctrl+Shift+L)"
+        :title="getEditTooltip(editOps[2])"
+        aria-label="Align and Distribute"
       >
         <AlignHorizontalJustifyCenter :size="16" class="btn-icon-svg" />
         <span class="btn-label">Align</span>
@@ -125,7 +158,8 @@ function openArrayCopyDialog() {
       <button
         class="tool-btn"
         @click="openArrayCopyDialog"
-        title="Array Copy (K)"
+        :title="getEditTooltip(editOps[3])"
+        aria-label="Array Copy"
       >
         <CopySlash :size="16" class="btn-icon-svg" />
         <span class="btn-label">Array</span>
@@ -142,7 +176,8 @@ function openArrayCopyDialog() {
         class="tool-btn"
         :class="{ active: store.selectedTool === tool.id }"
         @click="selectTool(tool.id)"
-        :title="`${tool.name} (${tool.shortcut})`"
+        :title="getToolTip(tool)"
+        :aria-label="getToolTip(tool)"
       >
         <component :is="tool.IconComponent" :size="16" class="btn-icon-svg" />
         <span class="btn-label">{{ tool.name }}</span>
@@ -153,15 +188,15 @@ function openArrayCopyDialog() {
     
     <!-- View Operations -->
     <div class="tool-group">
-      <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In">
+      <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In" aria-label="Zoom In">
         <ZoomIn :size="16" class="btn-icon-svg" />
         <span class="btn-label">In</span>
       </button>
-      <button class="tool-btn" @click="store.setZoom(store.zoom * 0.8)" title="Zoom Out">
+      <button class="tool-btn" @click="store.setZoom(store.zoom * 0.8)" title="Zoom Out" aria-label="Zoom Out">
         <ZoomOut :size="16" class="btn-icon-svg" />
         <span class="btn-label">Out</span>
       </button>
-      <button class="tool-btn" @click="store.setZoom(1)" title="Reset Zoom">
+      <button class="tool-btn" @click="store.setZoom(1)" title="Reset Zoom" aria-label="Reset Zoom">
         <RotateCcw :size="16" class="btn-icon-svg" />
         <span class="btn-label">Fit</span>
       </button>
@@ -169,6 +204,7 @@ function openArrayCopyDialog() {
         class="tool-btn" 
         @click="store.toggleTheme"
         :title="store.theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
+        :aria-label="store.theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
       >
         <component
           :is="store.theme === 'light' ? Moon : Sun"

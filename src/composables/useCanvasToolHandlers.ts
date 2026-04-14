@@ -286,6 +286,12 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
           if (cursorStyle.value !== 'crosshair') { cursorStyle.value = 'crosshair' }
           return
         }
+        // Check if hovering over a selected shape (for move cursor)
+        const shapeAtPoint = getShapeAtPoint?.(pt.x, pt.y)
+        if (shapeAtPoint && getSelectedShapeIds().includes(shapeAtPoint.id)) {
+          if (cursorStyle.value !== 'move') { cursorStyle.value = 'move' }
+          return
+        }
         if (cursorStyle.value !== 'default') { cursorStyle.value = 'default' }
       }
       return
@@ -352,6 +358,8 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     }
     // Move shapes
     if (tool === 'select' && getSelectedShapeIds().length > 0 && !marqueeStart.value && !draggingEndpoint.value) {
+      // Set grabbing cursor during drag (v0.2.6 UX optimization)
+      if (cursorStyle.value !== 'grabbing') { cursorStyle.value = 'grabbing' }
       for (const id of getSelectedShapeIds()) {
         const shape = getShapes().find((s) => s.id === id)
         if (shape) {
@@ -430,6 +438,11 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     }
     isDragging = false
     endEndpointDrag()
+    // Reset cursor after drag (v0.2.6 UX optimization)
+    // Use default cursor as we don't know what's under the mouse after release
+    if (cursorStyle.value === 'grabbing') {
+      cursorStyle.value = 'default'
+    }
   }
 
   function handleDoubleClick(e: MouseEvent) {
