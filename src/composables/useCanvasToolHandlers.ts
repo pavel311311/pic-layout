@@ -77,6 +77,10 @@ export interface ToolHandlersOptions {
 
   // Announce for accessibility
   announce: (msg: string) => void
+
+  // Cell navigation (v0.2.7)
+  drillOut: () => void
+  goToTop: () => void
 }
 
 export function useCanvasToolHandlers(options: ToolHandlersOptions) {
@@ -92,6 +96,7 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     drawing, interaction, virtualization, geometry,
     getSnappedPoint, showArrayCopyDialog, showShortcutsDialog, showAlignDialog,
     canvasRef, announce,
+    drillOut, goToTop,
   } = options
 
   const {
@@ -563,6 +568,17 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
           return
         case 'k':
           if (getSelectedShapeIds().length > 0) showArrayCopyDialog.value = true
+          return
+        // Cell navigation: H = drill out (go up), N = go to top
+        case 'h':
+          drillOut()
+          announce('钻出到父级单元')
+          virtualization.markDirty()
+          return
+        case 'n':
+          goToTop()
+          announce('返回顶层单元')
+          virtualization.markDirty()
           return
         case ' ':
           if (!spacePressed.value && !isDrawing.value) {

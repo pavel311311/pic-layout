@@ -3,6 +3,7 @@ import { NButton, NColorPicker, NScrollbar } from '@/plugins/naive'
 import { useEditorStore } from '../../stores/editor'
 import { ref, computed } from 'vue'
 import { useNavigator } from '../../composables/useNavigator'
+import CellTree from './CellTree.vue'
 
 const NAV_WIDTH = 160
 const NAV_HEIGHT = 78
@@ -174,18 +175,9 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
       </div>
     </div>
 
-    <!-- 2. Cells 层级 -->
-    <div class="panel-section cells">
-      <div class="section-header">
-        <span>Cells</span>
-      </div>
-      <div class="cell-tree">
-        <div class="cell-item selected">
-          <span class="cell-arrow">▼</span>
-          <span class="cell-icon">○</span>
-          <span class="cell-name">{{ store.project.name || 'TOP' }}</span>
-        </div>
-      </div>
+    <!-- 2. Cells 层级 (v0.2.7 - CellTree.vue) -->
+    <div class="panel-section cells" style="flex: 1; min-height: 120px; max-height: 220px; display: flex; flex-direction: column;">
+      <CellTree />
     </div>
 
     <!-- 3. Libraries 图元 -->

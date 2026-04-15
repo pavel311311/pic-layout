@@ -21,6 +21,8 @@ export const useCellsStore = defineStore('cells', () => {
   const topCellId = ref<string | undefined>(undefined)
   /** Currently "drilled into" cell ID (for钻入钻出 navigation) */
   const activeCellId = ref<string | undefined>(undefined)
+  /** Cell IDs currently highlighted by search */
+  const highlightedCellIds = ref<Set<string>>(new Set())
 
   // === Computed ===
 
@@ -447,6 +449,22 @@ export const useCellsStore = defineStore('cells', () => {
     activeCellId.value = top.id
   }
 
+  // === Cell Search Highlight ===
+
+  /**
+   * Set cells to be highlighted (e.g., from search results)
+   */
+  function setHighlightedCells(ids: string[]): void {
+    highlightedCellIds.value = new Set(ids)
+  }
+
+  /**
+   * Clear all highlighted cells
+   */
+  function clearHighlightedCells(): void {
+    highlightedCellIds.value = new Set()
+  }
+
   return {
     // State
     cells,
@@ -473,6 +491,10 @@ export const useCellsStore = defineStore('cells', () => {
     drillInto,
     drillOut,
     goToTop,
+    // Cell search highlight
+    highlightedCellIds,
+    setHighlightedCells,
+    clearHighlightedCells,
     // Bounds
     getCellBounds,
     // Tree

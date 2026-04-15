@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted, computed, defineAsyncComponent } from 'vue'
 import { useEditorStore } from '../../stores/editor'
+import { useCellsStore } from '../../stores/cells'
 import { useCanvasCoordinates } from '../../composables/useCanvasCoordinates'
 import { useCanvasVirtualization } from '../../composables/useCanvasVirtualization'
 import type { DirtyRect } from '../../composables/useCanvasVirtualization'
@@ -19,6 +20,7 @@ import { getShapeBounds, boundsIntersect } from '../../utils/transforms'
 import ContextMenu from '../contextmenu/ContextMenu.vue'
 
 const store = useEditorStore()
+const cellsStore = useCellsStore()
 
 // Dialogs: lazy-loaded to reduce initial bundle
 const ArrayCopyDialog = defineAsyncComponent(() => import('../dialogs/ArrayCopyDialog.vue'))
@@ -167,6 +169,8 @@ const toolHandlers = useCanvasToolHandlers({
   showAlignDialog,
   canvasRef,
   announce: announceCanvasChange,
+  drillOut: store.drillOut,
+  goToTop: store.goToTop,
 })
 
 // === Loading / Error state ===
@@ -237,9 +241,10 @@ function clipShapesToViewport(shapes: BaseShape[]): BaseShape[] {
 }
 
 // === Draw all shapes ===
+// v0.2.7: Use expandedVisibleShapes which includes shapes from CellInstances
 function drawShapes() {
   if (!ctx) return
-  const visibleShapes = clipShapesToViewport(store.visibleShapes)
+  const visibleShapes = clipShapesToViewport(store.expandedVisibleShapes)
   const batches = virtualization.batchShapesByLayer(visibleShapes)
   renderer.drawShapes(ctx, batches, virtualization.getCachedLayerBitmap)
 }
@@ -280,7 +285,7 @@ function render() {
         maxX: screenToDesign(clippedX + clippedW, clippedY + clippedH).x,
         maxY: screenToDesign(clippedX + clippedW, clippedY + clippedH).y,
       }
-      const visibleShapes = clipShapesToViewport(store.visibleShapes)
+      const visibleShapes = clipShapesToViewport(store.expandedVisibleShapes)
       const affectedShapes = visibleShapes.filter(shape => {
         const shapeBounds = getShapeBounds(shape)
         return boundsIntersect(shapeBounds, dirtyBounds)
@@ -293,8 +298,30 @@ function render() {
     }
   }
 
+  // Draw cell search highlights (yellow dashed rectangles around matched cells)
+  function drawCellHighlights(ctx: CanvasRenderingContext2D) {
+    const highlighted = cellsStore.highlightedCellIds
+    if (!highlighted.size) return
+    ctx.save()
+    ctx.strokeStyle = '#FFD700' // Gold yellow for search highlights
+    ctx.lineWidth = 2
+    ctx.setLineDash([8, 4])
+    ctx.globalAlpha = 0.9
+    for (const cellId of highlighted) {
+      const bounds = cellsStore.getCellBounds(cellId, true)
+      if (!bounds) continue
+      const topLeft = designToScreen(bounds.minX, bounds.minY)
+      const bottomRight = designToScreen(bounds.maxX, bounds.maxY)
+      const w = bottomRight.x - topLeft.x
+      const h = bottomRight.y - topLeft.y
+      ctx.strokeRect(topLeft.x, topLeft.y, w, h)
+    }
+    ctx.restore()
+  }
+
   // Dynamic UI elements always redrawn
   selection.drawSelection(ctx!)
+  drawCellHighlights(ctx!)
   drawing.renderDrawing(ctx!, designToScreen, store.zoom)
   renderScaleBar(ctx!)
 

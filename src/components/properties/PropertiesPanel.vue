@@ -2,9 +2,13 @@
 import { useEditorStore } from '../../stores/editor'
 import { computed, ref, watch } from 'vue'
 import type { ShapeStyle, FillPattern, PathEndStyle, PathJoinStyle } from '../../types/shapes'
-import { getEdgeLength } from '../../utils/transforms'
+import { getEdgeLength, getShapeBounds } from '../../utils/transforms'
 
 const store = useEditorStore()
+
+// Multi-selection support (v0.2.6)
+const multiSelectedShapes = computed(() => store.selectedShapes)
+const hasMultiSelection = computed(() => store.selectedShapeIds.length > 1)
 
 const selectedShape = computed(() => {
   if (store.selectedShapeIds.length === 1) {
@@ -18,6 +22,33 @@ const selectedLayer = computed(() => {
     return store.project.layers.find((l) => l.id === selectedShape.value?.layerId)
   }
   return null
+})
+
+// === Multi-selection computed ===
+// Bounding box across all selected shapes
+const multiBounds = computed(() => {
+  if (multiSelectedShapes.value.length === 0) return null
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const shape of multiSelectedShapes.value) {
+    const b = getShapeBounds(shape)
+    minX = Math.min(minX, b.minX)
+    minY = Math.min(minY, b.minY)
+    maxX = Math.max(maxX, b.maxX)
+    maxY = Math.max(maxY, b.maxY)
+  }
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }
+})
+
+// Check if all selected shapes share the same layer
+const sharedLayerId = computed(() => {
+  if (multiSelectedShapes.value.length === 0) return null
+  const first = multiSelectedShapes.value[0].layerId
+  return multiSelectedShapes.value.every((s) => s.layerId === first) ? first : null
+})
+
+// Unique layer IDs among selection (for display)
+const uniqueLayerIds = computed(() => {
+  return [...new Set(multiSelectedShapes.value.map((s) => s.layerId))]
 })
 
 // Local style editing
@@ -121,6 +152,43 @@ function applyStyle() {
   }
 }
 
+// Reset fill to layer default
+function resetFillToLayer() {
+  if (!selectedShape.value || !selectedLayer.value) return
+  store.pushHistory()
+  updateStyle({ fillColor: selectedLayer.value.color, fillAlpha: 1.0 })
+}
+
+// Reset stroke to layer default
+function resetStrokeToLayer() {
+  if (!selectedShape.value || !selectedLayer.value) return
+  store.pushHistory()
+  updateStyle({ strokeColor: selectedLayer.value.color, strokeWidth: 1 })
+}
+
+// Change layer for selected shapes (multi-selection supported)
+function changeLayer(layerId: number) {
+  if (multiSelectedShapes.value.length === 0) return
+  store.pushHistory()
+  for (const shape of multiSelectedShapes.value) {
+    store.updateShape(shape.id, { layerId }, true)
+  }
+}
+
+// Effective fill/stroke colors (shape override or layer default)
+const effectiveFillColor = computed(() =>
+  localStyle.value.fillColor || selectedLayer.value?.color || '#808080'
+)
+const effectiveFillAlpha = computed(() =>
+  localStyle.value.fillAlpha ?? 1.0
+)
+const effectiveStrokeColor = computed(() =>
+  localStyle.value.strokeColor || selectedLayer.value?.color || '#808080'
+)
+const effectiveStrokeWidth = computed(() =>
+  localStyle.value.strokeWidth ?? 1
+)
+
 function applyTransform() {
   if (!selectedShape.value) return
   
@@ -165,6 +233,28 @@ function deleteShape() {
 const editingPoints = ref(false)
 const pointsText = ref('')
 
+// Collapsible sections state
+const collapsedSections = ref<Set<string>>(new Set())
+
+function toggleSection(section: string) {
+  if (collapsedSections.value.has(section)) {
+    collapsedSections.value.delete(section)
+  } else {
+    collapsedSections.value.add(section)
+  }
+}
+
+function onSectionKeydown(e: KeyboardEvent, section: string) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    toggleSection(section)
+  }
+}
+
+function isCollapsed(section: string): boolean {
+  return collapsedSections.value.has(section)
+}
+
 function startEditingPoints() {
   if (!selectedShape.value?.points) return
   pointsText.value = selectedShape.value.points
@@ -206,6 +296,12 @@ function savePoints() {
     <!-- Panel Header -->
     <div class="panel-header">
       <span class="panel-title">Properties</span>
+      <span v-if="hasMultiSelection" class="multi-badge" :title="`${store.selectedShapeIds.length} shapes selected`">
+        {{ store.selectedShapeIds.length }} selected
+      </span>
+      <span v-else-if="selectedShape" class="shape-type-badge" :title="`Shape type: ${selectedShape.type}`">
+        {{ selectedShape.type }}
+      </span>
     </div>
 
     <!-- No Selection -->
@@ -217,29 +313,79 @@ function savePoints() {
     <!-- Shape Selected -->
     <div v-else class="properties-content">
       <!-- Basic Info -->
-      <div class="prop-section">
-        <div class="section-header">
+      <div class="prop-section" :class="{ collapsed: isCollapsed('general') }" role="region" :aria-label="'General section'">
+        <div class="section-header collapsible" @click="toggleSection('general')" @keydown.enter.space.prevent="toggleSection('general')" :aria-expanded="!isCollapsed('general')" role="button" tabindex="0">
           <span>General</span>
+          <span class="collapse-icon">{{ isCollapsed('general') ? '▶' : '▼' }}</span>
         </div>
-        <div class="prop-grid">
+        <div v-show="!isCollapsed('general')" class="section-content">
+        <!-- Multi-selection General -->
+        <div v-if="hasMultiSelection" class="prop-grid">
+          <span class="prop-label">Count:</span>
+          <span class="prop-value">{{ store.selectedShapeIds.length }} shapes</span>
+
+          <span class="prop-label">Bounds:</span>
+          <span class="prop-value mono" :title="`Min: (${multiBounds?.minX.toFixed(2)}, ${multiBounds?.minY.toFixed(2)}) Max: (${multiBounds?.maxX.toFixed(2)}, ${multiBounds?.maxY.toFixed(2)})`">
+            {{ multiBounds?.width.toFixed(2) }} × {{ multiBounds?.height.toFixed(2) }}
+          </span>
+
+          <span class="prop-label">Layer:</span>
+          <div class="layer-change-group">
+            <template v-if="sharedLayerId !== null">
+              <span class="prop-value layer-value" :style="{ color: store.project.layers.find(l => l.id === sharedLayerId)?.color }">
+                {{ store.project.layers.find(l => l.id === sharedLayerId)?.name }}
+              </span>
+            </template>
+            <template v-else>
+              <span class="prop-value mixed-value">{{ uniqueLayerIds.length }} layers</span>
+            </template>
+            <select
+              class="layer-select"
+              :value="sharedLayerId ?? uniqueLayerIds[0]"
+              @change="(e) => changeLayer(parseInt((e.target as HTMLSelectElement).value))"
+              aria-label="Change layer for selection"
+            >
+              <option v-for="layer in store.project.layers" :key="layer.id" :value="layer.id">
+                {{ layer.name }} ({{ layer.gdsLayer }}/{{ layer.gdsDatatype || 0 }})
+              </option>
+            </select>
+          </div>
+        </div>
+        <!-- Single-selection General -->
+        <div v-else class="prop-grid">
           <span class="prop-label">Type:</span>
           <span class="prop-value">{{ selectedShape.type }}</span>
-          
+
           <span class="prop-label">Layer:</span>
-          <span class="prop-value layer-value" :style="{ color: selectedLayer?.color }">
-            {{ selectedLayer?.name }} ({{ selectedLayer?.gdsLayer }}/{{ selectedLayer?.gdsDatatype || 0 }})
-          </span>
-          
+          <div class="layer-change-group">
+            <span class="prop-value layer-value" :style="{ color: selectedLayer?.color }">
+              {{ selectedLayer?.name }} ({{ selectedLayer?.gdsLayer }}/{{ selectedLayer?.gdsDatatype || 0 }})
+            </span>
+            <select
+              class="layer-select"
+              :value="selectedShape.layerId"
+              @change="(e) => changeLayer(parseInt((e.target as HTMLSelectElement).value))"
+              aria-label="Change layer"
+            >
+              <option v-for="layer in store.project.layers" :key="layer.id" :value="layer.id">
+                {{ layer.name }} ({{ layer.gdsLayer }}/{{ layer.gdsDatatype || 0 }})
+              </option>
+            </select>
+          </div>
+
           <span class="prop-label">ID:</span>
           <span class="prop-value mono">{{ selectedShape.id.slice(0, 8) }}...</span>
+        </div>
         </div>
       </div>
 
       <!-- Position -->
-      <div class="prop-section">
-        <div class="section-header">
+      <div class="prop-section" :class="{ collapsed: isCollapsed('location') }" role="region" :aria-label="'Location section'">
+        <div class="section-header collapsible" @click="toggleSection('location')" @keydown.enter.space.prevent="toggleSection('location')" :aria-expanded="!isCollapsed('location')" role="button" tabindex="0">
           <span>Location</span>
+          <span class="collapse-icon">{{ isCollapsed('location') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('location')" class="section-content">
         <div class="prop-grid coords">
           <span class="coord-label">X:</span>
           <input 
@@ -248,6 +394,7 @@ function savePoints() {
             @change="(e) => updatePosition('x', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="X position"
           />
           
           <span class="coord-label">Y:</span>
@@ -257,15 +404,19 @@ function savePoints() {
             @change="(e) => updatePosition('y', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="Y position"
           />
+        </div>
         </div>
       </div>
 
       <!-- Size (for rectangle/waveguide) -->
-      <div v-if="selectedShape.type === 'rectangle' || selectedShape.type === 'waveguide'" class="prop-section">
-        <div class="section-header">
+      <div v-if="selectedShape.type === 'rectangle' || selectedShape.type === 'waveguide'" class="prop-section" :class="{ collapsed: isCollapsed('size') }" role="region" :aria-label="'Size section'">
+        <div class="section-header collapsible" @click="toggleSection('size')" @keydown.enter.space.prevent="toggleSection('size')" :aria-expanded="!isCollapsed('size')" role="button" tabindex="0">
           <span>Size</span>
+          <span class="collapse-icon">{{ isCollapsed('size') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('size')" class="section-content">
         <div class="prop-grid coords">
           <span class="coord-label">W:</span>
           <input 
@@ -275,6 +426,7 @@ function savePoints() {
             step="0.1"
             min="0.1"
             class="prop-input"
+            aria-label="Width"
           />
           
           <span class="coord-label">H:</span>
@@ -285,23 +437,27 @@ function savePoints() {
             step="0.1"
             min="0.1"
             class="prop-input"
+            aria-label="Height"
           />
         </div>
         
         <!-- Quick Size -->
-        <div class="quick-size">
-          <button class="size-btn" @click="updateSize('width', (selectedShape.width || 1) * 2)" title="Width x2">W×2</button>
-          <button class="size-btn" @click="updateSize('width', (selectedShape.width || 1) / 2)" title="Width ÷2">W÷2</button>
-          <button class="size-btn" @click="updateSize('height', (selectedShape.height || 1) * 2)" title="Height x2">H×2</button>
-          <button class="size-btn" @click="updateSize('height', (selectedShape.height || 1) / 2)" title="Height ÷2">H÷2</button>
+        <div class="quick-size" role="group" aria-label="Quick size adjustments">
+          <button class="size-btn" @click="updateSize('width', (selectedShape.width || 1) * 2)" title="Width x2" aria-label="Double width">W×2</button>
+          <button class="size-btn" @click="updateSize('width', (selectedShape.width || 1) / 2)" title="Width ÷2" aria-label="Halve width">W÷2</button>
+          <button class="size-btn" @click="updateSize('height', (selectedShape.height || 1) * 2)" title="Height x2" aria-label="Double height">H×2</button>
+          <button class="size-btn" @click="updateSize('height', (selectedShape.height || 1) / 2)" title="Height ÷2" aria-label="Halve height">H÷2</button>
+        </div>
         </div>
       </div>
 
       <!-- Edge properties -->
-      <div v-if="selectedShape.type === 'edge'" class="prop-section">
-        <div class="section-header">
+      <div v-if="selectedShape.type === 'edge'" class="prop-section" :class="{ collapsed: isCollapsed('edge') }" role="region" :aria-label="'Edge section'">
+        <div class="section-header collapsible" @click="toggleSection('edge')" @keydown.enter.space.prevent="toggleSection('edge')" :aria-expanded="!isCollapsed('edge')" role="button" tabindex="0">
           <span>Edge</span>
+          <span class="collapse-icon">{{ isCollapsed('edge') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('edge')" class="section-content">
         <div class="prop-grid coords">
           <span class="coord-label">X1:</span>
           <input
@@ -310,6 +466,7 @@ function savePoints() {
             @change="(e) => updateEdgeCoord('x1', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="Edge start X"
           />
           <span class="coord-label">Y1:</span>
           <input
@@ -318,6 +475,7 @@ function savePoints() {
             @change="(e) => updateEdgeCoord('y1', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="Edge start Y"
           />
           <span class="coord-label">X2:</span>
           <input
@@ -326,6 +484,7 @@ function savePoints() {
             @change="(e) => updateEdgeCoord('x2', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="Edge end X"
           />
           <span class="coord-label">Y2:</span>
           <input
@@ -334,19 +493,23 @@ function savePoints() {
             @change="(e) => updateEdgeCoord('y2', parseFloat((e.target as HTMLInputElement).value))"
             step="0.1"
             class="prop-input"
+            aria-label="Edge end Y"
           />
         </div>
         <div class="prop-grid" style="padding-top: 4px;">
           <span class="prop-label">Length:</span>
-          <span class="prop-value mono">{{ edgeLength.toFixed(3) }}</span>
+          <span class="prop-value mono" aria-label="Edge length">{{ edgeLength.toFixed(3) }}</span>
+        </div>
         </div>
       </div>
 
       <!-- Path properties -->
-      <div v-if="selectedShape.type === 'path'" class="prop-section">
-        <div class="section-header">
+      <div v-if="selectedShape.type === 'path'" class="prop-section" :class="{ collapsed: isCollapsed('path') }" role="region" :aria-label="'Path section'">
+        <div class="section-header collapsible" @click="toggleSection('path')" @keydown.enter.space.prevent="toggleSection('path')" :aria-expanded="!isCollapsed('path')" role="button" tabindex="0">
           <span>Path</span>
+          <span class="collapse-icon">{{ isCollapsed('path') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('path')" class="section-content">
         <div class="prop-grid">
           <span class="prop-label">Width:</span>
           <input
@@ -356,12 +519,14 @@ function savePoints() {
             step="0.1"
             min="0.1"
             class="prop-input"
+            aria-label="Path width"
           />
           <span class="prop-label">End:</span>
           <select
             :value="pathEndStyle"
             @change="(e) => updatePathEndStyle((e.target as HTMLSelectElement).value as PathEndStyle)"
             class="prop-input"
+            aria-label="Path end style"
           >
             <option value="square">Square</option>
             <option value="round">Round</option>
@@ -372,19 +537,24 @@ function savePoints() {
             :value="pathJoinStyle"
             @change="(e) => updatePathJoinStyle((e.target as HTMLSelectElement).value as PathJoinStyle)"
             class="prop-input"
+            aria-label="Path join style"
           >
             <option value="miter">Miter</option>
             <option value="round">Round</option>
             <option value="bevel">Bevel</option>
           </select>
         </div>
+        </div>
       </div>
 
       <!-- Points (for polygon/polyline/path) -->
-      <div v-if="selectedShape.type === 'polygon' || selectedShape.type === 'polyline' || selectedShape.type === 'path'" class="prop-section">
-        <div class="section-header">
+      <div v-if="selectedShape.type === 'polygon' || selectedShape.type === 'polyline' || selectedShape.type === 'path'" class="prop-section" :class="{ collapsed: isCollapsed('points') }" role="region" :aria-label="'Points section'">
+        <div class="section-header collapsible" @click="toggleSection('points')" @keydown.enter.space.prevent="toggleSection('points')" :aria-expanded="!isCollapsed('points')" role="button" tabindex="0">
           <span>Points ({{ selectedShape.points?.length || 0 }})</span>
-          <button class="header-btn" @click="startEditingPoints">Edit</button>
+          <span class="collapse-icon">{{ isCollapsed('points') ? '▶' : '▼' }}</span>
+        </div>
+        <div v-show="!isCollapsed('points')" class="section-content">
+          <button class="header-btn" @click="startEditingPoints" aria-label="Edit shape points">Edit</button>
         </div>
         
         <div v-if="editingPoints" class="points-editor">
@@ -392,14 +562,15 @@ function savePoints() {
             v-model="pointsText" 
             class="points-textarea"
             placeholder="x,y per line&#10;e.g.:&#10;0,0&#10;10,0&#10;10,10"
+            aria-label="Points editor, enter x,y coordinates per line"
           ></textarea>
           <div class="points-actions">
-            <button class="points-btn cancel" @click="editingPoints = false">Cancel</button>
-            <button class="points-btn save" @click="savePoints">Save</button>
+            <button class="points-btn cancel" @click="editingPoints = false" aria-label="Cancel editing points">Cancel</button>
+            <button class="points-btn save" @click="savePoints" aria-label="Save edited points">Save</button>
           </div>
         </div>
         
-        <div v-else class="points-list">
+        <div v-else class="points-list" role="list" aria-label="Shape points list">
           <div v-for="(pt, idx) in selectedShape.points?.slice(0, 10)" :key="idx" class="point-item">
             {{ idx + 1 }}: ({{ pt.x.toFixed(2) }}, {{ pt.y.toFixed(2) }})
           </div>
@@ -407,72 +578,119 @@ function savePoints() {
             ... and {{ (selectedShape.points?.length || 0) - 10 }} more
           </div>
         </div>
+        </div>
       </div>
 
       <!-- Style -->
-      <div class="prop-section">
-        <div class="section-header">
+      <div class="prop-section" :class="{ collapsed: isCollapsed('style') }" role="region" :aria-label="'Style section'">
+        <div class="section-header collapsible" @click="toggleSection('style')" @keydown.enter.space.prevent="toggleSection('style')" :aria-expanded="!isCollapsed('style')" role="button" tabindex="0">
           <span>Style</span>
+          <span class="collapse-icon">{{ isCollapsed('style') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('style')" class="section-content">
         <div class="style-grid">
-          <div class="style-row">
-            <label>Fill:</label>
-            <input 
-              type="color" 
-              :value="localStyle.fillColor || selectedLayer?.color || '#808080'"
-              @input="(e) => updateStyle({ fillColor: (e.target as HTMLInputElement).value })"
-              class="color-input"
-            />
-            <input 
-              type="number"
-              :value="localStyle.fillAlpha ?? 0.5"
-              @change="(e) => updateStyle({ fillAlpha: parseFloat((e.target as HTMLInputElement).value) })"
-              min="0" max="1" step="0.1"
-              class="alpha-input"
-              title="Alpha"
-            />
+          <!-- Fill row with visual swatch -->
+          <div class="style-row style-row--swatch">
+            <div class="swatch-preview" aria-hidden="true">
+              <div
+                class="swatch-fill"
+                :style="{
+                  backgroundColor: effectiveFillColor,
+                  opacity: effectiveFillAlpha,
+                }"
+              ></div>
+            </div>
+            <label id="fill-label">Fill</label>
+            <div class="color-picker-group">
+              <input
+                type="color"
+                :value="effectiveFillColor"
+                @input="(e) => updateStyle({ fillColor: (e.target as HTMLInputElement).value })"
+                class="color-input"
+                aria-labelledby="fill-label"
+              />
+              <span class="color-hex">{{ effectiveFillColor.toUpperCase() }}</span>
+              <input
+                type="number"
+                :value="effectiveFillAlpha"
+                @change="(e) => updateStyle({ fillAlpha: Math.max(0, Math.min(1, parseFloat((e.target as HTMLInputElement).value))) })"
+                min="0" max="1" step="0.05"
+                class="alpha-input"
+                title="Fill opacity"
+                aria-label="Fill opacity 0-1"
+              />
+            </div>
+            <button
+              class="reset-btn"
+              @click="resetFillToLayer"
+              title="Reset to layer default"
+              aria-label="Reset fill to layer default"
+            >
+              ↺
+            </button>
           </div>
-          
-          <div class="style-row">
-            <label>Stroke:</label>
-            <input 
-              type="color" 
-              :value="localStyle.strokeColor || selectedLayer?.color || '#808080'"
-              @input="(e) => updateStyle({ strokeColor: (e.target as HTMLInputElement).value })"
-              class="color-input"
-            />
-            <input 
-              type="number"
-              :value="localStyle.strokeWidth ?? 1"
-              @change="(e) => updateStyle({ strokeWidth: parseFloat((e.target as HTMLInputElement).value) })"
-              min="0" step="0.5"
-              class="alpha-input"
-              title="Width"
-            />
+
+          <!-- Stroke row with visual swatch -->
+          <div class="style-row style-row--swatch">
+            <div class="swatch-preview" aria-hidden="true">
+              <div class="swatch-stroke" :style="{ borderColor: effectiveStrokeColor }"></div>
+            </div>
+            <label id="stroke-label">Stroke</label>
+            <div class="color-picker-group">
+              <input
+                type="color"
+                :value="effectiveStrokeColor"
+                @input="(e) => updateStyle({ strokeColor: (e.target as HTMLInputElement).value })"
+                class="color-input"
+                aria-labelledby="stroke-label"
+              />
+              <span class="color-hex">{{ effectiveStrokeColor.toUpperCase() }}</span>
+              <input
+                type="number"
+                :value="effectiveStrokeWidth"
+                @change="(e) => updateStyle({ strokeWidth: Math.max(0, parseFloat((e.target as HTMLInputElement).value)) })"
+                min="0" step="0.5"
+                class="alpha-input"
+                title="Stroke width (px)"
+                aria-label="Stroke width"
+              />
+            </div>
+            <button
+              class="reset-btn"
+              @click="resetStrokeToLayer"
+              title="Reset to layer default"
+              aria-label="Reset stroke to layer default"
+            >
+              ↺
+            </button>
           </div>
-          
+
+          <!-- Pattern row -->
           <div class="style-row">
-            <label>Pattern:</label>
-            <select 
+            <label id="pattern-label" class="style-row__label">Pattern</label>
+            <select
               :value="localStyle.pattern || 'solid'"
               @change="(e) => updateStyle({ pattern: (e.target as HTMLSelectElement).value as FillPattern })"
               class="pattern-select"
+              aria-labelledby="pattern-label"
             >
               <option v-for="opt in patternOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </option>
             </select>
           </div>
-          
+
+          <!-- Dash row -->
           <div class="style-row">
-            <label>Dash:</label>
-            <select 
+            <label id="dash-label" class="style-row__label">Dash</label>
+            <select
               :value="JSON.stringify(localStyle.strokeDash || [])"
               @change="(e) => {
                 const val = (e.target as HTMLSelectElement).value
                 updateStyle({ strokeDash: val === '[]' ? [] : JSON.parse(val) })
               }"
               class="pattern-select"
+              aria-labelledby="dash-label"
             >
               <option value="[]">Solid</option>
               <option value="[5,3]">Dash</option>
@@ -481,42 +699,48 @@ function savePoints() {
             </select>
           </div>
         </div>
+        </div>
       </div>
 
       <!-- Transform -->
-      <div class="prop-section">
-        <div class="section-header">
+      <div class="prop-section" :class="{ collapsed: isCollapsed('transform') }" role="region" :aria-label="'Transform section'">
+        <div class="section-header collapsible" @click="toggleSection('transform')" @keydown.enter.space.prevent="toggleSection('transform')" :aria-expanded="!isCollapsed('transform')" role="button" tabindex="0">
           <span>Transform</span>
+          <span class="collapse-icon">{{ isCollapsed('transform') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('transform')" class="section-content">
         <div class="transform-grid">
           <div class="transform-row">
-            <label>Rotate:</label>
-            <input type="number" v-model.number="rotation" step="90" class="transform-input" />
+            <label id="rotate-label">Rotate:</label>
+            <input type="number" v-model.number="rotation" step="90" class="transform-input" aria-labelledby="rotate-label" />
             <span class="unit">°</span>
           </div>
           <div class="transform-row">
-            <label>Scale X:</label>
-            <input type="number" v-model.number="scaleX" step="0.5" min="0.1" class="transform-input" />
+            <label id="scale-x-label">Scale X:</label>
+            <input type="number" v-model.number="scaleX" step="0.5" min="0.1" class="transform-input" aria-labelledby="scale-x-label" />
           </div>
           <div class="transform-row">
-            <label>Scale Y:</label>
-            <input type="number" v-model.number="scaleY" step="0.5" min="0.1" class="transform-input" />
+            <label id="scale-y-label">Scale Y:</label>
+            <input type="number" v-model.number="scaleY" step="0.5" min="0.1" class="transform-input" aria-labelledby="scale-y-label" />
           </div>
         </div>
         <div class="transform-actions">
-          <button class="transform-btn" @click="applyTransform">Apply</button>
-          <button class="transform-btn" @click="() => { rotation = 0; scaleX = 1; scaleY = 1; }">Reset</button>
+          <button class="transform-btn" @click="applyTransform" aria-label="Apply transform">Apply</button>
+          <button class="transform-btn" @click="() => { rotation = 0; scaleX = 1; scaleY = 1; }" aria-label="Reset transform values">Reset</button>
+        </div>
         </div>
       </div>
 
       <!-- Operations -->
-      <div class="prop-section">
-        <div class="section-header">
+      <div class="prop-section" :class="{ collapsed: isCollapsed('operations') }" role="region" :aria-label="'Operations section'">
+        <div class="section-header collapsible" @click="toggleSection('operations')" @keydown.enter.space.prevent="toggleSection('operations')" :aria-expanded="!isCollapsed('operations')" role="button" tabindex="0">
           <span>Operations</span>
+          <span class="collapse-icon">{{ isCollapsed('operations') ? '▶' : '▼' }}</span>
         </div>
+        <div v-show="!isCollapsed('operations')" class="section-content">
         <div class="action-buttons">
-          <button class="action-btn" @click="duplicateShape">Copy</button>
-          <button class="action-btn delete" @click="deleteShape">Delete</button>
+          <button class="action-btn" @click="duplicateShape" aria-label="Duplicate selected shape">Copy</button>
+          <button class="action-btn delete" @click="deleteShape" aria-label="Delete selected shape">Delete</button>
         </div>
       </div>
     </div>
@@ -529,21 +753,120 @@ function savePoints() {
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);
+  overflow-y: auto;
+  box-shadow: inset 1px 0 0 var(--accent-blue);
+}
+
+/* Custom scrollbar */
+.properties-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.properties-panel::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+
+.properties-panel::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.properties-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .panel-header {
-  height: 24px;
+  height: 28px;
   background: linear-gradient(180deg, var(--bg-secondary) 0%, color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-primary)) 100%);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 8px;
+  gap: 6px;
 }
 
 .panel-title {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.shape-type-badge {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--accent-blue);
+  background: color-mix(in srgb, var(--accent-blue) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  padding: 1px 5px;
+  border-radius: 8px;
+  text-transform: capitalize;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
+}
+
+.shape-type-badge:hover {
+  background: color-mix(in srgb, var(--accent-blue) 25%, transparent);
+}
+
+.multi-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--accent-purple, #8b5cf6);
+  background: color-mix(in srgb, var(--accent-purple, #8b5cf6) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #8b5cf6) 30%, transparent);
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
+}
+
+/* Mixed value indicator */
+.mixed-value {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 10px;
+}
+
+/* Layer change group (layer name + dropdown) */
+.layer-change-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* Inline layer selector */
+.layer-select {
+  height: 16px;
+  padding: 0 2px;
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  font-size: 9px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+  max-width: 100px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  padding-right: 14px;
+}
+
+.layer-select:focus {
+  outline: 1px solid var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+}
+
+.layer-select:hover:not(:focus) {
+  border-color: var(--border-color);
+  background-color: var(--bg-secondary);
 }
 
 .empty-state {
@@ -577,9 +900,10 @@ function savePoints() {
 }
 
 .section-header {
-  height: 20px;
+  height: 22px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
+  border-left: 2px solid transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -587,6 +911,39 @@ function savePoints() {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-primary);
+  transition: background-color 0.15s ease, border-left-color 0.15s ease;
+}
+
+.section-header.collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header.collapsible:hover {
+  background: color-mix(in srgb, var(--bg-secondary) 85%, var(--border-light));
+  border-left-color: var(--accent-blue);
+}
+
+.section-header.collapsible:active {
+  background: color-mix(in srgb, var(--bg-secondary) 80%, var(--border-color));
+}
+
+.collapse-icon {
+  font-size: 8px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.prop-section.collapsed .section-header {
+  border-bottom: none;
+}
+
+.prop-section.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.section-content {
+  overflow: hidden;
 }
 
 .header-btn {
@@ -646,10 +1003,22 @@ function savePoints() {
   font-family: monospace;
   background: var(--bg-panel);
   width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .prop-input:focus {
   outline: 1px solid var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+}
+
+.prop-input:hover:not(:focus) {
+  border-color: var(--border-color);
+}
+
+/* Subtle background on coord inputs for visual grouping */
+.prop-grid.coords .prop-input {
+  background: var(--bg-secondary);
 }
 
 .quick-size {
@@ -667,10 +1036,16 @@ function savePoints() {
   background: var(--bg-panel);
   color: var(--text-primary);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .size-btn:hover {
   background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.size-btn:active {
+  transform: scale(0.97);
 }
 
 /* Points Editor */
@@ -687,6 +1062,19 @@ function savePoints() {
   font-family: monospace;
   font-size: 10px;
   resize: vertical;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.points-textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+}
+
+.points-textarea::placeholder {
+  color: var(--text-muted);
 }
 
 .points-actions {
@@ -739,6 +1127,144 @@ function savePoints() {
   gap: 6px;
 }
 
+/* Row with visual swatch (fill/stroke) */
+.style-row--swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.swatch-preview {
+  width: 28px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-panel);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.swatch-preview:hover {
+  border-color: var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-light);
+}
+
+.swatch-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 1px;
+}
+
+.swatch-stroke {
+  width: 22px;
+  height: 16px;
+  border: 2px solid;
+  border-radius: 1px;
+  background: transparent;
+}
+
+.style-row--swatch label {
+  width: 40px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.color-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.color-hex {
+  font-family: monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  min-width: 52px;
+  text-transform: uppercase;
+}
+
+.color-input {
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  cursor: pointer;
+  background: var(--bg-panel);
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.color-input:hover {
+  border-color: var(--accent-blue);
+  transform: scale(1.05);
+}
+
+.color-input:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+  border-color: var(--accent-blue);
+}
+
+.alpha-input {
+  width: 40px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: monospace;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.alpha-input:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+  border-color: var(--accent-blue);
+}
+
+.reset-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.reset-btn:hover {
+  background: color-mix(in srgb, var(--accent-blue) 15%, transparent);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  transform: scale(1.1);
+}
+
+.reset-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+.reset-btn:active {
+  transform: scale(0.95);
+}
+
+/* Pattern and dash rows */
 .style-row {
   display: flex;
   align-items: center;
@@ -746,28 +1272,10 @@ function savePoints() {
   font-size: 10px;
 }
 
-.style-row label {
-  width: 50px;
+.style-row__label {
+  width: 40px;
   color: var(--text-secondary);
-}
-
-.color-input {
-  width: 28px;
-  height: 20px;
-  padding: 0;
-  border: 1px solid var(--border-light);
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.alpha-input {
-  width: 45px;
-  height: 18px;
-  padding: 0 4px;
-  border: 1px solid var(--border-light);
-  border-radius: 2px;
-  font-size: 10px;
-  font-family: monospace;
+  flex-shrink: 0;
 }
 
 .pattern-select {
@@ -775,9 +1283,27 @@ function savePoints() {
   height: 20px;
   padding: 0 4px;
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 3px;
   font-size: 10px;
   background: var(--bg-panel);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23808080' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 18px;
+}
+
+.pattern-select:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+  border-color: var(--accent-blue);
+}
+
+.pattern-select:hover:not(:focus) {
+  border-color: var(--border-color);
 }
 
 /* Transform */
@@ -809,10 +1335,13 @@ function savePoints() {
   font-size: 10px;
   font-family: monospace;
   background: var(--bg-panel);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .transform-input:focus {
   outline: 1px solid var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 20%, transparent);
 }
 
 .unit {
@@ -835,10 +1364,17 @@ function savePoints() {
   background: var(--bg-panel);
   color: var(--text-primary);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .transform-btn:hover {
   background: var(--bg-secondary);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.transform-btn:active {
+  transform: scale(0.97);
 }
 
 /* Actions */
@@ -857,18 +1393,29 @@ function savePoints() {
   background: var(--bg-panel);
   color: var(--text-primary);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .action-btn:hover {
   background: var(--bg-secondary);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.action-btn:active {
+  transform: scale(0.97);
 }
 
 .action-btn.delete {
-  background: color-mix(in srgb, var(--accent-red) 15%, var(--bg-panel));
+  background: color-mix(in srgb, var(--accent-red) 10%, var(--bg-panel));
   color: var(--accent-red);
+  border-color: color-mix(in srgb, var(--accent-red) 30%, var(--border-color));
+  transition: all 0.15s ease, background 0.2s ease;
 }
 
 .action-btn.delete:hover {
   background: color-mix(in srgb, var(--accent-red) 25%, var(--bg-panel));
+  border-color: var(--accent-red);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--accent-red) 30%, transparent);
 }
 </style>

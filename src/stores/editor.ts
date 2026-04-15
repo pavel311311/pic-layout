@@ -12,12 +12,23 @@ import { useShapesStore } from './shapes'
 import { useCellsStore } from './cells'
 import { DEFAULT_LAYERS } from './layers.default'
 import { generateId } from '../utils/shapeId'
+import { expandInstance } from '../utils/cellInstanceRenderer'
+import type { CellChild } from '../types/cell'
+import { polygonBoolean, type BooleanOp } from '../utils/polygonBoolean'
 
 export const useEditorStore = defineStore('editor', () => {
   const ui = useUiStore()
   const layers = useLayersStore()
   const shapes = useShapesStore()
   const cells = useCellsStore()
+
+  // === Initialize cells store (v0.2.7) ===
+  // Ensure a default TOP cell exists for new projects
+  if (cells.cells.length === 0) {
+    const top = cells.addCell({ name: 'TOP', makeTop: true })
+    // Drill into TOP cell so new shapes go into it
+    cells.drillInto(top.id)
+  }
 
   // === Project (combines layers + shapes + cells) ===
   const project = computed<Project>(() => ({
@@ -34,12 +45,110 @@ export const useEditorStore = defineStore('editor', () => {
 
   // === Computed delegations ===
   const selectedShapes = computed(() => shapes.selectedShapes)
-  const visibleShapes = computed(() =>
-    shapes.shapes.filter((s) => {
+  /**
+   * visibleShapes - returns shapes to render on canvas
+   *
+   * v0.2.7 Cell integration:
+   * - When cells.activeCellId is set (drilled into a cell): show only that cell's shapes
+   * - When no active cell: show top-level shapes (flat view, shapes with no cellId)
+   *
+   * Shapes are filtered by layer visibility AND cell membership.
+   * CellInstance children are excluded (they're rendered separately via transform).
+   */
+  const visibleShapes = computed(() => {
+    const activeCellId = cells.activeCellId
+
+    // Filter by layer visibility
+    const byLayer = shapes.shapes.filter((s) => {
       const layer = layers.getLayer(s.layerId)
       return layer?.visible
     })
-  )
+
+    if (activeCellId) {
+      // Drill-down view: show only shapes belonging to the active cell
+      return byLayer.filter((s) => s.cellId === activeCellId)
+    } else {
+      // Top-level view: show shapes not assigned to any specific cell
+      // (shapes with cellId belong to sub-cells and are shown when drilling into those cells)
+      return byLayer.filter((s) => !s.cellId)
+    }
+  })
+
+  /**
+   * v0.2.7: Get active cell's children including both shapes and CellInstances.
+   * When drilled into a cell, this returns that cell's direct children.
+   */
+  const activeCellChildren = computed((): CellChild[] => {
+    const activeCellId = cells.activeCellId
+    if (!activeCellId) {
+      // Top-level view: get children from root cells (cells with no parent)
+      const rootCells = cells.cells.filter(c => !c.parentId)
+      // Return shapes from all root cells (flattened)
+      const result: CellChild[] = []
+      for (const cell of rootCells) {
+        result.push(...cell.children)
+      }
+      return result
+    }
+    // Drill-down: return the active cell's children
+    const activeCell = cells.getCell(activeCellId)
+    return activeCell?.children ?? []
+  })
+
+  /**
+   * v0.2.7: Expanded visible shapes for rendering.
+   * Combines:
+   * 1. BaseShape children of the active cell (from activeCellChildren)
+   * 2. Expanded CellInstance children (recursively expanded to shapes)
+   *
+   * This is what the Canvas renders - it includes shapes from referenced cells.
+   */
+  const expandedVisibleShapes = computed((): BaseShape[] => {
+    const children = activeCellChildren.value
+
+    // Separate base shapes and instances
+    const baseShapes: BaseShape[] = []
+    const instances: CellChild[] = []
+
+    for (const child of children) {
+      if (child.type === 'cell-instance') {
+        instances.push(child)
+      } else {
+        // It's a BaseShape - filter by layer visibility
+        const layer = layers.getLayer(child.layerId)
+        if (layer?.visible) {
+          baseShapes.push(child)
+        }
+      }
+    }
+
+    // Expand each CellInstance into shapes
+    const getCellChildren = (cellId: string): CellChild[] => {
+      const cell = cells.getCell(cellId)
+      return cell?.children ?? []
+    }
+
+    const expandedShapes: BaseShape[] = []
+    for (const inst of instances) {
+      if (inst.type === 'cell-instance') {
+        const expanded = expandInstance(
+          inst,
+          getCellChildren,
+          16, // max depth for DAG safety
+          0
+        )
+        // Filter expanded shapes by layer visibility
+        for (const s of expanded) {
+          const layer = layers.getLayer(s.layerId)
+          if (layer?.visible) {
+            expandedShapes.push(s)
+          }
+        }
+      }
+    }
+
+    return [...baseShapes, ...expandedShapes]
+  })
   const canUndo = computed(() => shapes.canUndo)
   const canRedo = computed(() => shapes.canRedo)
 
@@ -71,6 +180,12 @@ export const useEditorStore = defineStore('editor', () => {
     if (!shape.style) {
       shape.style = { ...ui.currentStyle }
     }
+    // v0.2.7: Assign shape to active cell if drilled in
+    if (cells.activeCellId) {
+      shape.cellId = cells.activeCellId
+      // Also add to the cell's children list (cells store tracks shape ownership)
+      cells.addShapeToCell(cells.activeCellId, shape)
+    }
     shapes.addShape(shape, saveHistory)
   }
   function updateShape(id: string, updates: Partial<BaseShape>, saveHistory = false) {
@@ -79,20 +194,76 @@ export const useEditorStore = defineStore('editor', () => {
   function updateShapeStyle(id: string, styleUpdates: any, saveHistory = true) {
     shapes.updateShapeStyle(id, styleUpdates, saveHistory)
   }
-  function deleteShape(id: string, saveHistory = true) { shapes.deleteShape(id, saveHistory) }
+  function deleteShape(id: string, saveHistory = true) {
+    // v0.2.7: Also remove from cell children if shape belongs to a cell
+    const shape = shapes.shapes.find((s) => s.id === id)
+    if (shape?.cellId) {
+      cells.removeChildFromCell(shape.cellId, id)
+    }
+    shapes.deleteShape(id, saveHistory)
+  }
   function selectShape(id: string, addToSelection = false) { shapes.selectShape(id, addToSelection) }
   function clearSelection() { shapes.clearSelection() }
   function selectShapesInArea(x1: number, y1: number, x2: number, y2: number) {
     shapes.selectShapesInArea(x1, y1, x2, y2, getLayerLocked)
   }
-  function deleteSelectedShapes() { shapes.deleteSelectedShapes() }
-  function duplicateSelectedShapes() { shapes.duplicateSelectedShapes() }
+  function deleteSelectedShapes() {
+    // v0.2.7: Remove selected shapes from their cell children before deleting
+    for (const id of shapes.selectedShapeIds) {
+      const shape = shapes.shapes.find((s) => s.id === id)
+      if (shape?.cellId) {
+        cells.removeChildFromCell(shape.cellId, id)
+      }
+    }
+    shapes.deleteSelectedShapes()
+  }
+  function duplicateSelectedShapes() {
+    const activeCellId = cells.activeCellId
+    const newIds = shapes.duplicateSelectedShapes()
+    // v0.2.7: Assign duplicated shapes to the active cell
+    if (activeCellId) {
+      for (const id of newIds) {
+        const shape = shapes.shapes.find((s) => s.id === id)
+        if (shape) {
+          shape.cellId = activeCellId
+          cells.addShapeToCell(activeCellId, shape)
+        }
+      }
+    }
+    return newIds
+  }
   function copySelectedShapes() { shapes.copySelectedShapes() }
-  function pasteShapes() { shapes.pasteShapes() }
+  function pasteShapes() {
+    const activeCellId = cells.activeCellId
+    const newIds = shapes.pasteShapes()
+    // v0.2.7: Assign pasted shapes to the active cell
+    if (activeCellId) {
+      for (const id of newIds) {
+        const shape = shapes.shapes.find((s) => s.id === id)
+        if (shape) {
+          shape.cellId = activeCellId
+          cells.addShapeToCell(activeCellId, shape)
+        }
+      }
+    }
+    return newIds
+  }
   function selectAllShapes() { shapes.selectAllShapes(getLayerLocked) }
   function clearClipboard() { shapes.clearClipboard() }
   function arrayCopySelectedShapes(rows: number, cols: number) {
-    return shapes.arrayCopySelectedShapes(rows, cols)
+    const activeCellId = cells.activeCellId
+    const newIds = shapes.arrayCopySelectedShapes(rows, cols)
+    // v0.2.7: Assign array-copied shapes to the active cell
+    if (activeCellId) {
+      for (const id of newIds) {
+        const shape = shapes.shapes.find((s) => s.id === id)
+        if (shape) {
+          shape.cellId = activeCellId
+          cells.addShapeToCell(activeCellId, shape)
+        }
+      }
+    }
+    return newIds
   }
   function getShapeAtPoint(px: number, py: number) {
     return shapes.getShapeAtPoint(px, py, getLayerLocked)
@@ -116,6 +287,78 @@ export const useEditorStore = defineStore('editor', () => {
   function offsetSelectedShapes(distance: number) {
     shapes.offsetSelectedShapes(distance, getLayerLocked)
   }
+
+  /**
+   * v0.3.0: Boolean operations on two selected shapes
+   * Performs boolean operation (union/intersection/difference/xor) on exactly two shapes.
+   * The result replaces both original shapes.
+   * Note: For complex polygons, results may be approximate. Arc/circle use bounding box.
+   */
+  function booleanOpSelectedShapes(op: BooleanOp) {
+    const selectedIds = shapes.selectedShapeIds
+    if (selectedIds.length !== 2) {
+      console.warn('Boolean operations require exactly 2 selected shapes')
+      return
+    }
+
+    const shape1 = shapes.shapes.find(s => s.id === selectedIds[0])
+    const shape2 = shapes.shapes.find(s => s.id === selectedIds[1])
+    if (!shape1 || !shape2) return
+
+    const resultPolygons = polygonBoolean(shape1, shape2, op)
+    if (resultPolygons.length === 0 || resultPolygons.every(p => p.length < 3)) {
+      // No result (e.g., no intersection)
+      return
+    }
+
+    // Remove both original shapes
+    const idsSet = new Set(selectedIds)
+    shapes.shapes = shapes.shapes.filter(s => !idsSet.has(s.id))
+    shapes.selectedShapeIds = []
+
+    // Add result polygons as new shapes
+    // Use the layer and style from the first shape
+    const layerId = shape1.layerId
+    const style = { ...shape1.style }
+    const activeCellId = cells.activeCellId
+
+    for (const polygon of resultPolygons) {
+      if (polygon.length < 3) continue
+      const newShape: BaseShape = {
+        id: generateId(),
+        type: 'polygon',
+        layerId,
+        style,
+        points: polygon,
+        x: 0, y: 0, width: 0, height: 0,
+      }
+      // Compute bounding box
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const pt of polygon) {
+        if (pt.x < minX) minX = pt.x
+        if (pt.y < minY) minY = pt.y
+        if (pt.x > maxX) maxX = pt.x
+        if (pt.y > maxY) maxY = pt.y
+      }
+      newShape.x = minX
+      newShape.y = minY
+      newShape.width = maxX - minX
+      newShape.height = maxY - minY
+
+      shapes.addShape(newShape, false)
+      // Also add to cell if drilling into one
+      if (activeCellId) {
+        cells.addShapeToCell(activeCellId, newShape)
+      }
+    }
+
+    // Select the new shape(s)
+    shapes.selectedShapeIds = []
+    for (const s of shapes.shapes.slice(-resultPolygons.length)) {
+      shapes.selectedShapeIds.push(s.id)
+    }
+  }
+
   function alignSelectedShapes(alignType: any) {
     shapes.alignSelectedShapes(alignType, getLayerLocked)
   }
@@ -150,6 +393,10 @@ export const useEditorStore = defineStore('editor', () => {
       }
       if (data.topCellId) {
         cells.topCellId = data.topCellId
+        // v0.2.7: Set active cell to top cell for loaded projects
+        if (!cells.activeCellId) {
+          cells.drillInto(data.topCellId)
+        }
       }
     } catch (e) {
       console.error('Failed to load project:', e)
@@ -170,6 +417,17 @@ export const useEditorStore = defineStore('editor', () => {
   function drillOut() { cells.drillOut() }
   function goToTop() { cells.goToTop() }
   function buildCellTree(rootId?: string) { return cells.buildCellTree(rootId) }
+  /**
+   * Drill into the selected CellInstance (if exactly one is selected).
+   * v0.2.7: CellInstances are not yet selectable in canvas — this is a placeholder
+   * for future implementation when CellInstances become selectable objects.
+   */
+  function drillIntoSelectedCellInstance(): boolean {
+    // TODO: When CellInstances become selectable in the canvas,
+    // check selectedShapes for a CellInstance and drill into it.
+    // Currently, Cell drill-in is done via the CellTree panel.
+    return false
+  }
 
   return {
     // Sub-stores (for direct access if needed)
@@ -197,8 +455,13 @@ export const useEditorStore = defineStore('editor', () => {
     // Computed
     selectedShapes,
     visibleShapes,
+    expandedVisibleShapes,
+    activeCellChildren,
     canUndo,
     canRedo,
+    // v0.2.7: Cell navigation state (for context menu)
+    activeCellId: cells.activeCellId,
+    topCellId: cells.topCellId,
     // Shape Actions
     addShape,
     updateShape,
@@ -247,6 +510,7 @@ export const useEditorStore = defineStore('editor', () => {
     mirrorSelectedShapesV,
     scaleSelectedShapes,
     offsetSelectedShapes,
+    booleanOpSelectedShapes,
     alignSelectedShapes,
     distributeSelectedShapes,
     // Cell Actions (v0.2.7)
@@ -261,5 +525,6 @@ export const useEditorStore = defineStore('editor', () => {
     drillOut,
     goToTop,
     buildCellTree,
+    drillIntoSelectedCellInstance,
   }
 })

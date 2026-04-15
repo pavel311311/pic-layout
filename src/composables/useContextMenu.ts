@@ -9,6 +9,7 @@ import type { BaseShape } from '../types/shapes'
 // Minimal store interface for context menu operations (Pinia composition API unwraps Refs)
 export interface ContextMenuStore {
   selectedShapeIds: string[]
+  selectedShapes: { type: string }[]
   clipboard: BaseShape[]
   project: { shapes: BaseShape[]; layers: { id: number }[] }
   pushHistory: () => void
@@ -23,9 +24,16 @@ export interface ContextMenuStore {
   mirrorSelectedShapesV: () => void
   scaleSelectedShapes: (sx: number, sy: number) => void
   offsetSelectedShapes: (o: number) => void
+  booleanOpSelectedShapes: (op: 'union' | 'intersection' | 'difference' | 'xor') => void
   alignSelectedShapes: (a: string) => void
   distributeSelectedShapes: (d: string) => void
   duplicateSelectedShapes: () => void
+  // Cell navigation (v0.2.7)
+  activeCellId?: string
+  topCellId?: string
+  drillIntoSelectedCellInstance: () => boolean
+  drillOut: () => void
+  goToTop: () => void
 }
 
 export interface MenuItem {
@@ -46,6 +54,8 @@ export function useContextMenu(store: ContextMenuStore) {
     const hasSelection = store.selectedShapeIds.length > 0
     const hasClipboard = store.clipboard.length > 0
     const multiSelect = store.selectedShapeIds.length > 1
+    // v0.2.7: Cell navigation — enabled when inside a non-top cell
+    const canDrillOut = !!(store.activeCellId && store.topCellId && store.activeCellId !== store.topCellId)
 
     return [
       { id: 'cut', label: '剪切', shortcut: 'Ctrl+X', disabled: !hasSelection },
@@ -95,6 +105,43 @@ export function useContextMenu(store: ContextMenuStore) {
           { id: 'array-copy', label: '阵列复制', shortcut: 'Ctrl+K' },
         ]
       },
+      // v0.2.7: Cell navigation submenu
+      {
+        id: 'cell',
+        label: 'Cell',
+        submenu: [
+          // TODO: Enable when CellInstances become selectable in canvas
+          {
+            id: 'drill-into',
+            label: '钻入 Cell',
+            shortcut: 'H',
+            disabled: true,
+          },
+          {
+            id: 'drill-out',
+            label: '钻出 Cell',
+            shortcut: 'N',
+            disabled: !canDrillOut,
+          },
+          {
+            id: 'go-to-top',
+            label: '返回顶层',
+            disabled: !canDrillOut,
+          },
+        ]
+      },
+      // v0.3.0: Boolean operations (requires exactly 2 shapes)
+      {
+        id: 'boolean',
+        label: '布尔运算',
+        disabled: store.selectedShapeIds.length !== 2,
+        submenu: [
+          { id: 'bool-union', label: '合并 (OR)' },
+          { id: 'bool-intersection', label: '交集 (AND)' },
+          { id: 'bool-difference', label: '相减 (MINUS)' },
+          { id: 'bool-xor', label: '异或 (XOR)' },
+        ]
+      },
       { id: 'sep2', label: '', separator: true },
       { id: 'shortcuts', label: '快捷键帮助', shortcut: '?' },
     ]
@@ -116,7 +163,11 @@ export function useContextMenu(store: ContextMenuStore) {
       markDirty: () => void
     }
   ) {
-    store.pushHistory()
+    // v0.2.7: Cell navigation operations don't modify shapes — no history needed
+    const cellNavOnly = ['drill-into', 'drill-out', 'go-to-top'].includes(id)
+    if (!cellNavOnly) {
+      store.pushHistory()
+    }
     switch (id) {
       case 'cut': store.copySelectedShapes(); store.deleteSelectedShapes(); break
       case 'copy': store.copySelectedShapes(); break
@@ -142,6 +193,15 @@ export function useContextMenu(store: ContextMenuStore) {
       case 'distribute-v': store.distributeSelectedShapes('vertical'); break
       case 'duplicate': store.duplicateSelectedShapes(); break
       case 'array-copy': opts.showArrayCopyDialog.value = true; break
+      // v0.3.0: Boolean operations
+      case 'bool-union': store.booleanOpSelectedShapes('union'); break
+      case 'bool-intersection': store.booleanOpSelectedShapes('intersection'); break
+      case 'bool-difference': store.booleanOpSelectedShapes('difference'); break
+      case 'bool-xor': store.booleanOpSelectedShapes('xor'); break
+      // v0.2.7: Cell navigation
+      case 'drill-into': store.drillIntoSelectedCellInstance(); break
+      case 'drill-out': store.drillOut(); break
+      case 'go-to-top': store.goToTop(); break
       case 'shortcuts': opts.showShortcutsDialog.value = true; break
     }
     opts.markDirty()

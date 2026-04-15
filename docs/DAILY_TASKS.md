@@ -288,3 +288,40 @@
 ### 下小时计划
 - [ ] v0.2.5 第3小时: Vite 代码分割配置优化
 - [ ] v0.2.5 第3小时: Gzip/Brotli 压缩验证
+
+## 2026-04-14 10:00
+
+### 当前任务
+- [x] v0.2.6 Toolbar tooltip 优化 + ARIA 无障碍标签 (第1小时)
+
+### 完成内容
+- [x] 分析 v0.2.6 剩余任务清单
+- [x] 发现大部分任务已完成：深色主题、右键菜单、SVG图标、状态栏增强、Navigator交互、拖拽光标
+- [x] Toolbar 工具提示优化：
+  - 添加 getToolTip() / getEditTooltip() 函数
+  - 使用动态 title 属性显示快捷键
+  - 添加 ARIA aria-label 属性提升可访问性
+  - 保持原有功能不变
+- [x] 文件操作按钮添加 tooltip
+- [x] 编辑操作按钮添加 tooltip（含快捷键）
+- [x] 视图操作按钮添加 tooltip
+- [x] 编译测试通过
+- [x] Git 提交并推送 (25 files, +1873/-152 lines)
+
+### v0.2.6 进度总结
+已完成的 UI 美化任务：
+- [x] 深色主题系统 (CSS 变量完整)
+- [x] 右键菜单组件 (ContextMenu.vue, 304行)
+- [x] SVG 图标 (Lucide Icons)
+- [x] 状态栏增强 (坐标/缩放/图层/选中/网格/测量)
+- [x] Navigator 可拖拽视口框
+- [x] 拖拽移动光标优化 (grabbing)
+- [x] Toolbar tooltip 优化 + ARIA 标签
+
+### 遇到的问题
+- TypeScript 错误：inline arrow function 调用 window/CustomEvent
+  - 解决：恢复独立的 openAlignDialog/openArrayCopyDialog 函数
+
+### 下小时计划
+- [ ] v0.2.6 第2小时: 继续完善其他 UI 细节（如 PropertiesPanel 样式）
+- [ ] 或开始 v0.2.7 Cell 层级系统开发

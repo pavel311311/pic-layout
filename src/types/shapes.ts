@@ -41,6 +41,8 @@ export interface BaseShape {
   id: string
   type: ShapeType
   layerId: number
+  /** Cell this shape belongs to (undefined = top-level, belongs to implicit top cell) */
+  cellId?: string
   x: number
   y: number
   width?: number

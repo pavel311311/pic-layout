@@ -95,6 +95,8 @@ const viewShortcuts = [
   { key: 'Ctrl+1', description: '适应窗口' },
   { key: '↑↓←→', description: '平移画布' },
   { key: '双击图形', description: '编辑图形顶点 (Path/Edge/Polyline)' },
+  { key: 'H', description: '钻出到父级单元 (Cell Hierarchy)' },
+  { key: 'N', description: '返回顶层单元 (Top Cell)' },
 ]
 </script>
 

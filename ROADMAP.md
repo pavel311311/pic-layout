@@ -475,3 +475,20 @@ chore: 构建/工具
 - [KLayout GUI 界面参考](https://klayout.de/)
 - [GDSII 格式规范](http://josefvandecastle.de/education/gdsii/)
 - [硅光工艺库文档](https://www.si-photonic.com/)
+
+### 2026-04-14
+
+**完成内容**:
+- v0.2.6 Toolbar tooltip 优化 + ARIA 无障碍标签
+- 分析 v0.2.6 进度：大部分 UI 美化任务已完成
+- 添加 getToolTip()/getEditTooltip() 函数，动态显示快捷键
+- 添加 ARIA aria-label 属性提升可访问性
+- Git 提交并推送 (25 files, +1873/-152 lines)
+
+**遇到的问题**:
+- TypeScript inline arrow function 错误
+  - 解决：恢复独立的 openAlignDialog/openArrayCopyDialog 函数
+
+**次日计划**:
+- v0.2.6 第2小时: PropertiesPanel 样式完善
+- 或开始 v0.2.7 Cell 层级系统开发
