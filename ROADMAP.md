@@ -492,3 +492,21 @@ chore: 构建/工具
 **次日计划**:
 - v0.2.6 第2小时: PropertiesPanel 样式完善
 - 或开始 v0.2.7 Cell 层级系统开发
+
+### 2026-04-15
+
+**完成内容**:
+- v0.2.7 Cell层级系统 - Cell树/钻入钻出/搜索高亮完成
+  - CellTree.vue (768行): 层级树组件
+  - cellInstanceRenderer.ts (379行): Cell实例渲染器
+  - cells.ts: highlightedCellIds 搜索高亮
+- v0.3.0 布尔运算 - polygonBoolean.ts (531行) 完成 AND/OR/XOR/MINUS
+- v0.4.0 GDSII 导入导出 - gdsImporter.ts (774行) + gdsExporter.ts 重构
+
+**遇到的问题**:
+- 无
+
+**次日计划**:
+- v0.2.7 第2小时: Cell 钻入钻出 UI 完善 + Cell 搜索功能
+- v0.3.0 第2小时: 布尔运算 UI 集成
+- v0.4.0 第2小时: GDS 导入预览 UI + 兼容性测试

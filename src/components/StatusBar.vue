@@ -98,6 +98,15 @@ const totalShapeCount = computed(() => store.project.shapes.length)
 const visibleLayerCount = computed(() => 
   store.project.layers.filter(l => l.visible).length
 )
+
+// Active cell name (v0.2.7: show when drilled into a cell)
+const activeCellName = computed(() => {
+  if (!store.cells?.activeCell) return ''
+  const name = store.cells.activeCell.name
+  const topName = store.cells.topCell?.name
+  if (name === topName) return '' // At top level, don't show
+  return name
+})
 </script>
 
 <template>
@@ -114,6 +123,13 @@ const visibleLayerCount = computed(() =>
         <span class="layer-count">({{ currentLayerShapeCount }})</span>
       </span>
       <span class="separator">|</span>
+
+      <!-- Active Cell name (v0.2.7 - drill-down indicator) -->
+      <span v-if="activeCellName" class="cell-info" title="当前钻入的 Cell">
+        <span class="cell-icon">⬡</span>
+        <span class="cell-name">{{ activeCellName }}</span>
+      </span>
+      <span v-if="activeCellName" class="separator">|</span>
       
       <span class="grid">
         <span class="label">Grid</span>
@@ -210,6 +226,25 @@ const visibleLayerCount = computed(() =>
 .layer-count {
   color: var(--text-muted);
   font-size: 9px;
+}
+
+/* Cell info (v0.2.7 - drill-down indicator) */
+.cell-info {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent-purple, #b39ddb);
+}
+
+.cell-icon {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.cell-name {
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--accent-purple, #b39ddb);
 }
 
 /* Grid info */

@@ -11,10 +11,10 @@
  */
 import { ref, computed } from 'vue'
 import { useEditorStore } from '../../stores/editor'
-import { downloadGDS } from '../../services/gdsExporter'
 import {
   Save,
   Upload,
+  Download,
   Undo2,
   Redo2,
   AlignHorizontalJustifyCenter,
@@ -30,24 +30,21 @@ import {
   Ruler,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
+  Maximize2,
   Moon,
   Sun,
+  Combine,
 } from 'lucide-vue-next'
 
 const store = useEditorStore()
 
-async function handleExportGDS() {
-  try {
-    await downloadGDS(
-      store.project.shapes,
-      store.project.layers,
-      { name: store.project.name || 'PIC_LAYOUT' }
-    )
-  } catch (err) {
-    console.error('GDS export failed:', err)
-    alert('GDS 导出失败: ' + (err as Error).message)
-  }
+function handleExportGDS() {
+  // Open the export dialog via custom event
+  window.dispatchEvent(new CustomEvent('open-gds-export'))
+}
+
+function openGdsImportDialog() {
+  window.dispatchEvent(new CustomEvent('open-gds-import'))
 }
 
 // Tool definitions with Lucide icon components
@@ -73,6 +70,7 @@ const editOps = [
   { label: 'Redo', shortcut: 'Ctrl+Y', action: 'redo' },
   { label: 'Align', shortcut: 'Ctrl+Shift+L', action: 'align' },
   { label: 'Array', shortcut: 'K', action: 'array' },
+  { label: 'Boolean', shortcut: 'B', action: 'boolean' },
 ]
 
 const isRulerMode = ref(false)
@@ -106,6 +104,10 @@ function openAlignDialog() {
 function openArrayCopyDialog() {
   window.dispatchEvent(new CustomEvent('open-array-copy-dialog'))
 }
+
+function openBooleanDialog() {
+  window.dispatchEvent(new CustomEvent('open-boolean-dialog'))
+}
 </script>
 
 <template>
@@ -118,7 +120,11 @@ function openArrayCopyDialog() {
       </button>
       <button class="tool-btn" @click="handleExportGDS" :title="getEditTooltip(fileOps[1])" aria-label="Export GDS">
         <Upload :size="16" class="btn-icon-svg" />
-        <span class="btn-label">GDS</span>
+        <span class="btn-label">Exp</span>
+      </button>
+      <button class="tool-btn" @click="openGdsImportDialog" title="Import GDS" aria-label="Import GDS">
+        <Download :size="16" class="btn-icon-svg" />
+        <span class="btn-label">Imp</span>
       </button>
     </div>
     
@@ -164,6 +170,15 @@ function openArrayCopyDialog() {
         <CopySlash :size="16" class="btn-icon-svg" />
         <span class="btn-label">Array</span>
       </button>
+      <button
+        class="tool-btn"
+        @click="openBooleanDialog"
+        :title="getEditTooltip(editOps[4])"
+        aria-label="Boolean Operations"
+      >
+        <Combine :size="16" class="btn-icon-svg" />
+        <span class="btn-label">Bool</span>
+      </button>
     </div>
     
     <div class="divider"></div>
@@ -196,8 +211,8 @@ function openArrayCopyDialog() {
         <ZoomOut :size="16" class="btn-icon-svg" />
         <span class="btn-label">Out</span>
       </button>
-      <button class="tool-btn" @click="store.setZoom(1)" title="Reset Zoom" aria-label="Reset Zoom">
-        <RotateCcw :size="16" class="btn-icon-svg" />
+      <button class="tool-btn" @click="store.zoomToFit()" title="Zoom to Fit All (Home)" aria-label="Zoom to Fit All">
+        <Maximize2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Fit</span>
       </button>
       <button 

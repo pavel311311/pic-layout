@@ -26,6 +26,9 @@ const cellsStore = useCellsStore()
 const ArrayCopyDialog = defineAsyncComponent(() => import('../dialogs/ArrayCopyDialog.vue'))
 const ShortcutsDialog = defineAsyncComponent(() => import('../dialogs/ShortcutsDialog.vue'))
 const AlignDialog = defineAsyncComponent(() => import('../dialogs/AlignDialog.vue'))
+const GdsImportDialog = defineAsyncComponent(() => import('../dialogs/GdsImportDialog.vue'))
+const GdsExportDialog = defineAsyncComponent(() => import('../dialogs/GdsExportDialog.vue'))
+const BooleanOperationsDialog = defineAsyncComponent(() => import('../dialogs/BooleanOperationsDialog.vue'))
 
 // Canvas coordinate system
 const { screenToDesign, designToScreen, getSnappedPoint } = useCanvasCoordinates({
@@ -99,6 +102,9 @@ const selection = useCanvasSelection({
 const showArrayCopyDialog = ref(false)
 const showShortcutsDialog = ref(false)
 const showAlignDialog = ref(false)
+const showGdsImportDialog = ref(false)
+const showGdsExportDialog = ref(false)
+const showBooleanDialog = ref(false)
 
 // === Context Menu composable ===
 const ctxMenu = useContextMenu(store)
@@ -115,7 +121,10 @@ function onContextMenuSelect(id: string) {
   ctxMenu.handleContextMenuSelect(id, {
     showArrayCopyDialog,
     showShortcutsDialog,
+    showGdsImportDialog,
+    showGdsExportDialog,
     markDirty: () => virtualization.markDirty(),
+    announce: announceCanvasChange,
   })
 }
 
@@ -154,6 +163,7 @@ const toolHandlers = useCanvasToolHandlers({
   setTool: (t) => store.setTool(t),
   setZoom: (z) => store.setZoom(z),
   setPan: (x, y) => store.setPan(x, y),
+  zoomToFit: () => store.zoomToFit(),
   canUndo: () => store.canUndo,
   canRedo: () => store.canRedo,
   undo: () => store.undo(),
@@ -167,6 +177,8 @@ const toolHandlers = useCanvasToolHandlers({
   showArrayCopyDialog,
   showShortcutsDialog,
   showAlignDialog,
+  showGdsExportDialog,
+  showBooleanDialog,
   canvasRef,
   announce: announceCanvasChange,
   drillOut: store.drillOut,
@@ -384,6 +396,10 @@ useCanvasLifecycle({
   announceCanvasChange,
   showAlignDialog,
   showArrayCopyDialog,
+  showGdsImportDialog,
+  showGdsExportDialog,
+  showBooleanDialog,
+  markDirty: () => virtualization.markDirty(),
 })
 
 // === Cleanup only (animation frame) ===
@@ -439,6 +455,15 @@ defineExpose({
     />
     <AlignDialog
       v-model:show="showAlignDialog"
+    />
+    <GdsImportDialog
+      v-model:show="showGdsImportDialog"
+    />
+    <GdsExportDialog
+      v-model:show="showGdsExportDialog"
+    />
+    <BooleanOperationsDialog
+      v-model:show="showBooleanDialog"
     />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">

@@ -252,6 +252,31 @@ export const useCellsStore = defineStore('cells', () => {
   }
 
   /**
+   * v0.2.7: Drill into the CellInstance that is currently selected in the canvas.
+   * Called when user clicks "钻入 Cell" in the context menu while a CellInstance
+   * is selected. We look through active cell's children for a cell-instance
+   * whose name matches the selected shape's text.
+   *
+   * Returns true if drill-in succeeded, false if no valid instance found.
+   */
+  function drillIntoSelectedCellInstance(selectedIds: string[], shapes: { id: string; type: string; cellId?: string }[]): boolean {
+    // Find if one of the selected shapes is a cell-instance in the active cell
+    for (const id of selectedIds) {
+      const shape = shapes.find(s => s.id === id)
+      if (!shape) continue
+      // A cell-instance rendered shape has cellId pointing to the target cell
+      if (shape.cellId) {
+        const targetCell = getCell(shape.cellId)
+        if (targetCell) {
+          activeCellId.value = targetCell.id
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
    * Drill out to parent cell (or stay at top)
    */
   function drillOut(): void {
@@ -489,6 +514,7 @@ export const useCellsStore = defineStore('cells', () => {
     updateInstance,
     // Navigation
     drillInto,
+    drillIntoSelectedCellInstance,
     drillOut,
     goToTop,
     // Cell search highlight

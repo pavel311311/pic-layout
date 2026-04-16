@@ -42,6 +42,46 @@ const activeCellId = computed(() => cellsStore.activeCellId)
 // Top cell ID
 const topCellId = computed(() => cellsStore.topCellId)
 
+/** Build breadcrumb path from top cell to current active cell */
+const breadcrumbPath = computed(() => {
+  const path: { id: string; name: string }[] = []
+  if (!activeCellId.value) return path
+  
+  // Build path from active cell up to top
+  const pathToTop: { id: string; name: string }[] = []
+  let currentId: string | undefined = activeCellId.value
+  
+  while (currentId && currentId !== topCellId.value) {
+    const cell = cellsStore.getCell(currentId)
+    if (!cell) break
+    pathToTop.unshift({ id: cell.id, name: getCellDisplayName(cell.id) })
+    currentId = cell.parentId
+  }
+  
+  // Add top cell at the beginning
+  const topCellIdVal = topCellId.value
+  if (topCellIdVal) {
+    const topCell = cellsStore.getCell(topCellIdVal)
+    if (topCell) {
+      path.push({ id: topCell.id, name: 'TOP' })
+    }
+  }
+  
+  // Add the path from top to active
+  path.push(...pathToTop)
+  
+  return path
+})
+
+/** Drill to a specific cell in the breadcrumb path */
+function drillToCell(cellId: string) {
+  if (cellId === topCellId.value) {
+    goToTop()
+  } else {
+    cellsStore.drillInto(cellId)
+  }
+}
+
 function toggleExpand(cellId: string, e: Event) {
   e.stopPropagation()
   if (expandedCells.value.has(cellId)) {
@@ -281,8 +321,9 @@ function onContextMenuSelect(itemId: string) {
 
 <template>
   <div class="cell-tree-panel" @click="closeContextMenu">
-    <!-- Breadcrumb / Navigation -->
+    <!-- Breadcrumb / Navigation (v0.2.7 enhanced) -->
     <div class="cell-breadcrumb">
+      <!-- Home / Top Cell -->
       <button
         class="breadcrumb-btn"
         :class="{ active: !activeCellId || activeCellId === topCellId }"
@@ -293,11 +334,20 @@ function onContextMenuSelect(itemId: string) {
         <Home :size="10" aria-hidden="true" />
         <span>TOP</span>
       </button>
-      <template v-if="activeCellId && activeCellId !== topCellId">
+      <!-- Full hierarchy path when drilled in -->
+      <template v-for="(crumb, idx) in breadcrumbPath.slice(1)" :key="crumb.id">
         <span class="breadcrumb-sep">/</span>
-        <button class="breadcrumb-btn" @click="drillOut" title="Drill out to parent" aria-label="Drill out">
-          <ArrowLeft :size="9" aria-hidden="true" />
-          <span>{{ getCellDisplayName(activeCellId) }}</span>
+        <button
+          class="breadcrumb-btn"
+          :class="{ active: activeCellId === crumb.id }"
+          @click="drillToCell(crumb.id)"
+          :title="`Drill to ${crumb.name}`"
+          :aria-label="`Drill to ${crumb.name}`"
+        >
+          <template v-if="idx < breadcrumbPath.length - 2">
+            <ArrowLeft :size="9" aria-hidden="true" />
+          </template>
+          <span>{{ crumb.name }}</span>
         </button>
       </template>
     </div>

@@ -29,6 +29,10 @@ export interface UseCanvasLifecycleOptions {
   announceCanvasChange: (message: string) => void
   showAlignDialog: Ref<boolean>
   showArrayCopyDialog: Ref<boolean>
+  showGdsImportDialog: Ref<boolean>
+  showBooleanDialog: Ref<boolean>
+  showGdsExportDialog: Ref<boolean>
+  markDirty: () => void
 }
 
 export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
@@ -41,6 +45,11 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     getCanvasDescription,
     announceCanvasChange,
     showAlignDialog,
+    showArrayCopyDialog,
+    showGdsImportDialog,
+    showBooleanDialog,
+    showGdsExportDialog,
+    markDirty,
   } = options
 
   // ResizeObserver to handle container size changes (e.g., panel resize)
@@ -51,7 +60,19 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
   }
 
   function handleOpenArrayCopyDialog() {
-    // Triggered via window event from toolbar; state read by parent
+    showArrayCopyDialog.value = true
+  }
+
+  function handleOpenGdsImportDialog() {
+    showGdsImportDialog.value = true
+  }
+
+  function handleOpenBooleanDialog() {
+    showBooleanDialog.value = true
+  }
+
+  function handleOpenGdsExportDialog() {
+    showGdsExportDialog.value = true
   }
 
   // Mount: register all window listeners
@@ -72,6 +93,11 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     window.addEventListener('align-shapes', handleAlignCommand)
     window.addEventListener('open-align-dialog', handleOpenAlignDialog)
     window.addEventListener('open-array-copy-dialog', handleOpenArrayCopyDialog)
+    window.addEventListener('open-gds-import', handleOpenGdsImportDialog)
+    window.addEventListener('open-boolean-dialog', handleOpenBooleanDialog)
+    window.addEventListener('open-gds-export', handleOpenGdsExportDialog)
+    // Listen for canvas-mark-dirty events from dialogs (e.g., BooleanOperationsDialog)
+    window.addEventListener('canvas-mark-dirty', () => markDirty())
     canvasRef.value?.setAttribute('tabindex', '0')
     canvasRef.value?.focus()
     announceCanvasChange(getCanvasDescription())
@@ -86,10 +112,17 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     window.removeEventListener('align-shapes', handleAlignCommand)
     window.removeEventListener('open-align-dialog', handleOpenAlignDialog)
     window.removeEventListener('open-array-copy-dialog', handleOpenArrayCopyDialog)
+    window.removeEventListener('open-gds-import', handleOpenGdsImportDialog)
+    window.removeEventListener('open-boolean-dialog', handleOpenBooleanDialog)
+    window.removeEventListener('open-gds-export', handleOpenGdsExportDialog)
+    window.removeEventListener('canvas-mark-dirty', () => markDirty())
   })
 
   return {
     handleOpenAlignDialog,
     handleOpenArrayCopyDialog,
+    handleOpenGdsImportDialog,
+    handleOpenBooleanDialog,
+    handleOpenGdsExportDialog,
   }
 }

@@ -58,6 +58,10 @@ export interface GDSExportOptions {
   name: string
   /** Database units per user unit (e.g., 1000 = 1nm per micron) */
   dbPerUm?: number
+  /** Cell hierarchy (optional — omit for flat single-cell export) */
+  cells?: Cell[]
+  /** Top cell ID (required when cells are provided) */
+  topCellId?: string
 }
 
 export interface GDSElement {

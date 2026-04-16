@@ -13,8 +13,9 @@ import { useCellsStore } from './cells'
 import { DEFAULT_LAYERS } from './layers.default'
 import { generateId } from '../utils/shapeId'
 import { expandInstance } from '../utils/cellInstanceRenderer'
-import type { CellChild } from '../types/cell'
+import type { CellChild, CellInstance } from '../types/cell'
 import { polygonBoolean, type BooleanOp } from '../utils/polygonBoolean'
+import { getShapeBounds } from '../utils/transforms'
 
 export const useEditorStore = defineStore('editor', () => {
   const ui = useUiStore()
@@ -138,9 +139,14 @@ export const useEditorStore = defineStore('editor', () => {
           0
         )
         // Filter expanded shapes by layer visibility
+        // v0.2.7: Tag expanded shapes with their source instance ID for drill-in support
         for (const s of expanded) {
           const layer = layers.getLayer(s.layerId)
           if (layer?.visible) {
+            // Preserve source instance ID for drill-in (don't overwrite nested instance IDs)
+            if (!s.sourceInstanceId) {
+              s.sourceInstanceId = (inst as CellInstance).id
+            }
             expandedShapes.push(s)
           }
         }
@@ -167,6 +173,49 @@ export const useEditorStore = defineStore('editor', () => {
   function setCurrentStyle(style: any) { ui.setCurrentStyle(style) }
   function setZoom(value: number) { ui.setZoom(value) }
   function setPan(x: number, y: number) { ui.setPan(x, y) }
+
+  /**
+   * v0.2.6: Zoom to fit all visible shapes in the viewport.
+   * Calculates zoom and pan to center all shapes with 10% padding.
+   * Resets to 1x zoom if no shapes exist.
+   */
+  function zoomToFit() {
+    const allShapes = expandedVisibleShapes.value
+    if (allShapes.length === 0) {
+      setZoom(1)
+      setPan(0, 0)
+      return
+    }
+
+    // Compute combined bounds of all expanded shapes
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const shape of allShapes) {
+      const b = getShapeBounds(shape)
+      if (b.minX < minX) minX = b.minX
+      if (b.minY < minY) minY = b.minY
+      if (b.maxX > maxX) maxX = b.maxX
+      if (b.maxY > maxY) maxY = b.maxY
+    }
+
+    const boundsW = maxX - minX || 1
+    const boundsH = maxY - minY || 1
+    const pad = 0.1 // 10% padding
+    const W = ui.canvasWidth
+    const H = ui.canvasHeight
+
+    // Zoom to fit with padding (min 0.1, max 10)
+    const zoom = Math.max(0.1, Math.min(10, Math.min(W / (boundsW * (1 + pad)), H / (boundsH * (1 + pad)))))
+
+    // Center the content
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+    const panX = W / 2 - centerX * zoom
+    const panY = H / 2 - centerY * zoom
+
+    setZoom(zoom)
+    setPan(panX, panY)
+  }
+
   function applyTheme(newTheme: 'light' | 'dark') { ui.applyTheme(newTheme) }
   function toggleTheme() { ui.toggleTheme() }
   function setCanvasSize(width: number, height: number) { ui.setCanvasSize(width, height) }
@@ -418,15 +467,50 @@ export const useEditorStore = defineStore('editor', () => {
   function goToTop() { cells.goToTop() }
   function buildCellTree(rootId?: string) { return cells.buildCellTree(rootId) }
   /**
-   * Drill into the selected CellInstance (if exactly one is selected).
-   * v0.2.7: CellInstances are not yet selectable in canvas — this is a placeholder
-   * for future implementation when CellInstances become selectable objects.
+   * v0.2.7: Drill into the CellInstance that the selected shape was expanded from.
+   * When a user selects a shape that was rendered from a CellInstance expansion,
+   * we can drill into that Cell's contents.
+   * Returns true if drill-in succeeded, false if no valid instance found.
    */
   function drillIntoSelectedCellInstance(): boolean {
-    // TODO: When CellInstances become selectable in the canvas,
-    // check selectedShapes for a CellInstance and drill into it.
-    // Currently, Cell drill-in is done via the CellTree panel.
+    const selected = selectedShapes.value
+    if (selected.length !== 1) return false
+
+    const shape = selected[0]
+    const instanceId = shape.sourceInstanceId
+    if (!instanceId) return false
+
+    // Find the CellInstance in the active cell's children
+    const activeCellId = cells.activeCellId
+    if (!activeCellId) return false
+
+    const activeCell = cells.getCell(activeCellId)
+    if (!activeCell) return false
+
+    const instance = activeCell.children.find(
+      (c) => c.type === 'cell-instance' && (c as CellInstance).id === instanceId
+    ) as CellInstance | undefined
+
+    if (!instance) return false
+
+    // Drill into the target cell of this instance
+    const targetCell = cells.getCell(instance.cellId)
+    if (targetCell) {
+      cells.drillInto(targetCell.id)
+      return true
+    }
+
     return false
+  }
+
+  /**
+   * v0.2.7: Returns true if exactly one shape is selected and it was expanded
+   * from a CellInstance (meaning drill-in is possible).
+   */
+  function canDrillIntoSelectedInstance(): boolean {
+    const selected = selectedShapes.value
+    if (selected.length !== 1) return false
+    return !!selected[0].sourceInstanceId
   }
 
   return {
@@ -491,6 +575,7 @@ export const useEditorStore = defineStore('editor', () => {
     setTool,
     setZoom,
     setPan,
+    zoomToFit,
     setCanvasSize,
     // Theme Actions
     applyTheme,
@@ -526,5 +611,6 @@ export const useEditorStore = defineStore('editor', () => {
     goToTop,
     buildCellTree,
     drillIntoSelectedCellInstance,
+    canDrillIntoSelectedInstance,
   }
 })

@@ -43,6 +43,8 @@ export interface BaseShape {
   layerId: number
   /** Cell this shape belongs to (undefined = top-level, belongs to implicit top cell) */
   cellId?: string
+  /** v0.2.7: CellInstance ID this shape was expanded from (for drill-in support) */
+  sourceInstanceId?: string
   x: number
   y: number
   width?: number

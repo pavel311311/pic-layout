@@ -52,6 +52,7 @@ export interface ToolHandlersOptions {
   setTool: (tool: string) => void
   setZoom: (zoom: number) => void
   setPan: (x: number, y: number) => void
+  zoomToFit: () => void
   canUndo: () => boolean
   canRedo: () => boolean
   undo: () => void
@@ -71,6 +72,8 @@ export interface ToolHandlersOptions {
   showArrayCopyDialog: Ref<boolean>
   showShortcutsDialog: Ref<boolean>
   showAlignDialog: Ref<boolean>
+  showBooleanDialog: Ref<boolean>
+  showGdsExportDialog: Ref<boolean>
 
   // Canvas ref
   canvasRef: Ref<HTMLCanvasElement | null>
@@ -91,10 +94,10 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     deleteSelectedShapes, duplicateSelectedShapes, copySelectedShapes, pasteShapes,
     selectAllShapes, moveSelectedShapes, rotateSelectedShapes90CW, rotateSelectedShapes90CCW,
     mirrorSelectedShapesH, mirrorSelectedShapesV, scaleSelectedShapes, offsetSelectedShapes,
-    alignSelectedShapes, distributeSelectedShapes, pushHistory, setTool, setZoom, setPan,
+    alignSelectedShapes, distributeSelectedShapes, pushHistory, setTool, setZoom, setPan, zoomToFit,
     canUndo, canRedo, undo, redo, getShapeAtPoint,
     drawing, interaction, virtualization, geometry,
-    getSnappedPoint, showArrayCopyDialog, showShortcutsDialog, showAlignDialog,
+    getSnappedPoint, showArrayCopyDialog, showShortcutsDialog, showAlignDialog, showBooleanDialog, showGdsExportDialog,
     canvasRef, announce,
     drillOut, goToTop,
   } = options
@@ -569,6 +572,15 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         case 'k':
           if (getSelectedShapeIds().length > 0) showArrayCopyDialog.value = true
           return
+        case 'b':
+          if (getSelectedShapeIds().length === 2) {
+            showBooleanDialog.value = true
+          } else if (getSelectedShapeIds().length === 0) {
+            announce('请先选择 2 个图形进行布尔运算')
+          } else {
+            announce(`布尔运算需要恰好 2 个图形，当前选择了 ${getSelectedShapeIds().length} 个`)
+          }
+          return
         // Cell navigation: H = drill out (go up), N = go to top
         case 'h':
           drillOut()
@@ -578,6 +590,11 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         case 'n':
           goToTop()
           announce('返回顶层单元')
+          virtualization.markDirty()
+          return
+        case 'home':
+          zoomToFit()
+          announce('缩放适应全部图形')
           virtualization.markDirty()
           return
         case ' ':

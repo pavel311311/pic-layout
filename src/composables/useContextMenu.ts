@@ -32,6 +32,7 @@ export interface ContextMenuStore {
   activeCellId?: string
   topCellId?: string
   drillIntoSelectedCellInstance: () => boolean
+  canDrillIntoSelectedInstance: () => boolean
   drillOut: () => void
   goToTop: () => void
 }
@@ -56,6 +57,8 @@ export function useContextMenu(store: ContextMenuStore) {
     const multiSelect = store.selectedShapeIds.length > 1
     // v0.2.7: Cell navigation — enabled when inside a non-top cell
     const canDrillOut = !!(store.activeCellId && store.topCellId && store.activeCellId !== store.topCellId)
+    // v0.2.7: Drill-in — only enabled when selected shape was expanded from a CellInstance
+    const canDrillInto = store.canDrillIntoSelectedInstance()
 
     return [
       { id: 'cut', label: '剪切', shortcut: 'Ctrl+X', disabled: !hasSelection },
@@ -110,12 +113,11 @@ export function useContextMenu(store: ContextMenuStore) {
         id: 'cell',
         label: 'Cell',
         submenu: [
-          // TODO: Enable when CellInstances become selectable in canvas
           {
             id: 'drill-into',
             label: '钻入 Cell',
             shortcut: 'H',
-            disabled: true,
+            disabled: !canDrillInto,
           },
           {
             id: 'drill-out',
@@ -143,6 +145,15 @@ export function useContextMenu(store: ContextMenuStore) {
         ]
       },
       { id: 'sep2', label: '', separator: true },
+      // v0.4.0: GDS Import/Export submenu
+      {
+        id: 'gds',
+        label: 'GDS',
+        submenu: [
+          { id: 'gds-import', label: '导入 GDS...' },
+          { id: 'gds-export', label: '导出 GDS...' },
+        ]
+      },
       { id: 'shortcuts', label: '快捷键帮助', shortcut: '?' },
     ]
   }
@@ -160,7 +171,10 @@ export function useContextMenu(store: ContextMenuStore) {
     opts: {
       showArrayCopyDialog: Ref<boolean>
       showShortcutsDialog: Ref<boolean>
+      showGdsImportDialog: Ref<boolean>
+      showGdsExportDialog: Ref<boolean>
       markDirty: () => void
+      announce?: (msg: string) => void
     }
   ) {
     // v0.2.7: Cell navigation operations don't modify shapes — no history needed
@@ -199,10 +213,19 @@ export function useContextMenu(store: ContextMenuStore) {
       case 'bool-difference': store.booleanOpSelectedShapes('difference'); break
       case 'bool-xor': store.booleanOpSelectedShapes('xor'); break
       // v0.2.7: Cell navigation
-      case 'drill-into': store.drillIntoSelectedCellInstance(); break
+      case 'drill-into': {
+        const ok = store.drillIntoSelectedCellInstance()
+        if (!ok) {
+          opts.announce?.('所选图形不是 Cell 实例，无法钻入')
+        }
+        break
+      }
       case 'drill-out': store.drillOut(); break
       case 'go-to-top': store.goToTop(); break
       case 'shortcuts': opts.showShortcutsDialog.value = true; break
+      // v0.4.0: GDS import/export
+      case 'gds-import': opts.showGdsImportDialog.value = true; break
+      case 'gds-export': opts.showGdsExportDialog.value = true; break
     }
     opts.markDirty()
   }

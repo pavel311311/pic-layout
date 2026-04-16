@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useEditorStore } from '../../stores/editor'
-import { computed, ref, watch } from 'vue'
-import type { ShapeStyle, FillPattern, PathEndStyle, PathJoinStyle } from '../../types/shapes'
+import { computed, ref, watch, nextTick } from 'vue'
+import type { ShapeStyle, FillPattern, PathEndStyle, PathJoinStyle, BaseShape, Point, RectangleShape, PolygonShape } from '../../types/shapes'
 import { getEdgeLength, getShapeBounds } from '../../utils/transforms'
 
 const store = useEditorStore()
@@ -16,6 +16,111 @@ const selectedShape = computed(() => {
   }
   return null
 })
+
+// === Shape Preview Canvas (v0.2.6) ===
+const previewCanvasRef = ref<HTMLCanvasElement | null>(null)
+
+/** Draw a scaled preview of the selected shape */
+function drawShapePreview(canvas: HTMLCanvasElement, shape: BaseShape) {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const W = canvas.width, H = canvas.height
+  const pad = 10
+  const bounds = getShapeBounds(shape)
+  const bw = bounds.maxX - bounds.minX || 1
+  const bh = bounds.maxY - bounds.minY || 1
+  const availW = W - pad * 2, availH = H - pad * 2
+  const scale = Math.min(availW / bw, availH / bh) * 0.9
+  const cx = (bounds.minX + bw / 2), cy = (bounds.minY + bh / 2)
+  const ox = W / 2 - cx * scale
+  const oy = H / 2 - cy * scale
+  const toX = (x: number) => x * scale + ox
+  const toY = (y: number) => H - (y * scale + oy)
+
+  ctx.clearRect(0, 0, W, H)
+  ctx.fillStyle = '#1a1a2e'
+  ctx.fillRect(0, 0, W, H)
+
+  // Grid lines
+  ctx.strokeStyle = '#2a2a4e'; ctx.lineWidth = 0.5
+  ctx.beginPath()
+  ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H)
+  ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2)
+  ctx.stroke()
+
+  // Get layer color for stroke
+  const layer = store.project.layers.find(l => l.id === shape.layerId)
+  const fillColor = layer ? layer.color + '44' : '#6699CC44'
+  const strokeColor = layer ? layer.color : '#6699CC'
+
+  ctx.fillStyle = fillColor
+  ctx.strokeStyle = strokeColor
+  ctx.lineWidth = 1.5
+
+  switch (shape.type) {
+    case 'rectangle':
+    case 'waveguide': {
+      const r = shape as RectangleShape
+      ctx.beginPath()
+      ctx.rect(toX(r.x), toY(r.y + r.height), r.width * scale, r.height * scale)
+      ctx.fill(); ctx.stroke()
+      break
+    }
+    case 'polygon': {
+      const pts = (shape as PolygonShape).points
+      if (pts && pts.length > 0) {
+        ctx.beginPath()
+        ctx.moveTo(toX(pts[0].x), toY(pts[0].y))
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y))
+        ctx.closePath()
+        ctx.fill(); ctx.stroke()
+      }
+      break
+    }
+    case 'polyline':
+    case 'path': {
+      const pts = (shape as any).points as Point[]
+      if (pts && pts.length > 0) {
+        ctx.beginPath()
+        ctx.moveTo(toX(pts[0].x), toY(pts[0].y))
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y))
+        if (shape.type === 'polyline') ctx.stroke()
+        else { ctx.fill(); ctx.stroke() }
+      }
+      break
+    }
+    case 'edge': {
+      const e = shape as any
+      const x1 = e.x1 ?? e.x, y1 = e.y1 ?? e.y
+      const x2 = e.x2 ?? e.x, y2 = e.y2 ?? e.y
+      ctx.beginPath()
+      ctx.moveTo(toX(x1), toY(y1)); ctx.lineTo(toX(x2), toY(y2)); ctx.stroke()
+      break
+    }
+    case 'label': {
+      ctx.fillStyle = strokeColor
+      ctx.font = '10px monospace'
+      ctx.fillText((shape as any).text ?? '', toX(shape.x), toY(shape.y))
+      break
+    }
+    default:
+      ctx.beginPath()
+      ctx.arc(toX(shape.x), toY(shape.y), 4, 0, Math.PI * 2)
+      ctx.fill(); ctx.stroke()
+  }
+}
+
+/** Redraw preview when selection changes */
+watch(selectedShape, async (shape) => {
+  await nextTick()
+  const canvas = previewCanvasRef.value
+  if (!canvas) return
+  if (shape) drawShapePreview(canvas, shape)
+  else {
+    const ctx = canvas.getContext('2d')
+    if (ctx) { canvas.width = canvas.width; ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, canvas.width, canvas.height) }
+  }
+}, { immediate: true })
 
 const selectedLayer = computed(() => {
   if (selectedShape.value) {
@@ -312,6 +417,16 @@ function savePoints() {
 
     <!-- Shape Selected -->
     <div v-else class="properties-content">
+      <!-- Shape Preview Thumbnail (v0.2.6) -->
+      <div class="shape-preview-wrapper">
+        <canvas
+          ref="previewCanvasRef"
+          width="200"
+          height="80"
+          class="shape-preview-canvas"
+          aria-label="Shape preview thumbnail"
+        />
+      </div>
       <!-- Basic Info -->
       <div class="prop-section" :class="{ collapsed: isCollapsed('general') }" role="region" :aria-label="'General section'">
         <div class="section-header collapsible" @click="toggleSection('general')" @keydown.enter.space.prevent="toggleSection('general')" :aria-expanded="!isCollapsed('general')" role="button" tabindex="0">
@@ -893,6 +1008,22 @@ function savePoints() {
 .properties-content {
   flex: 1;
   overflow-y: auto;
+}
+
+/* Shape Preview Thumbnail (v0.2.6) */
+.shape-preview-wrapper {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+.shape-preview-canvas {
+  display: block;
+  width: 100%;
+  height: 80px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  cursor: default;
 }
 
 .prop-section {

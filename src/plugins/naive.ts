@@ -5,15 +5,18 @@
  *
  * 按需引入列表:
  * - NConfigProvider: App.vue (主题配置)
- * - NButton: LayerPanel, AlignDialog, ArrayCopyDialog
+ * - NButton: LayerPanel, AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
  * - NButtonGroup: AlignDialog
  * - NColorPicker: LayerPanel
  * - NGrid, NGi: AlignDialog (布局)
- * - NInputNumber: ArrayCopyDialog
- * - NModal: ArrayCopyDialog
+ * - NInput, NInputNumber: ArrayCopyDialog, GdsExportDialog
+ * - NSelect: GdsExportDialog
+ * - NSwitch: GdsExportDialog
+ * - NModal: ArrayCopyDialog, BooleanOperationsDialog
  * - NScrollbar: LayerPanel
- * - NSpace: AlignDialog, ArrayCopyDialog
- * - NText: AlignDialog, ArrayCopyDialog
+ * - NSpace: AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
+ * - NText: AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
+ * - NRadioGroup, NRadio: BooleanOperationsDialog
  */
 
 import type { App } from 'vue'
@@ -24,20 +27,21 @@ import {
   NConfigProvider,
   NGrid,
   NGi,
+  NInput,
   NInputNumber,
   NModal,
+  NRadioGroup,
+  NRadio,
   NScrollbar,
+  NSelect,
   NSpace,
+  NSwitch,
   NText,
 } from 'naive-ui'
 
 // NOTE: Keep this list minimal — only add components that are actually used.
 // Each component adds ~5-50KB to the bundle. Verify the import is needed
-// before adding. Components used: NButton, NButtonGroup, NColorPicker,
-// NConfigProvider, NGrid, NGi, NInputNumber, NModal, NScrollbar, NSpace, NText.
-
-// Naive UI components are registered globally via app.component()
-// (not app.use() which is for Vue plugins)
+// before adding.
 const components = {
   NButton,
   NButtonGroup,
@@ -45,10 +49,15 @@ const components = {
   NConfigProvider,
   NGrid,
   NGi,
+  NInput,
   NInputNumber,
   NModal,
+  NRadioGroup,
+  NRadio,
   NScrollbar,
+  NSelect,
   NSpace,
+  NSwitch,
   NText,
   // Add new components here (e.g. NSwitch, NPopover, etc.)
 } as const
@@ -67,9 +76,14 @@ export {
   NConfigProvider,
   NGrid,
   NGi,
+  NInput,
   NInputNumber,
   NModal,
+  NRadioGroup,
+  NRadio,
   NScrollbar,
+  NSelect,
   NSpace,
+  NSwitch,
   NText,
 }

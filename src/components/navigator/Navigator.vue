@@ -85,25 +85,27 @@ function onGlobalMouseUp() {
 }
 
 // === Double-click to fit all ===
+// Uses the same zoom/pan math as editorStore.zoomToFit() for consistency
 function onMinimapDoubleClick() {
   const bb = navigator.boundingBox.value
   const designW = bb.maxX - bb.minX
   const designH = bb.maxY - bb.minY
   if (designW <= 0 || designH <= 0) return
 
-  const scaleX = NAV_WIDTH / designW
-  const scaleY = NAV_HEIGHT / designH
-  const scale = Math.min(scaleX, scaleY) * 0.9 // 90% padding
+  // Use actual canvas dimensions (same as editor.zoomToFit)
+  const W = store.canvasWidth || 800
+  const H = store.canvasHeight || 600
+  const pad = 0.1 // 10% padding
 
-  const newZoom = Math.max(0.01, Math.min(100, scale))
+  const newZoom = Math.max(0.01, Math.min(100, Math.min(W / (designW * (1 + pad)), H / (designH * (1 + pad)))))
   store.setZoom(newZoom)
 
-  // Center on bounding box
+  // Center bounding box in canvas: panX = W/2 - centerX * zoom
   const centerX = (bb.minX + bb.maxX) / 2
   const centerY = (bb.minY + bb.maxY) / 2
-  const panX = NAV_WIDTH / 2 * designW / NAV_WIDTH * newZoom - centerX * newZoom
-  const panY = NAV_HEIGHT / 2 * designH / NAV_HEIGHT * newZoom - centerY * newZoom
-  store.setPan(-panX + NAV_WIDTH / 2, -panY + NAV_HEIGHT / 2)
+  const panX = W / 2 - centerX * newZoom
+  const panY = H / 2 - centerY * newZoom
+  store.setPan(panX, panY)
 }
 
 // === Click to pan (click on empty area) ===

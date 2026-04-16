@@ -62,6 +62,7 @@ const transformShortcuts = [
   { key: 'O', description: '向外偏移 (grow)' },
   { key: 'Shift+O', description: '向内偏移 (shrink)' },
   { key: 'K', description: '阵列复制' },
+  { key: 'B', description: '布尔运算 (需选中2个图形)' },
   { key: 'G', description: '网格吸附开关' },
 ]
 
