@@ -356,3 +356,21 @@
 - [ ] v0.2.7 第2小时: Cell钻入钻出 UI 完善 + Cell 搜索功能
 - [ ] v0.3.0 第2小时: 布尔运算 UI 集成 - 菜单调用 + 结果预览
 - [ ] v0.4.0 第2小时: GDS 导入预览 UI + KLayout 兼容性测试
+
+### 2026-04-16
+
+### 完成内容
+- v0.2.6 工具栏完善：布尔运算按钮、GDS导入/导出按钮分离、Zoom to Fit按钮
+- v0.3.0 布尔运算UI集成：BooleanOperationsDialog预览、结果展示、应用功能
+- v0.4.0 GDS导入导出UI：GdsImportDialog + GdsExportDialog 完整实现
+- 右键菜单布尔运算子菜单集成
+- B 快捷键帮助说明
+- Git 提交并推送
+
+### 遇到的问题
+- 无
+
+### 明日计划
+- v0.2.6 收尾：PropertiesPanel样式完善
+- v0.3.1 布尔运算测试与bug修复
+- v0.4.1 GDS导入导出功能测试
