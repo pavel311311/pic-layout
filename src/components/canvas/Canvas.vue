@@ -40,6 +40,7 @@ const { screenToDesign, designToScreen, getSnappedPoint } = useCanvasCoordinates
 
 // Canvas refs
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const overlayCanvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 
 // Virtualization composable - offscreen canvas, layer cache, dirty rects
@@ -191,6 +192,7 @@ const hasError = ref(false)
 const errorMessage = ref('')
 
 let ctx: CanvasRenderingContext2D | null = null
+let overlayCtx: CanvasRenderingContext2D | null = null
 let animationFrameId: number | null = null
 
 // === Accessibility ===
@@ -395,18 +397,102 @@ function render() {
     ctx.restore()
   }
 
-  // Dynamic UI elements always redrawn
-  selection.drawSelection(ctx!)
-  drawCellHighlights(ctx!)
-  drawing.renderDrawing(ctx!, designToScreen, store.zoom)
-  drawRulerOverlay(ctx!)
-  renderScaleBar(ctx!)
-
-  if (interaction.mouseX.value > 0 && interaction.mouseY.value > 0) {
-    renderer.drawCrosshair(ctx!, interaction.mouseX.value, interaction.mouseY.value)
-  }
+  // Always render UI elements on overlay canvas (no accumulation)
+  renderOverlay()
 
   animationFrameId = requestAnimationFrame(render)
+}
+
+// === Overlay render: UI elements on a separate transparent canvas ===
+// Crosshair, selection outlines, ruler, scale bar, drawing preview — all drawn
+// fresh every frame so old crosshairs are never retained.
+function renderOverlay() {
+  if (!overlayCtx || !overlayCanvasRef.value) return
+  const width = overlayCanvasRef.value.width
+  const height = overlayCanvasRef.value.height
+  canvasTheme.clearCanvasWithTheme(overlayCtx, width, height)
+
+  // Cell search highlights
+  const highlighted = cellsStore.highlightedCellIds
+  if (highlighted.size) {
+    overlayCtx.save()
+    overlayCtx.strokeStyle = '#FFD700'
+    overlayCtx.lineWidth = 2
+    overlayCtx.setLineDash([8, 4])
+    overlayCtx.globalAlpha = 0.9
+    for (const cellId of highlighted) {
+      const bounds = cellsStore.getCellBounds(cellId, true)
+      if (!bounds) continue
+      const topLeft = designToScreen(bounds.minX, bounds.minY)
+      const bottomRight = designToScreen(bounds.maxX, bounds.maxY)
+      overlayCtx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
+    }
+    overlayCtx.restore()
+  }
+
+  // Selection outlines and handles
+  selection.drawSelection(overlayCtx)
+
+  // Drawing preview (polygon/polyline/path temp shapes)
+  drawing.renderDrawing(overlayCtx, designToScreen, store.zoom)
+
+  // Ruler measurement overlay
+  const p1 = toolHandlers.rulerPoint1.value
+  const p2 = toolHandlers.rulerPoint2.value
+  if (p1) {
+    const screenP1 = designToScreen(p1.x, p1.y)
+    overlayCtx.save()
+    overlayCtx.strokeStyle = '#FF6B6B'
+    overlayCtx.lineWidth = 2
+    overlayCtx.setLineDash([4, 3])
+    overlayCtx.globalAlpha = 0.9
+
+    if (p2) {
+      const screenP2 = designToScreen(p2.x, p2.y)
+      overlayCtx.beginPath()
+      overlayCtx.moveTo(screenP1.x, screenP1.y)
+      overlayCtx.lineTo(screenP2.x, screenP2.y)
+      overlayCtx.stroke()
+
+      const midX = (screenP1.x + screenP2.x) / 2
+      const midY = (screenP1.y + screenP2.y) / 2
+      const dist = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+      overlayCtx.setLineDash([])
+      overlayCtx.globalAlpha = 0.85
+      overlayCtx.fillStyle = '#FF6B6B'
+      overlayCtx.font = 'bold 11px monospace'
+      overlayCtx.textAlign = 'center'
+      overlayCtx.textBaseline = 'bottom'
+      overlayCtx.fillText(`${dist.toFixed(3)} μm`, midX, midY - 4)
+    }
+
+    // Point markers
+    overlayCtx.setLineDash([])
+    overlayCtx.globalAlpha = 1.0
+    overlayCtx.strokeStyle = '#FF6B6B'
+    overlayCtx.fillStyle = '#FF6B6B'
+    overlayCtx.lineWidth = 2
+    const size = 6
+    for (const pt of p2 ? [screenP1, designToScreen(p2.x, p2.y)] : [screenP1]) {
+      overlayCtx.beginPath()
+      overlayCtx.moveTo(pt.x - size, pt.y - size)
+      overlayCtx.lineTo(pt.x + size, pt.y + size)
+      overlayCtx.moveTo(pt.x + size, pt.y - size)
+      overlayCtx.lineTo(pt.x - size, pt.y + size)
+      overlayCtx.stroke()
+    }
+    overlayCtx.restore()
+  }
+
+  // Scale bar
+  renderScaleBar(overlayCtx)
+
+  // Crosshair cursor lines
+  const curX = interaction.mouseX.value
+  const curY = interaction.mouseY.value
+  if (curX > 0 && curY > 0) {
+    renderer.drawCrosshair(overlayCtx, curX, curY)
+  }
 }
 
 // === Canvas initialization ===
@@ -417,6 +503,12 @@ async function initCanvas() {
   canvasRef.value.width = rect.width
   canvasRef.value.height = rect.height
   ctx = canvasRef.value.getContext('2d')
+  // Overlay canvas for UI elements (crosshair, selection, ruler, etc.)
+  if (overlayCanvasRef.value) {
+    overlayCanvasRef.value.width = rect.width
+    overlayCanvasRef.value.height = rect.height
+    overlayCtx = overlayCanvasRef.value.getContext('2d')
+  }
   // Notify UI store of canvas size (for Navigator viewport calculation)
   store.setCanvasSize(rect.width, rect.height)
   if (ctx) {
@@ -505,6 +597,19 @@ defineExpose({
       @keydown="toolHandlers.handleKeyDown"
       aria-describedby="canvas-description"
     />
+    <!-- Overlay canvas: UI elements drawn fresh every frame (crosshair, selection, ruler, etc.) -->
+    <canvas
+      ref="overlayCanvasRef"
+      class="canvas-overlay"
+      @mousedown="toolHandlers.handleMouseDown"
+      @mousemove="toolHandlers.handleMouseMove"
+      @mouseup="toolHandlers.handleMouseUp"
+      @mouseleave="toolHandlers.handleMouseUp"
+      @dblclick="toolHandlers.handleDoubleClick"
+      @contextmenu="onContextMenu"
+      @wheel.prevent="toolHandlers.handleWheel"
+      @keydown="toolHandlers.handleKeyDown"
+    />
     <div id="canvas-description" class="sr-only">
       {{ getCanvasDescription() }}
     </div>
@@ -558,6 +663,7 @@ defineExpose({
 .canvas-container { width: 100%; height: 100%; overflow: hidden; cursor: crosshair; position: relative; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 canvas { display: block; }
+.canvas-overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
 .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--loading-bg, rgba(255,255,255,0.8)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-secondary, #606060); }
 .error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--error-bg, rgba(255,255,255,0.9)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent-red, #d32f2f); }
 .error-content { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 400px; padding: 24px; background: var(--bg-panel, #fff); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }

@@ -33,6 +33,8 @@ export interface UseCanvasInteractionReturn {
   // Mouse state
   mouseX: Ref<number>
   mouseY: Ref<number>
+  prevCrosshairX: Ref<number>
+  prevCrosshairY: Ref<number>
   mouseDesignX: Ref<number>
   mouseDesignY: Ref<number>
   cursorStyle: Ref<'crosshair' | 'default' | 'move' | 'grab' | 'grabbing'>
@@ -89,6 +91,10 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
   const mouseX = ref(0)
   const mouseY = ref(0)
 
+  // Previous crosshair screen position — used to erase old crosshair lines
+  const prevCrosshairX = ref(-1)
+  const prevCrosshairY = ref(-1)
+
   // Mouse position in design coordinates
   const mouseDesignX = ref(0)
   const mouseDesignY = ref(0)
@@ -125,6 +131,11 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
 
   // Actions
   function updateMousePosition(screenX: number, screenY: number, designX: number, designY: number) {
+    // Track previous crosshair so Canvas.vue can mark the old lines dirty
+    if (mouseX.value !== screenX || mouseY.value !== screenY) {
+      prevCrosshairX.value = mouseX.value
+      prevCrosshairY.value = mouseY.value
+    }
     mouseX.value = screenX
     mouseY.value = screenY
     mouseDesignX.value = designX
@@ -270,6 +281,8 @@ export function useCanvasInteraction(options: UseCanvasInteractionOptions = {}):
     // State
     mouseX,
     mouseY,
+    prevCrosshairX,
+    prevCrosshairY,
     mouseDesignX,
     mouseDesignY,
     cursorStyle,
