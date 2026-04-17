@@ -71,9 +71,9 @@ PicLayout 是一款基于浏览器的硅光芯片（PIC - Photonic Integrated Ci
 ### 当前执行位置
 
 ```
-[进行中] v0.2.5 - Bundle优化 + 代码重构
+[进行中] v0.2.6 - UI界面美化 (收尾阶段)
   ↓
-[待开始] v0.2.6 - UI界面美化
+[待开始] v0.2.7 - Cell层级系统
   ↓
 [待开始] v0.3.0 - Cell系统 + 布尔运算
   ↓
@@ -131,7 +131,8 @@ PicLayout 是一款基于浏览器的硅光芯片（PIC - Photonic Integrated Ci
 | **1h** | 工具栏美化 | 紧凑布局 + tooltip 详情 | ⬜ |
 | **1h** | 状态栏增强 | 坐标/缩放/图层/选中/网格 | ⬜ |
 | **1h** | Navigator 交互 | 可拖拽视口框 | ⬜ |
-| **0.5h** | 移动图形光标优化 | 拖拽移动时显示 `grabbing` 而非十字标 | 🟡 新增 |
+| **0.5h** | 移动图形光标优化 | 拖拽移动时显示 `grabbing` 而非十字标 | ✅ |
+| **0.5h** | 十字光标残留 bug | 双 Canvas 分层渲染，Overlay 层每帧清空重绘 | ✅ |
 
 #### 每日目标
 
@@ -539,6 +540,25 @@ chore: 构建/工具
 - v0.3.1 polygonBoolean.ts bug 修复: Math.abs(poly.length-4)<0.1 → poly.length===4
 - 编译测试通过 (Build successful, Brotli compressed)
 - Git 提交并推送 (19 files, +1657/-1401 lines)
+
+**遇到的问题**:
+- 无
+
+**次日计划**:
+- v0.2.6 收尾: PropertiesPanel 新组件细节完善
+- v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
+- v0.3.1 布尔运算功能测试
+- v0.4.1 GDS 导入导出功能测试
+
+### 2026-04-17 10:44
+
+**完成内容**:
+- v0.2.6 十字光标残留 bug 修复 (双 Canvas 分层渲染)
+  - 根因: 鼠标移动时 mouseX/Y 更新但未触发 markDirty()，drawCrosshair 每帧画新十字，旧十字残留
+  - 修复: 主 Canvas(网格+图形脏矩形优化) + Overlay Canvas(UI 元素每帧清空重绘)
+  - Canvas.vue: 新增 overlayCanvasRef 叠加层 (pointer-events:none)
+  - useCanvasInteraction.ts: 新增 prevCrosshairX/Y 追踪
+  - 编译测试通过，Git 提交并推送 (2 files, +128/-9 lines)
 
 **遇到的问题**:
 - 无

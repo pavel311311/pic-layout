@@ -415,6 +415,28 @@
 ### 遇到的问题
 - 无
 
+## 2026-04-17 10:44
+
+### 当前任务
+- [x] v0.2.6 十字光标残留 bug 修复 (第2小时)
+
+### 完成内容
+- [x] 分析 bug 根因: 鼠标移动时 mouseX/Y 更新但未触发 markDirty()，主 canvas 不重绘；drawCrosshair 每帧画新十字，旧十字残留
+- [x] 修复方案: 双 Canvas 分层渲染
+  - 主 Canvas: 网格 + 图形，脏矩形优化
+  - Overlay Canvas: 十字光标 + 选择框 + 标尺 + 绘制预览，每帧清空重绘
+- [x] Canvas.vue: 新增 overlayCanvasRef 叠加层 (pointer-events:none)
+- [x] Canvas.vue: 抽取 UI 渲染到 renderOverlay()，每帧清空重绘
+- [x] Canvas.vue: 主渲染循环不再绘制 UI 元素
+- [x] useCanvasInteraction.ts: 新增 prevCrosshairX/Y 追踪上一帧十字位置
+- [x] 移除渲染中途错误 markDirtyRect() 调用（该写法有帧延迟问题）
+- [x] 编译测试通过 (Build successful)
+- [x] Git 提交并推送 (2 files, +128/-9 lines)
+
+### 遇到的问题
+- markDirtyRect() 写在渲染循环中途会在下一帧才处理，存在一帧延迟
+  - 解决: 改用独立的 overlay canvas 层，每帧清空彻底避免残留
+
 ### 明日计划
 - [ ] v0.2.6 收尾: PropertiesPanel 新组件细节完善
 - [ ] v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
