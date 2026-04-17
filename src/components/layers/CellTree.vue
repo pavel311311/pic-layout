@@ -63,7 +63,7 @@ const breadcrumbPath = computed(() => {
   if (topCellIdVal) {
     const topCell = cellsStore.getCell(topCellIdVal)
     if (topCell) {
-      path.push({ id: topCell.id, name: 'TOP' })
+      path.push({ id: topCell.id, name: topCell.name })
     }
   }
   
@@ -184,7 +184,7 @@ function closeContextMenu() {
 
 // Get display name for a cell
 function getCellDisplayName(cellId: string): string {
-  if (cellId === topCellId.value) return 'TOP'
+  if (cellId === topCellId.value) return cellsStore.getCell(cellId)?.name || 'TOP'
   const cell = cellsStore.getCell(cellId)
   return cell?.name || cellId.slice(0, 8)
 }
@@ -370,7 +370,7 @@ function navigateToFirstMatch() {
         aria-label="Go to top cell"
       >
         <Home :size="10" aria-hidden="true" />
-        <span>TOP</span>
+        <span>{{ cellsStore.topCell?.name || 'TOP' }}</span>
       </button>
       <!-- Full hierarchy path when drilled in -->
       <template v-for="(crumb, idx) in breadcrumbPath.slice(1)" :key="crumb.id">
