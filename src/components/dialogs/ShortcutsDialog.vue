@@ -49,6 +49,7 @@ const toolShortcuts = [
   { key: 'I', description: 'Path 工具 (Path)' },
   { key: 'J', description: 'Edge 工具 (Edge)' },
   { key: 'T', description: '标签工具 (Label)' },
+  { key: 'U', description: '标尺工具 (Ruler)' },
 ]
 
 const transformShortcuts = [

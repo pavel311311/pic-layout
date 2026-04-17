@@ -360,7 +360,16 @@ export const useEditorStore = defineStore('editor', () => {
       return
     }
 
-    // Remove both original shapes
+    // Save history before modifying (v0.3.1 bug fix)
+    pushHistory()
+
+    // Remove both original shapes from cells first (v0.3.1 bug fix)
+    for (const id of selectedIds) {
+      const shape = shapes.shapes.find(s => s.id === id)
+      if (shape?.cellId) {
+        cells.removeChildFromCell(shape.cellId, id)
+      }
+    }
     const idsSet = new Set(selectedIds)
     shapes.shapes = shapes.shapes.filter(s => !idsSet.has(s.id))
     shapes.selectedShapeIds = []

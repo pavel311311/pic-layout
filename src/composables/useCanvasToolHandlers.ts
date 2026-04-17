@@ -9,7 +9,7 @@
  * - Each composable < 300 lines
  */
 
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { Point, BaseShape } from '../types/shapes'
 import { genId } from './useCanvasCoordinates'
 import type { UseCanvasDrawingReturn } from './useCanvasDrawing'
@@ -117,6 +117,15 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
   let isDragging = false
   let dragStartScreen = { x: 0, y: 0 }
   let wasDragging = false
+
+  // === Ruler tool state (v0.2.6) ===
+  const rulerPoint1 = ref<Point | null>(null)
+  const rulerPoint2 = ref<Point | null>(null)
+
+  function resetRuler() {
+    rulerPoint1.value = null
+    rulerPoint2.value = null
+  }
 
   // === Mouse Event Handlers ===
 
@@ -262,6 +271,24 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         virtualization.markDirty()
       }
     }
+    // Ruler tool (v0.2.6)
+    else if (tool === 'ruler') {
+      if (!rulerPoint1.value) {
+        rulerPoint1.value = pt
+        rulerPoint2.value = null
+        window.dispatchEvent(new CustomEvent('ruler-point-1', { detail: { x: pt.x, y: pt.y } }))
+        announce(`标尺起点: (${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})`)
+      } else {
+        rulerPoint2.value = pt
+        const dist = Math.sqrt((pt.x - rulerPoint1.value.x) ** 2 + (pt.y - rulerPoint1.value.y) ** 2)
+        window.dispatchEvent(new CustomEvent('ruler-point-2', { detail: { x: pt.x, y: pt.y, distance: dist } }))
+        announce(`标尺终点: (${pt.x.toFixed(2)}, ${pt.y.toFixed(2)}), 距离: ${dist.toFixed(3)} μm`)
+        // Reset for next measurement
+        rulerPoint1.value = null
+        rulerPoint2.value = null
+      }
+      virtualization.markDirty()
+    }
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -279,6 +306,12 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
       // Update preview for polygon/polyline/path
       if (getSelectedTool() === 'polygon' || getSelectedTool() === 'polyline' || getSelectedTool() === 'path') {
         previewPoint.value = pt
+        virtualization.markDirty()
+        return
+      }
+      // Ruler tool preview (v0.2.6)
+      if (getSelectedTool() === 'ruler' && rulerPoint1.value) {
+        rulerPoint2.value = pt
         virtualization.markDirty()
         return
       }
@@ -534,6 +567,7 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         case 'i': setTool('path'); announce('选择工具: Path'); virtualization.markDirty(); return
         case 'j': setTool('edge'); announce('选择工具: Edge'); virtualization.markDirty(); return
         case 't': setTool('label'); announce('选择工具: 标签'); virtualization.markDirty(); return
+        case 'u': setTool('ruler'); announce('选择工具: 标尺'); virtualization.markDirty(); return
         case 'm':
           if (getSelectedShapeIds().length > 0) { moveSelectedShapes(getGridSize(), 0); announce('移动选中图形'); virtualization.markDirty() }
           return
@@ -728,5 +762,9 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     handleKeyDown,
     handleKeyUp,
     handleResize,
+    // Ruler tool state (v0.2.6)
+    rulerPoint1,
+    rulerPoint2,
+    resetRuler,
   }
 }

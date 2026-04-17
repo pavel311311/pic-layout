@@ -14,12 +14,15 @@ import { NModal, NButton, NSpace, NText } from '@/plugins/naive'
 import { importGDS } from '@/services/gdsImporter'
 import { useShapesStore } from '@/stores/shapes'
 import { useCellsStore } from '@/stores/cells'
+import { useCanvasTheme } from '@/composables/useCanvasTheme'
 import type { Cell } from '@/types/cell'
 import type { BaseShape } from '@/types/shapes'
 
 const props = defineProps<{
   show: boolean
 }>()
+
+const canvasTheme = useCanvasTheme()
 
 const emit = defineEmits<{
   (e: 'update:show', value: boolean): void
@@ -148,11 +151,11 @@ function drawPreview() {
   ctx.clearRect(0, 0, W, H)
 
   // Background
-  ctx.fillStyle = '#1e1e1e'
+  ctx.fillStyle = canvasTheme.colors.value.background
   ctx.fillRect(0, 0, W, H)
 
   // Grid lines
-  ctx.strokeStyle = '#333'
+  ctx.strokeStyle = canvasTheme.colors.value.grid
   ctx.lineWidth = 0.5
   ctx.beginPath()
   for (let i = 0; i <= 5; i++) {
@@ -166,9 +169,9 @@ function drawPreview() {
   // Draw shapes
   for (const shape of shapes) {
     ctx.beginPath()
-    ctx.strokeStyle = '#4fc3f7'
+    ctx.strokeStyle = canvasTheme.colors.value.selection
     ctx.lineWidth = 1
-    ctx.fillStyle = 'rgba(79, 195, 247, 0.15)'
+    ctx.fillStyle = canvasTheme.colors.value.drawingFill
 
     switch (shape.type) {
       case 'rectangle':
@@ -180,7 +183,18 @@ function drawPreview() {
         ctx.fill(); ctx.stroke()
         break
       }
-      case 'polygon':
+      case 'polygon': {
+        const pts = (shape as any).points as { x: number; y: number }[]
+        if (pts && pts.length > 0) {
+          ctx.moveTo(toCanvasX(pts[0].x), toCanvasY(pts[0].y))
+          for (let i = 1; i < pts.length; i++) {
+            ctx.lineTo(toCanvasX(pts[i].x), toCanvasY(pts[i].y))
+          }
+          ctx.closePath()
+          ctx.fill(); ctx.stroke()
+        }
+        break
+      }
       case 'polyline':
       case 'path': {
         const pts = (shape as any).points as { x: number; y: number }[]
@@ -189,8 +203,8 @@ function drawPreview() {
           for (let i = 1; i < pts.length; i++) {
             ctx.lineTo(toCanvasX(pts[i].x), toCanvasY(pts[i].y))
           }
-          if (shape.type !== 'polyline' && shape.type !== 'path') ctx.closePath()
-          ctx.fill(); ctx.stroke()
+          // Polyline and Path are stroke-only (open paths); only polygon is filled
+          ctx.stroke()
         }
         break
       }
@@ -204,7 +218,7 @@ function drawPreview() {
       }
       case 'label': {
         const cx = toCanvasX(shape.x), cy = toCanvasY(shape.y)
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = canvasTheme.colors.value.text
         ctx.font = '9px monospace'
         ctx.fillText((shape as any).text || '', cx, cy)
         break
@@ -213,7 +227,7 @@ function drawPreview() {
   }
 
   // Axis labels
-  ctx.fillStyle = '#666'
+  ctx.fillStyle = canvasTheme.colors.value.text
   ctx.font = '9px monospace'
   ctx.fillText('μm', W - 20, H - 14)
   ctx.fillText('0', pad, H - pad + 12)

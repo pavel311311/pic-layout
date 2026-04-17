@@ -369,8 +369,8 @@ function booleanUnion(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds):
   }
 
   // For overlapping rectangles: return minimal bounding rectangle
-  const isRect1 = Math.abs(poly1.length - 4) < 0.1
-  const isRect2 = Math.abs(poly2.length - 4) < 0.1
+  const isRect1 = poly1.length === 4
+  const isRect2 = poly2.length === 4
 
   if (isRect1 && isRect2) {
     // Both are rectangles - return bounding box of union
@@ -391,8 +391,8 @@ function booleanIntersection(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: B
   if (!boundsOverlap(bb1, bb2)) return []
 
   // For rectangles: clip one by the other
-  const isRect1 = Math.abs(poly1.length - 4) < 0.1
-  const isRect2 = Math.abs(poly2.length - 4) < 0.1
+  const isRect1 = poly1.length === 4
+  const isRect2 = poly2.length === 4
 
   if (isRect1 && isRect2) {
     return [rectangleIntersection(poly1, poly2)]
@@ -424,8 +424,8 @@ function booleanDifference(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bou
   // Fast path: if no overlap, return shape1
   if (!boundsOverlap(bb1, bb2)) return [poly1]
 
-  const isRect1 = Math.abs(poly1.length - 4) < 0.1
-  const isRect2 = Math.abs(poly2.length - 4) < 0.1
+  const isRect1 = poly1.length === 4
+  const isRect2 = poly2.length === 4
 
   if (isRect1 && isRect2) {
     // Rectangle difference: clip shape2's area from shape1

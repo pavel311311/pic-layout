@@ -36,6 +36,12 @@ const emit = defineEmits<{
 const menuRef = ref<HTMLDivElement | null>(null)
 const activeSubmenuId = ref<string | null>(null)
 const submenuStyle = ref<{ left: string; top: string }>({ left: '0px', top: '0px' })
+const focusedIndex = ref(-1)
+
+/** Flat list of non-separator, non-disabled items for keyboard nav */
+const navigableItems = computed(() =>
+  props.items.filter(item => !item.separator && !item.disabled)
+)
 
 // Adjust position to keep menu in viewport
 const adjustedPosition = computed(() => {
@@ -101,12 +107,59 @@ function handleSubmenuMouseEnter(submenuId: string) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  const items = navigableItems.value
+  if (items.length === 0) return
+
   if (e.key === 'Escape') {
     if (activeSubmenuId.value) {
       activeSubmenuId.value = null
     } else {
+      focusedIndex.value = -1
       emit('close')
     }
+    return
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    focusedIndex.value = (focusedIndex.value + 1) % items.length
+    return
+  }
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    focusedIndex.value = focusedIndex.value <= 0 ? items.length - 1 : focusedIndex.value - 1
+    return
+  }
+
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    const item = items[focusedIndex.value]
+    if (item) handleItemClick(item)
+    return
+  }
+
+  // Right arrow → open submenu
+  if (e.key === 'ArrowRight') {
+    const item = items[focusedIndex.value]
+    if (item?.submenu) {
+      const el = menuRef.value?.querySelectorAll('.context-item:not(.is-disabled)')
+      const idx = items.indexOf(item)
+      if (el && el[idx]) {
+        const rect = (el[idx] as HTMLElement).getBoundingClientRect()
+        submenuStyle.value = { left: rect.right + 2 + 'px', top: rect.top + 'px' }
+      }
+      activeSubmenuId.value = item.id
+    }
+    return
+  }
+
+  // Left arrow → close submenu
+  if (e.key === 'ArrowLeft') {
+    if (activeSubmenuId.value) {
+      activeSubmenuId.value = null
+    }
+    return
   }
 }
 
@@ -164,13 +217,15 @@ function getActiveSubmenuItems(): MenuItem[] {
           :class="{
             'has-submenu': !!item.submenu,
             'is-disabled': item.disabled,
-            'is-active': activeSubmenuId === item.id
+            'is-active': activeSubmenuId === item.id,
+            'is-focused': navigableItems.indexOf(item) === focusedIndex && focusedIndex >= 0
           }"
           role="menuitem"
+          :tabindex="-1"
           :aria-disabled="item.disabled"
           :aria-haspupen="!!item.submenu"
           @click="handleItemClick(item)"
-          @mouseenter="handleMouseEnter(item)"
+          @mouseenter="() => { handleMouseEnter(item); focusedIndex = navigableItems.indexOf(item) }"
           @mouseleave="handleMouseLeave"
         >
           <span class="item-label">{{ item.label }}</span>
@@ -255,7 +310,8 @@ function getActiveSubmenuItems(): MenuItem[] {
 }
 
 .context-item:hover:not(.is-disabled),
-.context-item.is-active {
+.context-item.is-active,
+.context-item.is-focused {
   background: var(--accent-blue);
   color: var(--text-on-accent, #ffffff);
 }

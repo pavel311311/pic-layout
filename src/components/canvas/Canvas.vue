@@ -331,10 +331,75 @@ function render() {
     ctx.restore()
   }
 
+  // Ruler measurement overlay (v0.2.6)
+  function drawRulerOverlay(ctx: CanvasRenderingContext2D) {
+    const p1 = toolHandlers.rulerPoint1.value
+    const p2 = toolHandlers.rulerPoint2.value
+    if (!p1) return
+
+    const screenP1 = designToScreen(p1.x, p1.y)
+    ctx.save()
+    ctx.strokeStyle = '#FF6B6B'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 3])
+    ctx.globalAlpha = 0.9
+
+    if (p2) {
+      // Draw measurement line between p1 and p2
+      const screenP2 = designToScreen(p2.x, p2.y)
+      ctx.beginPath()
+      ctx.moveTo(screenP1.x, screenP1.y)
+      ctx.lineTo(screenP2.x, screenP2.y)
+      ctx.stroke()
+
+      // Draw distance label at midpoint
+      const midX = (screenP1.x + screenP2.x) / 2
+      const midY = (screenP1.y + screenP2.y) / 2
+      const dist = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+      ctx.setLineDash([])
+      ctx.globalAlpha = 0.85
+      ctx.fillStyle = '#FF6B6B'
+      ctx.font = 'bold 11px monospace'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      ctx.fillText(`${dist.toFixed(3)} μm`, midX, midY - 4)
+    }
+
+    // Draw point markers
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1.0
+    ctx.strokeStyle = '#FF6B6B'
+    ctx.fillStyle = '#FF6B6B'
+    ctx.lineWidth = 2
+
+    // Point 1 marker (X crosshair)
+    const size = 6
+    ctx.beginPath()
+    ctx.moveTo(screenP1.x - size, screenP1.y - size)
+    ctx.lineTo(screenP1.x + size, screenP1.y + size)
+    ctx.moveTo(screenP1.x + size, screenP1.y - size)
+    ctx.lineTo(screenP1.x - size, screenP1.y + size)
+    ctx.stroke()
+
+    if (p2) {
+      const screenP2 = designToScreen(p2.x, p2.y)
+      // Point 2 marker (X crosshair)
+      ctx.beginPath()
+      ctx.moveTo(screenP2.x - size, screenP2.y - size)
+      ctx.lineTo(screenP2.x + size, screenP2.y + size)
+      ctx.moveTo(screenP2.x + size, screenP2.y - size)
+      ctx.lineTo(screenP2.x - size, screenP2.y + size)
+      ctx.stroke()
+    }
+
+    ctx.restore()
+  }
+
   // Dynamic UI elements always redrawn
   selection.drawSelection(ctx!)
   drawCellHighlights(ctx!)
   drawing.renderDrawing(ctx!, designToScreen, store.zoom)
+  drawRulerOverlay(ctx!)
   renderScaleBar(ctx!)
 
   if (interaction.mouseX.value > 0 && interaction.mouseY.value > 0) {

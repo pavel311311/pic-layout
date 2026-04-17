@@ -43,3 +43,14 @@ export type { NavigatorOptions, NavigatorShape } from './useNavigator'
 
 export { useCanvasTheme } from './useCanvasTheme'
 export type { CanvasThemeColors } from './useCanvasTheme'
+
+export { arrayCopyShapes } from './useArrayCopy'
+export type { ArrayCopyOptions, ArrayCopyResult } from './useArrayCopy'
+
+export { useHistory } from './useHistory'
+export type { HistorySnapshot } from './useHistory'
+
+export { useShapePreview } from './useShapePreview'
+export type { LayerInfo, CanvasTheme } from './useShapePreview'
+
+export { useShapeTransforms } from './useShapeTransforms'

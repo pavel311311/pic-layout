@@ -8,8 +8,9 @@
  * - Theme-aware styling
  * - Tooltip on hover (title attribute)
  * - Active tool indicator
+ * - Ruler measurement tool integration (v0.2.6)
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import {
   Save,
@@ -57,7 +58,7 @@ const toolDefs = [
   { id: 'path', name: 'Path', shortcut: 'I', IconComponent: Minus },
   { id: 'edge', name: 'Edge', shortcut: 'J', IconComponent: GripHorizontal },
   { id: 'label', name: 'Label', shortcut: 'T', IconComponent: Type },
-  { id: 'ruler', name: 'Ruler', shortcut: 'M', IconComponent: Ruler },
+  { id: 'ruler', name: 'Ruler', shortcut: 'U', IconComponent: Ruler },
 ]
 
 // Compact tooltips for each group
@@ -108,6 +109,30 @@ function openArrayCopyDialog() {
 function openBooleanDialog() {
   window.dispatchEvent(new CustomEvent('open-boolean-dialog'))
 }
+
+// === Ruler measurement event listeners (v0.2.6) ===
+function onRulerPoint1(e: Event) {
+  const detail = (e as CustomEvent<{ x: number; y: number }>).detail
+  measurementStart.value = { x: detail.x, y: detail.y }
+  measurementEnd.value = null
+  measurementDistance.value = 0
+}
+
+function onRulerPoint2(e: Event) {
+  const detail = (e as CustomEvent<{ x: number; y: number; distance: number }>).detail
+  measurementEnd.value = { x: detail.x, y: detail.y }
+  measurementDistance.value = detail.distance
+}
+
+onMounted(() => {
+  window.addEventListener('ruler-point-1', onRulerPoint1)
+  window.addEventListener('ruler-point-2', onRulerPoint2)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('ruler-point-1', onRulerPoint1)
+  window.removeEventListener('ruler-point-2', onRulerPoint2)
+})
 </script>
 
 <template>

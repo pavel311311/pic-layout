@@ -374,3 +374,23 @@
 - v0.2.6 收尾：PropertiesPanel样式完善
 - v0.3.1 布尔运算测试与bug修复
 - v0.4.1 GDS导入导出功能测试
+
+## 2026-04-17 09:10
+
+### 当前任务
+- [x] v0.3.1 布尔运算 bug 修复 (polygonBoolean.ts rectangle detection cleanup)
+
+### 完成内容
+- [x] polygonBoolean.ts: 修复 6 处 `Math.abs(poly.length - 4) < 0.1` → `poly.length === 4`
+  - 原因: polygon 点数组长度始终为整数，使用浮点容差比较不必要且易混淆
+  - 涉及函数: booleanUnion (1处), booleanIntersection (2处), booleanDifference (2处), booleanXor (1处通过调用上述函数)
+  - 行为不变，代码更清晰
+- [x] 编译测试通过
+
+### 遇到的问题
+- 无
+
+### 下小时计划 (v0.3.1 继续)
+- [ ] 测试布尔运算: 矩形与矩形相交/相减/异或
+- [ ] 测试布尔运算: 多边形与多边形相交
+- [ ] v0.4.1 GDS 导入导出功能测试

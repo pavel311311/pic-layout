@@ -12,8 +12,11 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { NModal, NButton, NSpace, NRadioGroup, NRadio, NText } from '@/plugins/naive'
 import { polygonBoolean, BOOLEAN_OP_LABELS, type BooleanOp } from '@/utils/polygonBoolean'
 import { useEditorStore } from '@/stores/editor'
+import { useCanvasTheme } from '@/composables/useCanvasTheme'
 import type { BaseShape, Point, PolygonShape, RectangleShape } from '@/types/shapes'
 import { generateId } from '@/utils/shapeId'
+
+const canvasTheme = useCanvasTheme()
 
 const props = defineProps<{
   show: boolean
@@ -118,15 +121,24 @@ function drawShapePreview(
       ctx.rect(toX(shape.x), toY(shape.y + r.height), r.width * scale, r.height * scale)
       ctx.fill(); ctx.stroke(); break
     }
-    case 'polygon':
+    case 'polygon': {
+      const pts = (shape as any).points as Point[]
+      if (pts && pts.length > 0) {
+        ctx.moveTo(toX(pts[0].x), toY(pts[0].y))
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y))
+        ctx.closePath()
+        ctx.fill(); ctx.stroke()
+      }
+      break
+    }
     case 'polyline':
     case 'path': {
       const pts = (shape as any).points as Point[]
       if (pts && pts.length > 0) {
         ctx.moveTo(toX(pts[0].x), toY(pts[0].y))
         for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y))
-        if (shape.type === 'polygon') ctx.closePath()
-        ctx.fill(); ctx.stroke()
+        // Polyline and Path are stroke-only (open paths); only polygon is filled
+        ctx.stroke()
       }
       break
     }
@@ -150,11 +162,11 @@ watch([selectedShapes, selectedOp], async () => {
   const W = canvas.width, H = canvas.height, pad = 16
 
   ctx.clearRect(0, 0, W, H)
-  ctx.fillStyle = '#1e1e1e'
+  ctx.fillStyle = canvasTheme.colors.value.background
   ctx.fillRect(0, 0, W, H)
 
   // Grid
-  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 0.5
+  ctx.strokeStyle = canvasTheme.colors.value.grid; ctx.lineWidth = 0.5
   const gCX = pad + (W - pad * 2) / 2, gCY = pad + (H - pad * 2) / 2
   ctx.beginPath()
   ctx.moveTo(gCX, pad); ctx.lineTo(gCX, H - pad)
@@ -162,27 +174,40 @@ watch([selectedShapes, selectedOp], async () => {
   ctx.stroke()
 
   if (selectedShapes.value.length === 0) {
-    ctx.fillStyle = '#555'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'
+    ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '12px system-ui'; ctx.textAlign = 'center'
+    ctx.globalAlpha = 0.5
     ctx.fillText('请选择 2 个图形', W / 2, H / 2)
+    ctx.globalAlpha = 1
     return
   }
 
   if (selectedShapes.value.length === 1) {
-    ctx.fillStyle = '#4fc3f7'
-    drawShapePreview(ctx, selectedShapes.value[0], getShapeBounds(selectedShapes.value[0]), W, H, pad, 'rgba(79,195,247,0.2)', '#4fc3f7')
-    ctx.fillStyle = '#888'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'
+    ctx.fillStyle = canvasTheme.colors.value.selection
+    drawShapePreview(ctx, selectedShapes.value[0], getShapeBounds(selectedShapes.value[0]), W, H, pad, 'rgba(79,195,247,0.2)', canvasTheme.colors.value.selection)
+    ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '11px system-ui'; ctx.textAlign = 'center'
+    ctx.globalAlpha = 0.6
     ctx.fillText('再选择 1 个图形', W / 2, H / 2)
+    ctx.globalAlpha = 1
     return
   }
 
   // Two shapes: show input shapes on left/right, result preview in center
   const [s1, s2] = selectedShapes.value
-  const result = polygonBoolean(s1, s2, selectedOp.value)
+  let result: Point[][] = []
+  try {
+    result = polygonBoolean(s1, s2, selectedOp.value)
+  } catch (err) {
+    // Computation error - show error message instead of crashing
+    ctx.fillStyle = '#ef5350'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8
+    ctx.fillText('计算错误: 图形无法执行此运算', W / 2, H / 2)
+    ctx.globalAlpha = 1
+    return
+  }
 
   // Left: shape 1 (blue)
   ctx.save()
   ctx.beginPath(); ctx.rect(0, 0, W / 2 - 4, H); ctx.clip()
-  drawShapePreview(ctx, s1, getCombinedBounds([s1, s2]), W / 2, H, pad, 'rgba(79,195,247,0.25)', '#4fc3f7')
+  drawShapePreview(ctx, s1, getCombinedBounds([s1, s2]), W / 2, H, pad, 'rgba(79,195,247,0.25)', canvasTheme.colors.value.selection)
   ctx.restore()
 
   // Right: shape 2 (orange)
@@ -192,18 +217,19 @@ watch([selectedShapes, selectedOp], async () => {
   ctx.restore()
 
   // Divider
-  ctx.strokeStyle = '#444'; ctx.lineWidth = 1
+  ctx.strokeStyle = canvasTheme.colors.value.text; ctx.globalAlpha = 0.25; ctx.lineWidth = 1
   ctx.beginPath(); ctx.moveTo(W / 2, 8); ctx.lineTo(W / 2, H - 8); ctx.stroke()
+  ctx.globalAlpha = 1
 
   // Labels
   ctx.font = '10px system-ui'; ctx.textAlign = 'center'
-  ctx.fillStyle = '#4fc3f7'; ctx.fillText('A', W / 4, 14)
+  ctx.fillStyle = canvasTheme.colors.value.selection; ctx.fillText('A', W / 4, 14)
   ctx.fillStyle = '#ffb74d'; ctx.fillText('B', W * 3 / 4, 14)
 
   // Result section: show small result preview below divider
   if (result.length > 0) {
     const resultBounds = getCombinedBounds(result.map(p => ({ type: 'polygon', x: Math.min(...p.map(pt => pt.x)), y: Math.min(...p.map(pt => pt.y)), points: p } as BaseShape)))
-    ctx.fillStyle = '#666'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
+    ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText('↓ 结果', W / 2, H - 20)
     // Draw result shapes in green using drawShapePreview
     for (const poly of result) {
@@ -230,8 +256,10 @@ watch([selectedShapes, selectedOp], async () => {
     ctx.fillStyle = '#66bb6a'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText(result.length === 1 ? '1 多边形' : `${result.length} 多边形`, W / 2, H - 4)
   } else {
-    ctx.fillStyle = '#888'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'
+    ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '11px system-ui'; ctx.textAlign = 'center'
+    ctx.globalAlpha = 0.6
     ctx.fillText('结果为空', W / 2, H / 2 + 20)
+    ctx.globalAlpha = 1
   }
 }, { immediate: true })
 

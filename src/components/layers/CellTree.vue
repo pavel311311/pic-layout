@@ -222,6 +222,35 @@ const flatTree = computed(() => {
 // === Cell Search (v0.2.7) ===
 const searchQuery = ref('')
 
+/** Number of currently highlighted/matched cells */
+const matchCount = computed(() => cellsStore.highlightedCellIds.size)
+
+/** Whether search has active query with no results */
+const noSearchResults = computed(() =>
+  searchQuery.value.trim().length > 0 && matchCount.value === 0
+)
+
+/** First matched cell ID (for Enter-to-navigate) */
+const firstMatchedCellId = computed(() => {
+  if (matchCount.value === 0) return null
+  const q = searchQuery.value.trim().toLowerCase()
+  for (const root of cellsStore.rootCells) {
+    function findFirst(cellId: string): string | null {
+      const cell = cellsStore.getCell(cellId)
+      if (!cell) return null
+      if (cell.name.toLowerCase().includes(q)) return cellId
+      for (const child of cellsStore.getChildCells(cellId)) {
+        const found = findFirst(child.id)
+        if (found) return found
+      }
+      return null
+    }
+    const found = findFirst(root.id)
+    if (found) return found
+  }
+  return null
+})
+
 /** Update canvas highlights when search query changes */
 watch(searchQuery, (query) => {
   if (!query.trim()) {
@@ -317,6 +346,15 @@ function onContextMenuSelect(itemId: string) {
   else if (itemId === 'delete') deleteCell(contextMenuCellId.value, new Event('click'))
   closeContextMenu()
 }
+
+/** Navigate canvas to first search match (Enter key in search box) */
+function navigateToFirstMatch() {
+  const cellId = firstMatchedCellId.value
+  if (cellId) {
+    drillInto(cellId)
+    searchQuery.value = ''
+  }
+}
 </script>
 
 <template>
@@ -361,16 +399,28 @@ function onContextMenuSelect(itemId: string) {
         class="cell-search-input"
         placeholder="Search cells..."
         aria-label="Search cells by name"
+        @keydown.enter="navigateToFirstMatch"
+        @keydown.escape="searchQuery = ''"
       />
+      <!-- Match count badge (v0.2.7 search UX) -->
+      <span v-if="matchCount > 0" class="search-match-count" aria-live="polite">
+        {{ matchCount }}
+      </span>
       <button
         v-if="searchQuery"
         class="cell-search-clear"
         @click="searchQuery = ''"
-        title="Clear search"
+        title="Clear search (Esc)"
         aria-label="Clear search"
       >
         <X :size="10" aria-hidden="true" />
       </button>
+    </div>
+
+    <!-- No search results empty state (v0.2.7 search UX) -->
+    <div v-if="noSearchResults" class="cell-search-no-results" role="status" aria-live="polite">
+      <Search :size="12" aria-hidden="true" />
+      <span>No cells matching "{{ searchQuery }}"</span>
     </div>
 
     <!-- Cell Tree List -->
@@ -575,6 +625,34 @@ function onContextMenuSelect(itemId: string) {
 
 .cell-search-clear:hover {
   color: var(--text-primary);
+}
+
+/* Search match count badge (v0.2.7) */
+.search-match-count {
+  min-width: 16px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--accent-blue);
+  color: #fff;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* No search results empty state (v0.2.7) */
+.cell-search-no-results {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: center;
+  justify-content: center;
 }
 
 /* Cell list */
