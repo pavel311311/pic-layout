@@ -529,3 +529,22 @@ chore: 构建/工具
 - v0.2.6 收尾：PropertiesPanel样式完善
 - v0.3.1 布尔运算测试与bug修复
 - v0.4.1 GDS导入导出功能测试
+
+### 2026-04-17
+
+**完成内容**:
+- v0.2.6 PropertiesPanel.vue 重构: 提取 StyleEditor/PathEditor/PointsEditor 子组件 (1401行→<400行)
+- v0.2.6 标尺测量工具 UI: drawRulerOverlay + Toolbar 测量事件监听
+- v0.2.6 右键菜单键盘导航: ArrowUp/Down/Enter/Escape 支持
+- v0.3.1 polygonBoolean.ts bug 修复: Math.abs(poly.length-4)<0.1 → poly.length===4
+- 编译测试通过 (Build successful, Brotli compressed)
+- Git 提交并推送 (19 files, +1657/-1401 lines)
+
+**遇到的问题**:
+- 无
+
+**次日计划**:
+- v0.2.6 收尾: PropertiesPanel 新组件细节完善
+- v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
+- v0.3.1 布尔运算功能测试
+- v0.4.1 GDS 导入导出功能测试

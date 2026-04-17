@@ -394,3 +394,29 @@
 - [ ] 测试布尔运算: 矩形与矩形相交/相减/异或
 - [ ] 测试布尔运算: 多边形与多边形相交
 - [ ] v0.4.1 GDS 导入导出功能测试
+
+## 2026-04-17 10:10
+
+### 完成内容
+- [x] v0.2.6 PropertiesPanel.vue 重构: 提取 StyleEditor/PathEditor/PointsEditor 子组件
+  - PropertiesPanel.vue: 1401 行 → 精简为 <400 行
+  - 新增 StyleEditor.vue: 样式编辑（填充/描边/图案）
+  - 新增 PathEditor.vue: Path 路径点编辑
+  - 新增 PointsEditor.vue: Polygon/Polyline 顶点编辑器
+  - 新增 properties-shared.css: 共享样式
+  - 新增 useShapePreview.ts composable: 图形预览绘制逻辑
+  - 新增 shapeMetrics.ts utils: 图形度量工具函数
+- [x] v0.2.6 标尺测量工具 UI: drawRulerOverlay + Toolbar 测量事件监听
+- [x] v0.2.6 右键菜单键盘导航: ArrowUp/Down/Enter/Escape 支持
+- [x] v0.3.1 polygonBoolean.ts bug 修复: Math.abs(poly.length-4)<0.1 → poly.length===4
+- [x] 编译测试通过 (Build successful)
+- [x] Git 提交并推送 (19 files, +1657/-1401 lines)
+
+### 遇到的问题
+- 无
+
+### 明日计划
+- [ ] v0.2.6 收尾: PropertiesPanel 新组件细节完善
+- [ ] v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
+- [ ] v0.3.1 布尔运算功能测试
+- [ ] v0.4.1 GDS 导入导出功能测试
