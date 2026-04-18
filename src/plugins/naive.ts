@@ -12,6 +12,7 @@
  * - NInput, NInputNumber: ArrayCopyDialog, GdsExportDialog
  * - NSelect: GdsExportDialog
  * - NSwitch: GdsExportDialog
+ * - NCheckbox: GdsImportDialog
  * - NModal: ArrayCopyDialog, BooleanOperationsDialog
  * - NScrollbar: LayerPanel
  * - NSpace: AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
@@ -37,6 +38,7 @@ import {
   NSpace,
   NSwitch,
   NText,
+  NCheckbox,
 } from 'naive-ui'
 
 // NOTE: Keep this list minimal — only add components that are actually used.
@@ -59,6 +61,7 @@ const components = {
   NSpace,
   NSwitch,
   NText,
+  NCheckbox,
   // Add new components here (e.g. NSwitch, NPopover, etc.)
 } as const
 
@@ -86,4 +89,5 @@ export {
   NSpace,
   NSwitch,
   NText,
+  NCheckbox,
 }

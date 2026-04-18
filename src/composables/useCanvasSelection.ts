@@ -57,10 +57,10 @@ export function useCanvasSelection(options: UseCanvasSelectionOptions) {
       const halfWidth = ((shape as any).width || 1) / 2
       const xs = shape.points.map((p: Point) => p.x)
       const ys = shape.points.map((p: Point) => p.y)
-      const minX = Math.min(...xs) - halfWidth - 2
-      const minY = Math.min(...ys) - halfWidth - 2
-      const maxX = Math.max(...xs) + halfWidth + 2
-      const maxY = Math.max(...ys) + halfWidth + 2
+      const minX = xs.reduce((m: number, v: number) => Math.min(m, v), Infinity) - halfWidth - 2
+      const minY = ys.reduce((m: number, v: number) => Math.min(m, v), Infinity) - halfWidth - 2
+      const maxX = xs.reduce((m: number, v: number) => Math.max(m, v), -Infinity) + halfWidth + 2
+      const maxY = ys.reduce((m: number, v: number) => Math.max(m, v), -Infinity) + halfWidth + 2
       ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
       // Draw vertex handles
       const handleSize = HANDLE_SIZE / zoom

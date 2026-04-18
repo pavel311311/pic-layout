@@ -11,7 +11,7 @@
  * - Show shape count per cell
  * - Search cells by name
  */
-import { ref, computed, watch, type Component } from 'vue'
+import { ref, computed, watch, nextTick, type Component } from 'vue'
 import { useCellsStore } from '../../stores/cells'
 import {
   Home,
@@ -355,6 +355,61 @@ function navigateToFirstMatch() {
     searchQuery.value = ''
   }
 }
+
+// === Keyboard Navigation for Cell Tree (v0.2.7) ===
+/** Currently focused item index (-1 = none) */
+const focusedIndex = ref(-1)
+/** Ref to the cell list container for scrolling */
+const cellListRef = ref<HTMLElement | null>(null)
+
+/** Handle keyboard navigation in the cell tree list */
+function onCellListKeydown(e: KeyboardEvent) {
+  const items = flatTree.value
+  if (items.length === 0) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    focusedIndex.value = Math.min(focusedIndex.value + 1, items.length - 1)
+    scrollFocusedIntoView()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    focusedIndex.value = Math.max(focusedIndex.value - 1, 0)
+    scrollFocusedIntoView()
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    if (focusedIndex.value >= 0 && focusedIndex.value < items.length) {
+      drillInto(items[focusedIndex.value].node.cell.id)
+    }
+  } else if (e.key === 'Escape') {
+    if (searchQuery.value) {
+      searchQuery.value = ''
+      focusedIndex.value = -1
+    }
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    focusedIndex.value = 0
+    scrollFocusedIntoView()
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    focusedIndex.value = items.length - 1
+    scrollFocusedIntoView()
+  }
+}
+
+/** Scroll the focused item into view */
+function scrollFocusedIntoView() {
+  nextTick(() => {
+    const el = document.querySelector('.cell-item.is-focused') as HTMLElement
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
+}
+
+/** Reset focused index when tree changes (e.g., search filter) */
+watch(flatTree, () => {
+  if (focusedIndex.value >= flatTree.value.length) {
+    focusedIndex.value = flatTree.value.length > 0 ? flatTree.value.length - 1 : -1
+  }
+})
 </script>
 
 <template>
@@ -424,15 +479,23 @@ function navigateToFirstMatch() {
     </div>
 
     <!-- Cell Tree List -->
-    <div class="cell-list">
+    <div
+      ref="cellListRef"
+      class="cell-list"
+      tabindex="0"
+      role="tree"
+      aria-label="Cell hierarchy"
+      @keydown="onCellListKeydown"
+    >
       <div
-        v-for="{ node, depth } in flatTree"
+        v-for="({ node, depth }, index) in flatTree"
         :key="node.cell.id"
         class="cell-item"
         :class="{
           selected: node.cell.id === activeCellId,
           'is-top': node.cell.id === topCellId,
           'search-match': isHighlighted(node.cell.id),
+          'is-focused': focusedIndex === index,
         }"
         :style="{ paddingLeft: `${8 + depth * 16}px` }"
         @click="drillInto(node.cell.id)"
@@ -560,6 +623,10 @@ function navigateToFirstMatch() {
   font-size: 10px;
   color: var(--text-secondary);
   cursor: pointer;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .breadcrumb-btn:hover {
@@ -683,6 +750,20 @@ function navigateToFirstMatch() {
   border-left-color: var(--accent-blue);
   color: var(--accent-blue);
   font-weight: 500;
+}
+
+/* Keyboard focus ring (v0.2.7) */
+.cell-item.is-focused {
+  outline: 1px solid var(--accent-blue);
+  outline-offset: -1px;
+}
+
+/* Make cell list focusable for keyboard nav */
+.cell-list:focus {
+  outline: none;
+}
+.cell-list:focus-visible {
+  outline: 1px solid var(--border-color);
 }
 
 /* Search match highlight (v0.2.7) */

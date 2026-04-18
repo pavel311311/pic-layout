@@ -105,6 +105,43 @@ function boundsOverlap(a: Bounds, b: Bounds): boolean {
   return !(a.maxX < b.minX || a.minX > b.maxX || a.maxY < b.minY || a.minY > b.maxY)
 }
 
+/**
+ * Check if a polygon is a valid axis-aligned rectangle.
+ * A valid rectangle must:
+ * - Have exactly 4 points
+ * - Have exactly 2 distinct X coordinates and 2 distinct Y coordinates
+ * - All 4 corners must be present
+ */
+function isAxisAlignedRectangle(poly: Point[]): boolean {
+  if (poly.length !== 4) return false
+
+  // Get unique X and Y coordinates
+  const xs = new Set<number>()
+  const ys = new Set<number>()
+  for (const p of poly) {
+    xs.add(p.x)
+    ys.add(p.y)
+  }
+
+  // A rectangle must have exactly 2 distinct X and 2 distinct Y coordinates
+  if (xs.size !== 2 || ys.size !== 2) return false
+
+  // Verify all 4 corner combinations exist
+  const xArr = Array.from(xs)
+  const yArr = Array.from(ys)
+  const corners = new Set<string>()
+  for (const p of poly) {
+    corners.add(`${p.x},${p.y}`)
+  }
+
+  const hasBL = corners.has(`${xArr[0]},${yArr[0]}`)
+  const hasBR = corners.has(`${xArr[1]},${yArr[0]}`)
+  const hasTL = corners.has(`${xArr[0]},${yArr[1]}`)
+  const hasTR = corners.has(`${xArr[1]},${yArr[1]}`)
+
+  return hasBL && hasBR && hasTL && hasTR
+}
+
 /** Sutherland-Hodgman polygon clipping: clip subject polygon by one edge */
 function clipByEdge(subject: Point[], edge: { x1: number; y1: number; x2: number; y2: number }, keepInside: boolean): Point[] {
   const output: Point[] = []
@@ -361,24 +398,84 @@ export function polygonBoolean(
 /**
  * Union: all area covered by either shape
  */
-function booleanUnion(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): Point[][] {
-  // Fast path: if no overlap, return convex hull of all points
-  if (!boundsOverlap(bb1, bb2)) {
-    const combined = convexHull([...poly1, ...poly2])
-    return [combined]
+/** Check if two polygons actually touch or share an edge (not just bounding box overlap) */
+function polygonsOverlapOrTouch(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): boolean {
+  if (!boundsOverlap(bb1, bb2)) return false
+  // Check if any edge of poly1 intersects any edge of poly2
+  for (let i = 0; i < poly1.length; i++) {
+    const a1 = poly1[i], a2 = poly1[(i + 1) % poly1.length]
+    for (let j = 0; j < poly2.length; j++) {
+      const b1 = poly2[j], b2 = poly2[(j + 1) % poly2.length]
+      if (segmentsIntersect(a1, a2, b1, b2)) return true
+    }
   }
+  // Check if any point of poly1 is inside poly2 (or vice versa)
+  for (const p of poly1) { if (pointInPolygon(p, poly2)) return true }
+  for (const p of poly2) { if (pointInPolygon(p, poly1)) return true }
+  return false
+}
 
-  // For overlapping rectangles: return minimal bounding rectangle
-  const isRect1 = poly1.length === 4
-  const isRect2 = poly2.length === 4
+/** Check if two line segments intersect (including at endpoints) */
+function segmentsIntersect(a1: Point, a2: Point, b1: Point, b2: Point): boolean {
+  const d1 = direction(b1, b2, a1), d2 = direction(b1, b2, a2)
+  const d3 = direction(a1, a2, b1), d4 = direction(a1, a2, b2)
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+  if (d1 === 0 && onSegment(b1, b2, a1)) return true
+  if (d2 === 0 && onSegment(b1, b2, a2)) return true
+  if (d3 === 0 && onSegment(a1, a2, b1)) return true
+  if (d4 === 0 && onSegment(a1, a2, b2)) return true
+  return false
+}
+
+function direction(a: Point, b: Point, c: Point): number {
+  return (c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y)
+}
+
+function onSegment(a: Point, b: Point, c: Point): boolean {
+  return Math.min(a.x, b.x) <= c.x && c.x <= Math.max(a.x, b.x) &&
+         Math.min(a.y, b.y) <= c.y && c.y <= Math.max(a.y, b.y)
+}
+
+/** Ray casting point-in-polygon (works for convex and concave) */
+function pointInPolygon(pt: Point, poly: Point[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y
+    if (((yi > pt.y) !== (yj > pt.y)) &&
+        (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+function booleanUnion(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): Point[][] {
+  // Fast path: if bounding boxes don't overlap, shapes are definitely separate
+  if (!boundsOverlap(bb1, bb2)) return [[...poly1], [...poly2]]
+
+  // Check if shapes are valid axis-aligned rectangles
+  const isRect1 = isAxisAlignedRectangle(poly1)
+  const isRect2 = isAxisAlignedRectangle(poly2)
 
   if (isRect1 && isRect2) {
-    // Both are rectangles - return bounding box of union
+    // Both are rectangles - check if they actually overlap or touch
+    const overlap = rectangleIntersection(poly1, poly2)
+    if (overlap.length === 0) {
+      // Rectangles don't overlap - return both as separate polygons
+      return [[...poly1], [...poly2]]
+    }
+    // Overlapping rectangles: return bounding box of union
     return [rectangleUnion(poly1, poly2)]
   }
 
-  // General case: compute convex hull of combined points
-  // This is an approximation but works well for most PIC layouts
+  // General case: check if shapes actually overlap or touch
+  if (!polygonsOverlapOrTouch(poly1, poly2, bb1, bb2)) {
+    // No real overlap/touch - return separate polygons
+    return [[...poly1], [...poly2]]
+  }
+
+  // Shapes overlap - compute convex hull (approximation for PIC layouts)
   const combined = convexHull([...poly1, ...poly2])
   return [combined]
 }
@@ -390,9 +487,9 @@ function booleanIntersection(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: B
   // Fast path: check bounding box overlap
   if (!boundsOverlap(bb1, bb2)) return []
 
-  // For rectangles: clip one by the other
-  const isRect1 = poly1.length === 4
-  const isRect2 = poly2.length === 4
+  // For rectangles: use optimized rectangle-rectangle intersection
+  const isRect1 = isAxisAlignedRectangle(poly1)
+  const isRect2 = isAxisAlignedRectangle(poly2)
 
   if (isRect1 && isRect2) {
     return [rectangleIntersection(poly1, poly2)]
@@ -424,8 +521,8 @@ function booleanDifference(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bou
   // Fast path: if no overlap, return shape1
   if (!boundsOverlap(bb1, bb2)) return [poly1]
 
-  const isRect1 = poly1.length === 4
-  const isRect2 = poly2.length === 4
+  const isRect1 = isAxisAlignedRectangle(poly1)
+  const isRect2 = isAxisAlignedRectangle(poly2)
 
   if (isRect1 && isRect2) {
     // Rectangle difference: clip shape2's area from shape1

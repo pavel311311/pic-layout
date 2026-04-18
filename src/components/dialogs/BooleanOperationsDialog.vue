@@ -228,7 +228,8 @@ watch([selectedShapes, selectedOp], async () => {
 
   // Result section: show small result preview below divider
   if (result.length > 0) {
-    const resultBounds = getCombinedBounds(result.map(p => ({ type: 'polygon', x: Math.min(...p.map(pt => pt.x)), y: Math.min(...p.map(pt => pt.y)), points: p } as BaseShape)))
+    // x/y are ignored by getShapeBounds for polygons (computes from points), but TS requires them on BaseShape
+    const resultBounds = getCombinedBounds(result.map(p => ({ type: 'polygon', x: 0, y: 0, points: p } as BaseShape)))
     ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText('↓ 结果', W / 2, H - 20)
     // Draw result shapes in green using drawShapePreview

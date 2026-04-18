@@ -144,11 +144,11 @@ onUnmounted(() => {
         <span class="btn-label">Save</span>
       </button>
       <button class="tool-btn" @click="handleExportGDS" :title="getEditTooltip(fileOps[1])" aria-label="Export GDS">
-        <Upload :size="16" class="btn-icon-svg" />
+        <Download :size="16" class="btn-icon-svg" />
         <span class="btn-label">Exp</span>
       </button>
       <button class="tool-btn" @click="openGdsImportDialog" title="Import GDS" aria-label="Import GDS">
-        <Download :size="16" class="btn-icon-svg" />
+        <Upload :size="16" class="btn-icon-svg" />
         <span class="btn-label">Imp</span>
       </button>
     </div>
@@ -232,7 +232,7 @@ onUnmounted(() => {
         <ZoomIn :size="16" class="btn-icon-svg" />
         <span class="btn-label">In</span>
       </button>
-      <button class="tool-btn" @click="store.setZoom(store.zoom * 0.8)" title="Zoom Out" aria-label="Zoom Out">
+      <button class="tool-btn" @click="store.setZoom(store.zoom / 1.2)" title="Zoom Out (Ctrl+-)" aria-label="Zoom Out">
         <ZoomOut :size="16" class="btn-icon-svg" />
         <span class="btn-label">Out</span>
       </button>

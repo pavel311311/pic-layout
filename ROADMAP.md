@@ -568,3 +568,17 @@ chore: 构建/工具
 - v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
 - v0.3.1 布尔运算功能测试
 - v0.4.1 GDS 导入导出功能测试
+
+### 2026-04-17 13:10
+
+**完成内容**:
+- CellTree.vue 小修复: breadcrumbPath/topCellId/getCellDisplayName 中 'TOP' 硬编码改为实际 cell.name
+- 编译测试通过, Git 提交并推送 (1 file, +3/-3 lines)
+
+**遇到的问题**:
+- 无
+
+**次小时计划**:
+- v0.2.7 Cell 钻入钻出 UI 完善
+- v0.3.1 布尔运算功能测试
+- v0.4.1 GDS 导入导出功能测试

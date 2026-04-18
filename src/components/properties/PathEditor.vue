@@ -42,10 +42,10 @@ function drawPathPreview() {
   const pts = props.points
   if (pts.length < 2) return
 
-  const minX = Math.min(...pts.map(p => p.x))
-  const minY = Math.min(...pts.map(p => p.y))
-  const maxX = Math.max(...pts.map(p => p.x))
-  const maxY = Math.max(...pts.map(p => p.y))
+  const minX = pts.reduce((m: number, p: { x: number; y: number }) => Math.min(m, p.x), Infinity)
+  const minY = pts.reduce((m: number, p: { x: number; y: number }) => Math.min(m, p.y), Infinity)
+  const maxX = pts.reduce((m: number, p: { x: number; y: number }) => Math.max(m, p.x), -Infinity)
+  const maxY = pts.reduce((m: number, p: { x: number; y: number }) => Math.max(m, p.y), -Infinity)
   const w = maxX - minX || 1
   const h = maxY - minY || 1
 

@@ -755,6 +755,7 @@ export async function importGDS(
     databaseUnits: number
     userUnits: number
     layerCount: number
+    gdsLayers: number[]   // Actual GDS layer numbers
   }
 }> {
   const buffer = file instanceof ArrayBuffer ? file : await file.arrayBuffer()
@@ -769,6 +770,7 @@ export async function importGDS(
       databaseUnits: parsed.databaseUnits,
       userUnits: parsed.userUnits,
       layerCount: parsed.rawLayers.size,
+      gdsLayers: Array.from(parsed.rawLayers).sort((a, b) => a - b),
     },
   }
 }

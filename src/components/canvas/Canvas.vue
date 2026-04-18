@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted, computed, defineAsyncComponent } from 'vue'
+import { ref, onUnmounted, computed, defineAsyncComponent, watch } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { useCellsStore } from '../../stores/cells'
 import { useCanvasCoordinates } from '../../composables/useCanvasCoordinates'
@@ -112,6 +112,23 @@ const ctxMenu = useContextMenu(store)
 
 // === Theme-aware canvas rendering ===
 const canvasTheme = useCanvasTheme()
+
+// === Auto-zoom when drilling into / out of a cell (v0.2.7) ===
+// When user drills into a different cell via CellTree, zoom to fit the new cell's content
+let zoomOnDrillInitialized = false
+watch(
+  () => cellsStore.activeCellId,
+  () => {
+    if (!zoomOnDrillInitialized) {
+      // Skip first call (initial value matches on mount)
+      zoomOnDrillInitialized = true
+      return
+    }
+    // Zoom to fit the newly active cell's contents after a short delay
+    // so the canvas has time to render the new cell's shapes first
+    setTimeout(() => store.zoomToFit(), 50)
+  }
+)
 
 // === Context menu handlers wired to local dialog state ===
 function onContextMenu(e: MouseEvent) {
@@ -310,91 +327,6 @@ function render() {
       }
       ctx.restore()
     }
-  }
-
-  // Draw cell search highlights (yellow dashed rectangles around matched cells)
-  function drawCellHighlights(ctx: CanvasRenderingContext2D) {
-    const highlighted = cellsStore.highlightedCellIds
-    if (!highlighted.size) return
-    ctx.save()
-    ctx.strokeStyle = '#FFD700' // Gold yellow for search highlights
-    ctx.lineWidth = 2
-    ctx.setLineDash([8, 4])
-    ctx.globalAlpha = 0.9
-    for (const cellId of highlighted) {
-      const bounds = cellsStore.getCellBounds(cellId, true)
-      if (!bounds) continue
-      const topLeft = designToScreen(bounds.minX, bounds.minY)
-      const bottomRight = designToScreen(bounds.maxX, bounds.maxY)
-      const w = bottomRight.x - topLeft.x
-      const h = bottomRight.y - topLeft.y
-      ctx.strokeRect(topLeft.x, topLeft.y, w, h)
-    }
-    ctx.restore()
-  }
-
-  // Ruler measurement overlay (v0.2.6)
-  function drawRulerOverlay(ctx: CanvasRenderingContext2D) {
-    const p1 = toolHandlers.rulerPoint1.value
-    const p2 = toolHandlers.rulerPoint2.value
-    if (!p1) return
-
-    const screenP1 = designToScreen(p1.x, p1.y)
-    ctx.save()
-    ctx.strokeStyle = '#FF6B6B'
-    ctx.lineWidth = 2
-    ctx.setLineDash([4, 3])
-    ctx.globalAlpha = 0.9
-
-    if (p2) {
-      // Draw measurement line between p1 and p2
-      const screenP2 = designToScreen(p2.x, p2.y)
-      ctx.beginPath()
-      ctx.moveTo(screenP1.x, screenP1.y)
-      ctx.lineTo(screenP2.x, screenP2.y)
-      ctx.stroke()
-
-      // Draw distance label at midpoint
-      const midX = (screenP1.x + screenP2.x) / 2
-      const midY = (screenP1.y + screenP2.y) / 2
-      const dist = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
-      ctx.setLineDash([])
-      ctx.globalAlpha = 0.85
-      ctx.fillStyle = '#FF6B6B'
-      ctx.font = 'bold 11px monospace'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(`${dist.toFixed(3)} μm`, midX, midY - 4)
-    }
-
-    // Draw point markers
-    ctx.setLineDash([])
-    ctx.globalAlpha = 1.0
-    ctx.strokeStyle = '#FF6B6B'
-    ctx.fillStyle = '#FF6B6B'
-    ctx.lineWidth = 2
-
-    // Point 1 marker (X crosshair)
-    const size = 6
-    ctx.beginPath()
-    ctx.moveTo(screenP1.x - size, screenP1.y - size)
-    ctx.lineTo(screenP1.x + size, screenP1.y + size)
-    ctx.moveTo(screenP1.x + size, screenP1.y - size)
-    ctx.lineTo(screenP1.x - size, screenP1.y + size)
-    ctx.stroke()
-
-    if (p2) {
-      const screenP2 = designToScreen(p2.x, p2.y)
-      // Point 2 marker (X crosshair)
-      ctx.beginPath()
-      ctx.moveTo(screenP2.x - size, screenP2.y - size)
-      ctx.lineTo(screenP2.x + size, screenP2.y + size)
-      ctx.moveTo(screenP2.x + size, screenP2.y - size)
-      ctx.lineTo(screenP2.x - size, screenP2.y + size)
-      ctx.stroke()
-    }
-
-    ctx.restore()
   }
 
   // Always render UI elements on overlay canvas (no accumulation)

@@ -38,10 +38,10 @@ export function getShapeBounds(shape: BaseShape): { minX: number; minY: number; 
     const xs = shape.points.map(p => p.x)
     const ys = shape.points.map(p => p.y)
     return {
-      minX: Math.min(...xs),
-      minY: Math.min(...ys),
-      maxX: Math.max(...xs),
-      maxY: Math.max(...ys),
+      minX: xs.reduce((m, v) => Math.min(m, v), Infinity),
+      minY: ys.reduce((m, v) => Math.min(m, v), Infinity),
+      maxX: xs.reduce((m, v) => Math.max(m, v), -Infinity),
+      maxY: ys.reduce((m, v) => Math.max(m, v), -Infinity),
     }
   }
   
@@ -80,10 +80,10 @@ export function getShapeBounds(shape: BaseShape): { minX: number; minY: number; 
     const ys = shape.points.map(p => p.y)
     const halfWidth = ((shape as any).width || 1) / 2
     return {
-      minX: Math.min(...xs) - halfWidth,
-      minY: Math.min(...ys) - halfWidth,
-      maxX: Math.max(...xs) + halfWidth,
-      maxY: Math.max(...ys) + halfWidth,
+      minX: xs.reduce((m, v) => Math.min(m, v), Infinity) - halfWidth,
+      minY: ys.reduce((m, v) => Math.min(m, v), Infinity) - halfWidth,
+      maxX: xs.reduce((m, v) => Math.max(m, v), -Infinity) + halfWidth,
+      maxY: ys.reduce((m, v) => Math.max(m, v), -Infinity) + halfWidth,
     }
   }
   

@@ -692,6 +692,35 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
       virtualization.markDirty()
       return
     }
+    // Zoom shortcuts: Ctrl++/Ctrl+-/Ctrl+0/Ctrl+1
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault()
+        setZoom(getZoom() * 1.2)
+        virtualization.markDirty()
+        return
+      }
+      if (e.key === '-') {
+        e.preventDefault()
+        setZoom(getZoom() / 1.2)
+        virtualization.markDirty()
+        return
+      }
+      if (e.key === '0') {
+        e.preventDefault()
+        setZoom(1)
+        announce('缩放重置为 100%')
+        virtualization.markDirty()
+        return
+      }
+      if (e.key === '1') {
+        e.preventDefault()
+        zoomToFit()
+        announce('缩放适应全部图形')
+        virtualization.markDirty()
+        return
+      }
+    }
     // Alignment shortcuts: Ctrl+Shift+[key]
     if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
       const alignMap: Record<string, string> = {

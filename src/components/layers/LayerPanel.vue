@@ -42,7 +42,7 @@ const newLayerGds = ref(1)
 function addLayer() {
   if (!newLayerName.value.trim()) return
 
-  const maxId = Math.max(...store.project.layers.map((l) => l.id), 0)
+  const maxId = store.project.layers.reduce((m, l) => Math.max(m, l.id), 0)
   store.addLayer({
     id: maxId + 1,
     name: newLayerName.value,

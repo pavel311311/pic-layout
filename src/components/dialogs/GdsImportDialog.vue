@@ -10,7 +10,7 @@
  * - Imports cells and shapes into store
  */
 import { ref, computed, watch, nextTick } from 'vue'
-import { NModal, NButton, NSpace, NText } from '@/plugins/naive'
+import { NModal, NButton, NSpace, NText, NCheckbox, NSelect } from '@/plugins/naive'
 import { importGDS } from '@/services/gdsImporter'
 import { useShapesStore } from '@/stores/shapes'
 import { useCellsStore } from '@/stores/cells'
@@ -42,8 +42,85 @@ const previewData = ref<{
     databaseUnits: number
     userUnits: number
     layerCount: number
+    gdsLayers: number[]
   }
 } | null>(null)
+
+// === Selective Cell Import (v0.4.1) ===
+// Track which cells are selected for import (default: all selected)
+const selectedCellIds = ref<Set<string>>(new Set())
+
+/** All cells selected for import */
+const selectedCount = computed(() => selectedCellIds.value.size)
+
+/** Initialize/reset cell selection when preview loads */
+watch(previewData, (val) => {
+  if (val) {
+    selectedCellIds.value = new Set(val.cells.map(c => c.id))
+    // Select all layers by default
+    selectedLayerIds.value = new Set(val.metadata.gdsLayers)
+  } else {
+    selectedCellIds.value = new Set()
+    selectedLayerIds.value = new Set()
+  }
+})
+
+function toggleCell(cellId: string) {
+  const next = new Set(selectedCellIds.value)
+  if (next.has(cellId)) {
+    next.delete(cellId)
+  } else {
+    next.add(cellId)
+  }
+  selectedCellIds.value = next
+}
+
+function selectAllCells() {
+  if (!previewData.value) return
+  selectedCellIds.value = new Set(previewData.value.cells.map(c => c.id))
+}
+
+function deselectAllCells() {
+  selectedCellIds.value = new Set()
+}
+
+// === Selective Layer Import (v0.4.1) ===
+// Track which GDS layers are selected for import (default: all selected)
+const selectedLayerIds = ref<Set<number>>(new Set())
+
+/** Count of selected layers */
+const selectedLayerCount = computed(() => selectedLayerIds.value.size)
+
+/** Total number of layers */
+const totalLayerCount = computed(() => previewData.value?.metadata.gdsLayers.length ?? 0)
+
+function toggleLayer(layer: number) {
+  const next = new Set(selectedLayerIds.value)
+  if (next.has(layer)) {
+    next.delete(layer)
+  } else {
+    next.add(layer)
+  }
+  selectedLayerIds.value = next
+}
+
+function selectAllLayers() {
+  if (!previewData.value) return
+  selectedLayerIds.value = new Set(previewData.value.metadata.gdsLayers)
+}
+
+function deselectAllLayers() {
+  selectedLayerIds.value = new Set()
+}
+
+/** Check if a shape's layer is selected */
+function isLayerSelected(shape: BaseShape): boolean {
+  // Cell instances don't have a layer — they inherit from the referenced cell
+  if ((shape.type as any) === 'cell-instance') return true
+  const layer = (shape as any).layer
+  if (typeof layer !== 'number') return true
+  return selectedLayerIds.value.has(layer)
+}
 
 // === GDS Preview Canvas (v0.4.0) ===
 const previewCanvasRef = ref<HTMLCanvasElement | null>(null)
@@ -59,13 +136,13 @@ watch(previewData, async (val) => {
 // Computed
 const hasPreview = computed(() => previewData.value !== null)
 
-/** Collect all shapes from preview cells for preview rendering */
+/** Collect all shapes from preview cells for preview rendering (filtered by selected layers) */
 function getPreviewShapes(): BaseShape[] {
   if (!previewData.value) return []
   const shapes: BaseShape[] = []
   for (const cell of previewData.value.cells) {
     for (const child of cell.children) {
-      if (child.type !== 'cell-instance') {
+      if (child.type !== 'cell-instance' && isLayerSelected(child as BaseShape)) {
         shapes.push(child as BaseShape)
       }
     }
@@ -295,15 +372,22 @@ async function handleConfirm() {
 
   try {
     const { cells } = previewData.value
+    // Only import selected cells
+    const toImport = cells.filter(c => selectedCellIds.value.has(c.id))
 
-    // Add each cell to cells store
-    for (const cell of cells) {
-      // Check if cell with same name exists
+    // Add each selected cell to cells store
+    for (const cell of toImport) {
+      // Check if cell with same name exists → rename with suffix
       const existing = cellsStore.getCellByName(cell.name)
       if (existing) {
-        // Skip or rename
-        console.warn(`Cell "${cell.name}" already exists, skipping`)
-        continue
+        // Auto-rename: "MyCell" → "MyCell (1)"
+        let counter = 1
+        let newName = `${cell.name} (${counter})`
+        while (cellsStore.getCellByName(newName)) {
+          counter++
+          newName = `${cell.name} (${counter})`
+        }
+        cell.name = newName
       }
 
       // Step 1: Add cell to cells store (creates new cell with empty children)
@@ -320,6 +404,8 @@ async function handleConfirm() {
       for (const child of cell.children) {
         if (child.type !== 'cell-instance') {
           const shape = child as BaseShape
+          // Skip shapes whose layer is not selected
+          if (!isLayerSelected(shape)) continue
           shape.cellId = cell.id
           // Add to flat shapes array for canvas selection/operations (no history for import)
           shapesStore.addShape(shape, false)
@@ -330,9 +416,9 @@ async function handleConfirm() {
     }
 
     // Set top cell if available
-    if (cells.length > 0 && !cellsStore.topCellId) {
-      // Find first root cell (no parent)
-      const rootCell = cells.find(c => !c.parentId)
+    if (toImport.length > 0 && !cellsStore.topCellId) {
+      // Find first root cell (no parent) from imported cells
+      const rootCell = toImport.find(c => !c.parentId)
       if (rootCell) {
         cellsStore.topCellId = rootCell.id
         cellsStore.activeCellId = rootCell.id
@@ -449,22 +535,63 @@ function handleKeydown(e: KeyboardEvent) {
           </div>
         </div>
 
-        <!-- Cells list -->
+        <!-- Layer selection (v0.4.1) -->
         <div class="preview-section">
-          <NText strong style="display: block; margin-bottom: 8px">
-            Cells ({{ previewData.cells.length }})
-          </NText>
+          <div class="cells-header">
+            <NText strong>
+              Layers ({{ selectedLayerCount }}/{{ totalLayerCount }} 已选)
+            </NText>
+            <div class="cells-controls">
+              <NButton size="tiny" quaternary @click="selectAllLayers">全选</NButton>
+              <NButton size="tiny" quaternary @click="deselectAllLayers">取消全选</NButton>
+            </div>
+          </div>
+          <div class="layers-grid">
+            <div
+              v-for="layer in previewData.metadata.gdsLayers"
+              :key="layer"
+              class="layer-item"
+              :class="{ 'layer-item--selected': selectedLayerIds.has(layer) }"
+              @click="toggleLayer(layer)"
+            >
+              <NCheckbox
+                :checked="selectedLayerIds.has(layer)"
+                @update:checked="() => toggleLayer(layer)"
+              />
+              <NText style="font-size: 12px">Layer {{ layer }}</NText>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cells list with selective import (v0.4.1) -->
+        <div class="preview-section">
+          <div class="cells-header">
+            <NText strong>
+              Cells ({{ selectedCount }}/{{ previewData.cells.length }} 已选)
+            </NText>
+            <div class="cells-controls">
+              <NButton size="tiny" quaternary @click="selectAllCells">全选</NButton>
+              <NButton size="tiny" quaternary @click="deselectAllCells">取消全选</NButton>
+            </div>
+          </div>
           <div class="cells-list">
             <div
               v-for="cell in previewData.cells"
               :key="cell.id"
               class="cell-item"
+              :class="{ 'cell-item--selected': selectedCellIds.has(cell.id) }"
             >
-              <div class="cell-header">
-                <NText>{{ cell.name }}</NText>
-                <NText depth="3" style="font-size: 11px">
-                  {{ cell.children.length }} 元素
-                </NText>
+              <div class="cell-item-row">
+                <NCheckbox
+                  :checked="selectedCellIds.has(cell.id)"
+                  @update:checked="() => toggleCell(cell.id)"
+                />
+                <div class="cell-header">
+                  <NText>{{ cell.name }}</NText>
+                  <NText depth="3" style="font-size: 11px">
+                    {{ cell.children.length }} 元素
+                  </NText>
+                </div>
               </div>
               <div v-if="cell.children.length > 0" class="cell-children-preview">
                 <NText
@@ -599,6 +726,18 @@ function handleKeydown(e: KeyboardEvent) {
   background: var(--bg-panel, #ffffff);
   border: 1px solid var(--border-light, #d9d9d9);
   border-radius: 4px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cell-item--selected {
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, var(--bg-panel, #ffffff));
+  border-color: var(--primary-color, #1890ff);
+}
+
+.cell-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cell-header {
@@ -612,5 +751,66 @@ function handleKeydown(e: KeyboardEvent) {
   padding-left: 8px;
   border-left: 2px solid var(--border-light, #d9d9d9);
   margin-top: 4px;
+}
+
+.layer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.layer-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  background: var(--bg-secondary, #f0f0f0);
+  border: 1px solid var(--border-light, #d9d9d9);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-secondary, #666);
+}
+
+.layers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-panel, #ffffff);
+  border: 1px solid var(--border-light, #d9d9d9);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.layer-item:hover {
+  background: var(--bg-hover, #f5f5f5);
+}
+
+.layer-item--selected {
+  background: color-mix(in srgb, var(--primary-color, #1890ff) 8%, var(--bg-panel, #ffffff));
+  border-color: var(--primary-color, #1890ff);
+}
+
+.cells-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cells-controls {
+  display: flex;
+  gap: 4px;
 }
 </style>

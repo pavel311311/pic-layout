@@ -20,7 +20,7 @@ const toolNames: Record<string, string> = {
   path: 'Path (I)',
   edge: 'Edge (J)',
   label: 'Label (T)',
-  ruler: 'Ruler (M)',
+  ruler: 'Ruler (U)',
 }
 
 const selectedShapeCount = computed(() => store.selectedShapeIds.length)

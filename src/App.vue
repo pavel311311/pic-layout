@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { NConfigProvider } from './plugins/naive'
 import { useEditorStore } from './stores/editor'
 
@@ -37,12 +37,13 @@ const rulerSize = 24
 // 计算顶部刻度
 const topRulerMarks = computed(() => {
   const marks: { pos: number; value: number; major: boolean }[] = []
+  const W = store.canvasWidth || 800
   const start = Math.floor(-store.panOffset.x / store.zoom / 10) * 10
-  const end = start + (800 / store.zoom)
+  const end = start + (W / store.zoom)
   
   for (let x = start; x <= end; x += 10) {
     const screenX = x * store.zoom + store.panOffset.x
-    if (screenX >= 0 && screenX <= 800) {
+    if (screenX >= 0 && screenX <= W) {
       marks.push({
         pos: screenX,
         value: x,
@@ -56,12 +57,13 @@ const topRulerMarks = computed(() => {
 // 计算左侧刻度
 const leftRulerMarks = computed(() => {
   const marks: { pos: number; value: number; major: boolean }[] = []
+  const H = store.canvasHeight || 600
   const start = Math.floor(-store.panOffset.y / store.zoom / 10) * 10
-  const end = start + (600 / store.zoom)
+  const end = start + (H / store.zoom)
   
   for (let y = start; y <= end; y += 10) {
     const screenY = y * store.zoom + store.panOffset.y
-    if (screenY >= 0 && screenY <= 600) {
+    if (screenY >= 0 && screenY <= H) {
       marks.push({
         pos: screenY,
         value: y,
@@ -74,7 +76,7 @@ const leftRulerMarks = computed(() => {
 
 // 更新鼠标坐标
 function updateCursor(e: MouseEvent) {
-  const canvas = document.querySelector('.canvas-area')
+  const canvas = document.querySelector('.canvas-area-wrapper')
   if (canvas) {
     const rect = canvas.getBoundingClientRect()
     const x = (e.clientX - rect.left - store.panOffset.x) / store.zoom
@@ -84,14 +86,33 @@ function updateCursor(e: MouseEvent) {
   }
 }
 
+// === Unsaved changes warning (beforeunload) ===
+// Track whether project has been modified (has undo history beyond initial state)
+const hasUnsavedChanges = ref(false)
+
+// Watch canUndo — when it becomes true, project has modifications
+watch(() => store.canUndo, (canUndo) => {
+  hasUnsavedChanges.value = canUndo
+})
+
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+  if (hasUnsavedChanges.value) {
+    e.preventDefault()
+    e.returnValue = '' // Required for Chrome
+    return ''
+  }
+}
+
 onMounted(() => {
   window.addEventListener('mousemove', updateCursor)
+  window.addEventListener('beforeunload', handleBeforeUnload)
   // Apply saved theme on mount
   store.applyTheme(store.theme)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', updateCursor)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 const themeOverrides = {

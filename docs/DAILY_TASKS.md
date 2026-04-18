@@ -442,3 +442,21 @@
 - [ ] v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
 - [ ] v0.3.1 布尔运算功能测试
 - [ ] v0.4.1 GDS 导入导出功能测试
+
+## 2026-04-17 13:10
+
+### 当前任务
+- [x] CellTree.vue 小修复 - TOP显示为实际Cell名称
+
+### 完成内容
+- [x] CellTree.vue: breadcrumbPath/topCellId/getCellDisplayName 三处 'TOP' 硬编码替换为实际 cell.name
+- [x] 编译测试通过 (Build successful, Brotli compressed)
+- [x] Git 提交并推送 (1 file, +3/-3 lines)
+
+### 遇到的问题
+- 无
+
+### 下小时计划
+- [ ] v0.2.7 Cell 钻入钻出 UI 完善 + Cell 搜索功能
+- [ ] v0.3.1 布尔运算功能测试
+- [ ] v0.4.1 GDS 导入导出功能测试

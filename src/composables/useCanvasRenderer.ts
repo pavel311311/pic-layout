@@ -106,10 +106,10 @@ export function useCanvasRenderer(options: CanvasRendererOptions) {
       ctx.closePath()
       ctx.fill()
       if (style.pattern && style.pattern !== 'solid') {
-        const minX = Math.min(...shape.points.map((p: Point) => p.x))
-        const minY = Math.min(...shape.points.map((p: Point) => p.y))
-        const maxX = Math.max(...shape.points.map((p: Point) => p.x))
-        const maxY = Math.max(...shape.points.map((p: Point) => p.y))
+        const minX = shape.points.reduce((m: number, p: Point) => Math.min(m, p.x), Infinity)
+        const minY = shape.points.reduce((m: number, p: Point) => Math.min(m, p.y), Infinity)
+        const maxX = shape.points.reduce((m: number, p: Point) => Math.max(m, p.x), -Infinity)
+        const maxY = shape.points.reduce((m: number, p: Point) => Math.max(m, p.y), -Infinity)
         drawPattern(ctx, minX, minY, maxX - minX, maxY - minY, style)
       }
       ctx.stroke()
