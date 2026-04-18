@@ -432,15 +432,26 @@ async function initCanvas() {
   if (!canvasRef.value || !containerRef.value) return
   isLoading.value = true
   const rect = containerRef.value.getBoundingClientRect()
-  canvasRef.value.width = rect.width
-  canvasRef.value.height = rect.height
+  const dpr = window.devicePixelRatio || 1
+
+  // Set internal buffer to physical pixels (DPR-aware) for sharp rendering on retina displays
+  canvasRef.value.width = rect.width * dpr
+  canvasRef.value.height = rect.height * dpr
+  canvasRef.value.style.width = rect.width + 'px'
+  canvasRef.value.style.height = rect.height + 'px'
   ctx = canvasRef.value.getContext('2d')
+  if (ctx) ctx.scale(dpr, dpr)
+
   // Overlay canvas for UI elements (crosshair, selection, ruler, etc.)
   if (overlayCanvasRef.value) {
-    overlayCanvasRef.value.width = rect.width
-    overlayCanvasRef.value.height = rect.height
+    overlayCanvasRef.value.width = rect.width * dpr
+    overlayCanvasRef.value.height = rect.height * dpr
+    overlayCanvasRef.value.style.width = rect.width + 'px'
+    overlayCanvasRef.value.style.height = rect.height + 'px'
     overlayCtx = overlayCanvasRef.value.getContext('2d')
+    if (overlayCtx) overlayCtx.scale(dpr, dpr)
   }
+
   // Notify UI store of canvas size (for Navigator viewport calculation)
   store.setCanvasSize(rect.width, rect.height)
   if (ctx) {

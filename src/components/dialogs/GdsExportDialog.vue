@@ -116,12 +116,12 @@ async function handleExport() {
     let cellsToExport: any[] | undefined
     let topCellIdToExport: string | undefined
 
-    if (exportScope.value === 'active-cell' && cellsStore.activeCellId) {
+    if (exportScope.value === 'active-cell' && (selectedCellId.value || cellsStore.activeCellId)) {
       cellsToExport = cellsStore.cells
-      topCellIdToExport = cellsStore.activeCellId
-    } else if (exportScope.value === 'top-cell' && cellsStore.topCellId) {
+      topCellIdToExport = selectedCellId.value || cellsStore.activeCellId
+    } else if (exportScope.value === 'top-cell' && (selectedCellId.value || cellsStore.topCellId)) {
       cellsToExport = cellsStore.cells
-      topCellIdToExport = cellsStore.topCellId
+      topCellIdToExport = selectedCellId.value || cellsStore.topCellId
     }
 
     await downloadGDS(shapesToExport, editorStore.project.layers, {

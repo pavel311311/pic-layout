@@ -79,19 +79,19 @@ const editOps = [
   { label: 'Boolean', shortcut: 'B', action: 'boolean' },
 ]
 
-const isRulerMode = ref(false)
 const measurementStart = ref<{ x: number; y: number } | null>(null)
 const measurementEnd = ref<{ x: number; y: number } | null>(null)
 const measurementDistance = ref(0)
 
+// isRulerMode is derived from store (v0.2.6 polish)
+const isRulerMode = computed(() => store.selectedTool === 'ruler')
+
 function selectTool(toolId: string) {
   store.setTool(toolId)
-  if (toolId === 'ruler') {
-    isRulerMode.value = true
-  } else {
-    isRulerMode.value = false
+  if (toolId !== 'ruler') {
     measurementStart.value = null
     measurementEnd.value = null
+    measurementDistance.value = 0
   }
 }
 

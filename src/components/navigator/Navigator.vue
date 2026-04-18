@@ -62,7 +62,7 @@ function onViewportMouseDown(e: MouseEvent) {
 
 function onGlobalMouseMove(e: MouseEvent) {
   if (!isDraggingViewport.value) return
-  const navRect = (e.currentTarget as Document).querySelector('.nav-svg')?.getBoundingClientRect()
+  const navRect = document.querySelector('.nav-svg')?.getBoundingClientRect()
   if (!navRect) return
 
   const dx = (e.clientX - navRect.left) - dragStart.value.navX

@@ -64,10 +64,10 @@ const adjustedPosition = computed(() => {
   return { left: x + 'px', top: y + 'px' }
 })
 
-function handleItemClick(item: MenuItem) {
+function handleItemClick(item: MenuItem, e?: MouseEvent) {
   if (item.disabled || item.separator) return
   if (item.submenu) {
-    const el = (event?.target as HTMLElement)?.closest('.context-item')
+    const el = e && (e.target as HTMLElement)?.closest('.context-item')
     if (el) {
       const rect = (el as HTMLElement).getBoundingClientRect()
       submenuStyle.value = { left: rect.right + 2 + 'px', top: rect.top + 'px' }
@@ -79,9 +79,9 @@ function handleItemClick(item: MenuItem) {
   emit('close')
 }
 
-function handleMouseEnter(item: MenuItem) {
+function handleMouseEnter(item: MenuItem, e: MouseEvent) {
   if (item.submenu && !item.disabled) {
-    const el = (event?.target as HTMLElement)?.closest('.context-item')
+    const el = (e.target as HTMLElement)?.closest('.context-item')
     if (el) {
       const rect = (el as HTMLElement).getBoundingClientRect()
       submenuStyle.value = { left: rect.right + 2 + 'px', top: rect.top + 'px' }
@@ -94,10 +94,10 @@ function handleMouseLeave() {
   // Don't clear if moving into submenu
 }
 
-function handleSubmenuMouseEnter(submenuId: string) {
+function handleSubmenuMouseEnter(submenuId: string, e: MouseEvent) {
   const parentItem = props.items.find(i => i.id === submenuId)
   if (parentItem?.submenu) {
-    const parentEl = (event?.target as HTMLElement)?.closest('.context-item')
+    const parentEl = (e.target as HTMLElement)?.closest('.context-item')
     if (parentEl) {
       const rect = (parentEl as HTMLElement).getBoundingClientRect()
       submenuStyle.value = { left: rect.right + 2 + 'px', top: rect.top + 'px' }
@@ -224,8 +224,8 @@ function getActiveSubmenuItems(): MenuItem[] {
           :tabindex="-1"
           :aria-disabled="item.disabled"
           :aria-haspupen="!!item.submenu"
-          @click="handleItemClick(item)"
-          @mouseenter="() => { handleMouseEnter(item); focusedIndex = navigableItems.indexOf(item) }"
+          @click="handleItemClick(item, $event)"
+          @mouseenter="handleMouseEnter(item, $event); focusedIndex = navigableItems.indexOf(item)"
           @mouseleave="handleMouseLeave"
         >
           <span class="item-label">{{ item.label }}</span>
@@ -263,7 +263,7 @@ function getActiveSubmenuItems(): MenuItem[] {
             role="menuitem"
             :aria-disabled="subItem.disabled"
             @click="handleSubmenuSelect(subItem.id)"
-            @mouseenter="handleSubmenuMouseEnter(activeSubmenuId!)"
+            @mouseenter="handleSubmenuMouseEnter(activeSubmenuId!, $event)"
           >
             <span class="item-label">{{ subItem.label }}</span>
             <span v-if="subItem.shortcut" class="item-shortcut">{{ subItem.shortcut }}</span>
