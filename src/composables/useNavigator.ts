@@ -6,6 +6,7 @@
  * - Viewport rectangle computation from canvas pan/zoom
  * - Drag-to-pan interaction
  * - Coordinate transformation between design space and navigator SVG space
+ * - v0.2.7: Supports getShapes() override for drilled-in cell content
  *
  * Part of v0.2.6 - Navigator interaction improvement
  */
@@ -22,6 +23,12 @@ interface NavigatorStore {
   canvasHeight: number
   getLayer: (id: number) => any | undefined
   setPan: (x: number, y: number) => void
+  /**
+   * Optional: return shapes to display in Navigator.
+   * When drilled into a cell (v0.2.7), this should return expandedVisibleShapes
+   * so the Navigator shows the content of the active cell.
+   */
+  getShapes?: () => BaseShape[]
 }
 
 export interface NavigatorOptions {
@@ -49,9 +56,12 @@ export interface NavigatorShape {
 export function useNavigator(options: NavigatorOptions) {
   const { store, navWidth, navHeight } = options
 
+  // === Shapes to display (supports drill-in: use expandedVisibleShapes when active) ===
+  const displayShapes = computed(() => store.getShapes?.() ?? store.project.shapes)
+
   // === Compute design-space bounding box of all shapes ===
   const boundingBox = computed(() => {
-    const shapes = store.project.shapes
+    const shapes = displayShapes.value
     if (shapes.length === 0) {
       return { minX: 0, minY: 0, maxX: 100, maxY: 100 }
     }
@@ -145,7 +155,7 @@ export function useNavigator(options: NavigatorOptions) {
     const bb = boundingBox.value
     const sx = designPerPixelX.value
     const sy = designPerPixelY.value
-    const shapes = store.project.shapes
+    const shapes = displayShapes.value
 
     return shapes.map((shape) => {
       const layer = store.getLayer(shape.layerId)

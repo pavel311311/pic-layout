@@ -2,12 +2,14 @@
 /**
  * Navigator.vue - Minimap navigator for PicLayout
  * Part of v0.2.6 - Navigator interaction improvement
+ * Part of v0.2.7 - Navigator now shows drilled-in cell content
  *
  * Features:
  * - SVG minimap showing all shapes in layer colors
  * - Draggable viewport rectangle for pan navigation
  * - Double-click to fit-all-view
  * - Theme-aware styling via CSS variables
+ * - v0.2.7: Navigator updates to show shapes of drilled-in cell
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEditorStore } from '../../stores/editor'
@@ -23,6 +25,7 @@ const NAV_HEIGHT = 140
 const isCollapsed = ref(false)
 
 // === Use Navigator composable ===
+// v0.2.7: Use expandedVisibleShapes so Navigator shows content of drilled-in cell
 const navigator = useNavigator({
   store: {
     project: store.project,
@@ -32,6 +35,7 @@ const navigator = useNavigator({
     canvasHeight: store.canvasHeight,
     getLayer: (id: number) => store.getLayer(id),
     setPan: (x: number, y: number) => store.setPan(x, y),
+    getShapes: () => store.expandedVisibleShapes,
   },
   navWidth: NAV_WIDTH,
   navHeight: NAV_HEIGHT,

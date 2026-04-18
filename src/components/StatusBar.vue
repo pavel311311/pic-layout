@@ -107,6 +107,14 @@ const activeCellName = computed(() => {
   if (name === topName) return '' // At top level, don't show
   return name
 })
+
+// v0.2.7: drill out from StatusBar cell indicator
+function drillOutFromStatusBar() {
+  if (activeCellName.value) {
+    store.drillOut()
+    window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
+  }
+}
 </script>
 
 <template>
@@ -124,8 +132,17 @@ const activeCellName = computed(() => {
       </span>
       <span class="separator">|</span>
 
-      <!-- Active Cell name (v0.2.7 - drill-down indicator) -->
-      <span v-if="activeCellName" class="cell-info" title="当前钻入的 Cell">
+      <!-- Active Cell name (v0.2.7 - clickable drill-out indicator) -->
+      <span
+        v-if="activeCellName"
+        class="cell-info cell-info--clickable"
+        title="点击钻出 (H)"
+        @click="drillOutFromStatusBar"
+        role="button"
+        tabindex="0"
+        @keydown.enter="drillOutFromStatusBar"
+        @keydown.space.prevent="drillOutFromStatusBar"
+      >
         <span class="cell-icon">⬡</span>
         <span class="cell-name">{{ activeCellName }}</span>
       </span>
@@ -234,6 +251,17 @@ const activeCellName = computed(() => {
   align-items: center;
   gap: 3px;
   color: var(--accent-purple, #b39ddb);
+}
+
+.cell-info--clickable {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 2px;
+  transition: background 0.1s;
+}
+
+.cell-info--clickable:hover {
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
 }
 
 .cell-icon {

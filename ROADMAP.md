@@ -582,3 +582,22 @@ chore: 构建/工具
 - v0.2.7 Cell 钻入钻出 UI 完善
 - v0.3.1 布尔运算功能测试
 - v0.4.1 GDS 导入导出功能测试
+
+### 2026-04-18
+
+**完成内容**:
+- v0.2.7 Cell 键盘导航: CellTree.vue 添加 ArrowUp/Down/Enter/Escape/Home/End 键盘导航
+- v0.2.7 自动缩放: Canvas.vue watch cellsStore.activeCellId → zoomToFit() 钻入自动适应
+- v0.2.6 缩放快捷键: useCanvasToolHandlers.ts 实现 Ctrl++/-/0/1
+- v0.3.1 布尔运算增强: polygonBoolean.ts 添加 isAxisAlignedRectangle/polygonsOverlapOrTouch 辅助函数
+- v0.4.1 GDS UI: GdsImportDialog.vue 大幅完善
+- 编译测试通过 (Build successful, Brotli compressed)
+- Git 提交并推送 (20 files, +629/-162 lines)
+
+**遇到的问题**:
+- 无
+
+**次日计划**:
+- v0.2.7 Cell 钻入钻出 UI 完善
+- v0.3.1 布尔运算功能测试
+- v0.4.1 GDS 导入导出功能测试

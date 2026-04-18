@@ -12,6 +12,7 @@
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEditorStore } from '../../stores/editor'
+import { useCellsStore } from '../../stores/cells'
 import {
   Save,
   Upload,
@@ -35,9 +36,13 @@ import {
   Moon,
   Sun,
   Combine,
+  CornerUpLeft,
+  Home,
+  Hexagon,
 } from 'lucide-vue-next'
 
 const store = useEditorStore()
+const cellsStore = useCellsStore()
 
 function handleExportGDS() {
   // Open the export dialog via custom event
@@ -108,6 +113,39 @@ function openArrayCopyDialog() {
 
 function openBooleanDialog() {
   window.dispatchEvent(new CustomEvent('open-boolean-dialog'))
+}
+
+// === v0.2.7 Cell Navigation ===
+/** True if user is drilled into a nested cell (not at top level) */
+const isInsideCell = computed(() => {
+  const active = cellsStore.activeCellId
+  const top = cellsStore.topCellId
+  return !!active && !!top && active !== top
+})
+
+/** Current cell depth from top (0 = at top) */
+const cellDepth = computed(() => {
+  const active = cellsStore.activeCell
+  if (!active) return 0
+  let depth = 0
+  let current = active
+  while (current.parentId) {
+    depth++
+    const parent = cellsStore.getCell(current.parentId)
+    if (!parent) break
+    current = parent
+  }
+  return depth
+})
+
+function drillOut() {
+  store.drillOut()
+  window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
+}
+
+function goToTop() {
+  store.goToTop()
+  window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
 }
 
 // === Ruler measurement event listeners (v0.2.6) ===
@@ -261,6 +299,38 @@ onUnmounted(() => {
     <div v-if="isRulerMode && measurementDistance > 0" class="measurement-display">
       <Ruler :size="14" class="measure-icon-svg" />
       <span class="measure-value">{{ measurementDistance.toFixed(2) }} μm</span>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <!-- Cell Navigation (v0.2.7 - visible when drilled into a cell) -->
+    <div v-if="isInsideCell" class="tool-group cell-nav-group">
+      <!-- Drill-out button: go up one level -->
+      <button
+        class="tool-btn cell-nav-btn"
+        @click="drillOut"
+        :title="'Drill-Out'"
+        aria-label="Drill Out (H)"
+      >
+        <CornerUpLeft :size="16" class="btn-icon-svg" />
+        <span class="btn-label">Out</span>
+      </button>
+      <!-- Go-to-top button: return to top cell -->
+      <button
+        class="tool-btn cell-nav-btn"
+        @click="goToTop"
+        :title="'Go-to-Top'"
+        aria-label="Go to Top Cell (N)"
+      >
+        <Home :size="16" class="btn-icon-svg" />
+        <span class="btn-label">Top</span>
+      </button>
+      <!-- Current cell indicator -->
+      <div class="cell-nav-indicator" :title="'Current Cell'">
+        <Hexagon :size="12" class="cell-nav-icon" />
+        <span class="cell-nav-name">{{ cellsStore.activeCell?.name }}</span>
+        <span class="cell-nav-depth" v-if="cellDepth > 1">×{{ cellDepth }}</span>
+      </div>
     </div>
     
     <div class="spacer"></div>
@@ -481,5 +551,75 @@ onUnmounted(() => {
 .project-name {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* Cell Navigation (v0.2.7) */
+.cell-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 40%, transparent);
+  border-radius: 3px;
+}
+
+.cell-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 10%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 30%, var(--border-light));
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+  color: var(--accent-purple, #b39ddb);
+}
+
+.cell-nav-btn:hover {
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 25%, var(--bg-primary));
+  border-color: var(--accent-purple, #b39ddb);
+}
+
+.cell-nav-btn:active {
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 35%, var(--bg-primary));
+}
+
+.cell-nav-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 20%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 35%, var(--border-light));
+  border-radius: 2px;
+  min-width: 80px;
+}
+
+.cell-nav-icon {
+  color: var(--accent-purple, #b39ddb);
+  flex-shrink: 0;
+}
+
+.cell-nav-name {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent-purple, #b39ddb);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
+.cell-nav-depth {
+  font-size: 9px;
+  color: color-mix(in srgb, var(--accent-purple, #b39ddb) 70%, var(--text-muted));
+  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
+  padding: 0 3px;
+  border-radius: 2px;
 }
 </style>

@@ -339,9 +339,11 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
   margin: 4px;
 }
 
-/* Cells */
+/* Cells - allow flex growth within min/max bounds (set in template inline style) */
 .cells {
-  height: 60px;
+  flex: 1;
+  min-height: 120px;
+  max-height: 220px;
 }
 
 .cell-tree {
