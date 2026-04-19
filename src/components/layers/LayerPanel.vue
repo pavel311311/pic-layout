@@ -93,6 +93,11 @@ function renameLayer(layerId: number, e: Event) {
   }
 }
 
+/** Select all shapes on a given layer (v0.2.7 UX) */
+function selectShapesByLayer(layerId: number, addToSelection = false) {
+  store.selectShapesByLayer(layerId, addToSelection)
+}
+
 // 基本图元库
 const libraries = [
   { name: 'ARC', icon: '⌒', description: '圆弧' },
@@ -255,8 +260,8 @@ const patternTypes = ['solid', 'diagonal', 'horizontal', 'vertical', 'cross']
               </svg>
             </div>
             
-            <!-- 图层信息 -->
-            <div class="layer-info">
+            <!-- 图层信息 (v0.2.7: click to select all shapes on this layer) -->
+            <div class="layer-info" @click="selectShapesByLayer(layer.id, $event.ctrlKey || $event.metaKey)" title="Click to select all shapes on this layer (Ctrl+click to add to selection)">
               <span class="layer-name">{{ layer.name }}</span>
               <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
               <span class="layer-count">{{ shapesPerLayer[layer.id] || 0 }} shapes</span>

@@ -397,12 +397,15 @@ async function handleConfirm() {
         id: cell.id,
       })
 
-      // Step 2: Add shapes from this cell's children to the flat shapes array
-      // AND to the newly created cell's children via addShapeToCell
+      // Step 2: Add shapes and cell instances from this cell's children
       // Note: cellsStore.addCell creates cell with empty children,
-      // so we populate it via addShapeToCell using the same id
+      // so we populate it via addShapeToCell
       for (const child of cell.children) {
-        if (child.type !== 'cell-instance') {
+        if (child.type === 'cell-instance') {
+          // Cell instances: add to cell children (NOT to flat shapes array)
+          cellsStore.addShapeToCell(cell.id, child)
+        } else {
+          // Regular shapes: add to both flat shapes array and cell children
           const shape = child as BaseShape
           // Skip shapes whose layer is not selected
           if (!isLayerSelected(shape)) continue

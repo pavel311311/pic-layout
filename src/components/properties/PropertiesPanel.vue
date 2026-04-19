@@ -40,6 +40,19 @@ const selectedLayer = computed(() => {
   return null
 })
 
+// === Multi-selection metrics (total area/perimeter of all selected shapes) ===
+const multiMetrics = computed(() => {
+  if (multiSelectedShapes.value.length === 0) return null
+  let totalArea = 0
+  let totalPerimeter = 0
+  for (const shape of multiSelectedShapes.value) {
+    const m = getShapeMetrics(shape)
+    totalArea += m.area
+    totalPerimeter += m.perimeter
+  }
+  return { area: totalArea, perimeter: totalPerimeter }
+})
+
 // === Multi-selection ===
 const multiBounds = computed(() => {
   if (multiSelectedShapes.value.length === 0) return null
@@ -242,6 +255,10 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <span class="prop-value mono" :title="`Min: (${multiBounds?.minX.toFixed(2)}, ${multiBounds?.minY.toFixed(2)})`">
               {{ multiBounds?.width.toFixed(2) }} × {{ multiBounds?.height.toFixed(2) }}
             </span>
+            <span class="prop-label">Total Area:</span>
+            <span class="prop-value mono">{{ multiMetrics?.area.toFixed(3) }} μm²</span>
+            <span class="prop-label">Total Perim:</span>
+            <span class="prop-value mono">{{ multiMetrics?.perimeter.toFixed(3) }} μm</span>
             <span class="prop-label">Layer:</span>
             <div class="layer-change-group">
               <template v-if="sharedLayerId !== null">

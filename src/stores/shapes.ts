@@ -115,6 +115,20 @@ export const useShapesStore = defineStore('shapes', () => {
     selectedShapeIds.value = ids
   }
 
+  /** Select all shapes on a given layer (v0.2.7 layer UX) */
+  function selectShapesByLayer(layerId: number, addToSelection = false) {
+    const ids = shapes.value
+      .filter((s) => s.layerId === layerId)
+      .map((s) => s.id)
+    if (addToSelection) {
+      const current = new Set(selectedShapeIds.value)
+      for (const id of ids) current.add(id)
+      selectedShapeIds.value = Array.from(current)
+    } else {
+      selectedShapeIds.value = ids
+    }
+  }
+
   // === Clipboard ===
 
   function copySelectedShapes() {
@@ -262,6 +276,7 @@ export const useShapesStore = defineStore('shapes', () => {
     selectShape,
     clearSelection,
     selectShapesInArea,
+    selectShapesByLayer,
     // Clipboard
     copySelectedShapes,
     pasteShapes,

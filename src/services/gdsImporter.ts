@@ -162,13 +162,16 @@ function readFloat64BE(view: DataView, offset: number): number {
 
 /**
  * Read GDS string (null-terminated ASCII)
+ * Includes bounds checking to handle corrupt/truncated files gracefully.
  */
 function readString(view: DataView, offset: number, length: number): string {
+  const maxEnd = Math.min(offset + length, view.byteLength)
   let end = offset
-  while (end < offset + length && view.getUint8(end) !== 0) {
+  while (end < maxEnd && view.getUint8(end) !== 0) {
     end++
   }
-  const bytes = new Uint8Array(view.buffer, view.byteOffset + offset, end - offset)
+  const byteLen = Math.max(0, end - offset)
+  const bytes = new Uint8Array(view.buffer, view.byteOffset + offset, byteLen)
   return new TextDecoder('ascii').decode(bytes)
 }
 
@@ -187,6 +190,8 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
     cells: [],
     rawLayers: new Set(),
   }
+
+  try {
 
   let currentCell: GDSCellData | null = null
   let currentElementLayer = 0
@@ -208,7 +213,8 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
 
   while (offset < buffer.byteLength - 4) {
     const recordLength = readUint16BE(view, offset)
-    if (recordLength < 4) break
+    // Guard against corrupt record length that would read past the buffer
+    if (recordLength < 4 || offset + recordLength > buffer.byteLength) break
 
     const recordTypeRaw = readUint16BE(view, offset + 2)
     const recordType = recordTypeRaw & 0xFF00  // Upper byte = record type
@@ -456,6 +462,11 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
     // Move to next record (records are 2-byte aligned)
     offset += recordLength
     if (recordLength % 2 !== 0) offset++ // Padding byte if odd
+  }
+
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`GDS parse error at offset ${offset}: ${msg}`)
   }
 
   return result

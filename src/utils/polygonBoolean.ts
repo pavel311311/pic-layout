@@ -312,18 +312,6 @@ function projectPolygon(poly: Point[], axis: Point): { min: number; max: number 
   return { min, max }
 }
 
-/** Rectangle-rectangle union: find the minimal bounding rectangle */
-function rectangleUnion(r1: Point[], r2: Point[]): Point[] {
-  const b1 = polygonBounds(r1)
-  const b2 = polygonBounds(r2)
-  return [
-    { x: Math.min(b1.minX, b2.minX), y: Math.min(b1.minY, b2.minY) },
-    { x: Math.max(b1.maxX, b2.maxX), y: Math.min(b1.minY, b2.minY) },
-    { x: Math.max(b1.maxX, b2.maxX), y: Math.max(b1.maxY, b2.maxY) },
-    { x: Math.min(b1.minX, b2.minX), y: Math.max(b1.maxY, b2.maxY) },
-  ]
-}
-
 /** Rectangle-rectangle intersection: compute overlap region */
 function rectangleIntersection(r1: Point[], r2: Point[]): Point[] {
   const b1 = polygonBounds(r1)
@@ -397,7 +385,249 @@ export function polygonBoolean(
 
 /**
  * Union: all area covered by either shape
+ * Returns 1-2 polygons representing the union shape.
+ * For two overlapping axis-aligned rectangles, returns the actual union
+ * (either a single rectangle or two rectangles for L-shaped unions).
  */
+function booleanUnion(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): Point[][] {
+  // Fast path: if bounding boxes don't overlap, shapes are definitely separate
+  if (!boundsOverlap(bb1, bb2)) return [[...poly1], [...poly2]]
+
+  // Check if shapes are valid axis-aligned rectangles
+  const isRect1 = isAxisAlignedRectangle(poly1)
+  const isRect2 = isAxisAlignedRectangle(poly2)
+
+  if (isRect1 && isRect2) {
+    // Both are rectangles - check if they actually overlap or touch
+    const overlap = rectangleIntersection(poly1, poly2)
+    if (overlap.length === 0) {
+      // Rectangles don't overlap - return both as separate polygons
+      return [[...poly1], [...poly2]]
+    }
+    // Overlapping rectangles: return actual union
+    return rectangleUnion(poly1, poly2)
+  }
+
+  // General case: check if shapes actually overlap or touch
+  if (!polygonsOverlapOrTouch(poly1, poly2, bb1, bb2)) {
+    // No real overlap/touch - return separate polygons
+    return [[...poly1], [...poly2]]
+  }
+
+  // Shapes overlap - compute convex hull (approximation for PIC layouts)
+  const combined = convexHull([...poly1, ...poly2])
+  return [combined]
+}
+
+/**
+ * Compute the actual union of two axis-aligned rectangles.
+ * Returns 1 polygon if they form a larger rectangle together,
+ * or 2 polygons if they form an L-shape.
+ */
+function rectangleUnion(r1: Point[], r2: Point[]): Point[][] {
+  const b1 = polygonBounds(r1)
+  const b2 = polygonBounds(r2)
+  
+  // Check if one rectangle contains the other
+  const r1ContainsR2 = b1.minX <= b2.minX && b1.maxX >= b2.maxX &&
+                      b1.minY <= b2.minY && b1.maxY >= b2.maxY
+  const r2ContainsR1 = b2.minX <= b1.minX && b2.maxX >= b1.maxX &&
+                      b2.minY <= b1.minY && b2.maxY >= b1.maxY
+  
+  if (r1ContainsR2) return [[...r1]]
+  if (r2ContainsR1) return [[...r2]]
+  
+  // Partial overlap - compute L-shaped union as 2 rectangles
+  // Split the union along the longer dimension of overlap
+  const overlapMinX = Math.max(b1.minX, b2.minX)
+  const overlapMaxX = Math.min(b1.maxX, b2.maxX)
+  const overlapMinY = Math.max(b1.minY, b2.minY)
+  const overlapMaxY = Math.min(b1.maxY, b2.maxY)
+  
+  const overlapWidth = overlapMaxX - overlapMinX
+  const overlapHeight = overlapMaxY - overlapMinY
+  
+  // Determine the left and right parts of the L-shape
+  const leftMinX = Math.min(b1.minX, b2.minX)
+  const leftMaxX = overlapMinX
+  const rightMinX = overlapMaxX
+  const rightMaxX = Math.max(b1.maxX, b2.maxX)
+  const unionMinY = Math.min(b1.minY, b2.minY)
+  const unionMaxY = Math.max(b1.maxY, b2.maxY)
+  
+  // Case: vertical split (overlap in horizontal direction)
+  // This happens when rectangles overlap more in X than in Y direction
+  // or when one's left edge aligns with the other's left edge
+  
+  // Check if we can form a simple union (rectangles form a larger rectangle)
+  // This occurs when the non-overlapping parts align perfectly
+  const canMergeVertically = (
+    // Left rectangle spans full height of union and ends where right begins
+    (Math.abs(b1.minY - b2.minY) < 1e-9 && Math.abs(b1.maxY - b2.maxY) < 1e-9) ||
+    // Or one rectangle spans the full union height
+    (Math.abs(b1.minY - unionMinY) < 1e-9 && Math.abs(b1.maxY - unionMaxY) < 1e-9) ||
+    (Math.abs(b2.minY - unionMinY) < 1e-9 && Math.abs(b2.maxY - unionMaxY) < 1e-9)
+  )
+  const canMergeHorizontally = (
+    (Math.abs(b1.minX - b2.minX) < 1e-9 && Math.abs(b1.maxX - b2.maxX) < 1e-9) ||
+    (Math.abs(b1.minX - leftMinX) < 1e-9 && Math.abs(b1.maxX - leftMaxX) < 1e-9) ||
+    (Math.abs(b2.minX - rightMinX) < 1e-9 && Math.abs(b2.maxX - rightMaxX) < 1e-9)
+  )
+  
+  // If rectangles share the same Y extent (or one spans full height), they form a larger rectangle
+  if (Math.abs(b1.minY - b2.minY) < 1e-9 && Math.abs(b1.maxY - b2.maxY) < 1e-9) {
+    // Same height - they form a larger horizontal rectangle
+    return [[
+      { x: Math.min(b1.minX, b2.minX), y: Math.min(b1.minY, b2.minY) },
+      { x: Math.max(b1.maxX, b2.maxX), y: Math.min(b1.minY, b2.minY) },
+      { x: Math.max(b1.maxX, b2.maxX), y: Math.max(b1.maxY, b2.maxY) },
+      { x: Math.min(b1.minX, b2.minX), y: Math.max(b1.maxY, b2.maxY) },
+    ]]
+  }
+  
+  // If rectangles share the same X extent (or one spans full width), they form a larger vertical rectangle
+  if (Math.abs(b1.minX - b2.minX) < 1e-9 && Math.abs(b1.maxX - b2.maxX) < 1e-9) {
+    return [[
+      { x: Math.min(b1.minX, b2.minX), y: Math.min(b1.minY, b2.minY) },
+      { x: Math.max(b1.maxX, b2.maxX), y: Math.min(b1.minY, b2.minY) },
+      { x: Math.max(b1.maxX, b2.maxX), y: Math.max(b1.maxY, b2.maxY) },
+      { x: Math.min(b1.minX, b2.minX), y: Math.max(b1.maxY, b2.maxY) },
+    ]]
+  }
+  
+  // For L-shaped union, decompose into 2 non-overlapping rectangles.
+  // Strategy: split along the overlap's boundary that extends farthest in the non-overlapping direction.
+  // The key insight is that for an L-shape, one rectangle extends in one axis
+  // (e.g., left) while the other extends in the perpendicular axis (e.g., up).
+  
+  // Determine which split works: vertical (left/right) or horizontal (top/bottom)
+  const unionLeft = Math.min(b1.minX, b2.minX)
+  const unionRight = Math.max(b1.maxX, b2.maxX)
+  const unionBottom = Math.min(b1.minY, b2.minY)
+  const unionTop = Math.max(b1.maxY, b2.maxY)
+  
+  // Check if a vertical split works: both rectangles span the same Y range
+  const sameYRange = Math.abs(b1.minY - b2.minY) < 1e-9 && Math.abs(b1.maxY - b2.maxY) < 1e-9
+  const sameXRange = Math.abs(b1.minX - b2.minX) < 1e-9 && Math.abs(b1.maxX - b2.maxX) < 1e-9
+  
+  if (sameYRange) {
+    // Both have same Y - vertical split gives clean rectangles
+    const splitX = overlapMaxX
+    return [
+      [ // Left rect: from union left edge to split, same Y
+        { x: unionLeft, y: unionBottom },
+        { x: splitX, y: unionBottom },
+        { x: splitX, y: unionTop },
+        { x: unionLeft, y: unionTop },
+      ],
+      [ // Right rect: from split to union right edge, same Y
+        { x: splitX, y: unionBottom },
+        { x: unionRight, y: unionBottom },
+        { x: unionRight, y: unionTop },
+        { x: splitX, y: unionTop },
+      ],
+    ]
+  }
+  
+  if (sameXRange) {
+    // Both have same X - horizontal split gives clean rectangles
+    const splitY = overlapMaxY
+    return [
+      [ // Bottom rect: same X, from union bottom to split
+        { x: unionLeft, y: unionBottom },
+        { x: unionRight, y: unionBottom },
+        { x: unionRight, y: splitY },
+        { x: unionLeft, y: splitY },
+      ],
+      [ // Top rect: same X, from split to union top
+        { x: unionLeft, y: splitY },
+        { x: unionRight, y: splitY },
+        { x: unionRight, y: unionTop },
+        { x: unionLeft, y: unionTop },
+      ],
+    ]
+  }
+  
+  // General L-shape: use whichever rectangle has more "excess" extent
+  // r1's "excess" below overlap + r2's "excess" above overlap
+  // OR r1's "excess" left of overlap + r2's "excess" right of overlap
+  const r1ExcessBelow = b1.minY - overlapMinY  // negative if r1 doesn't extend below
+  const r1ExcessAbove = b1.maxY - overlapMaxY  // positive if r1 extends above
+  const r2ExcessBelow = b2.minY - overlapMinY  // negative if r2 doesn't extend below  
+  const r2ExcessAbove = b2.maxY - overlapMaxY  // positive if r2 extends above
+  
+  // For horizontal decomposition (bottom + top strips)
+  const canHorizontalSplit = (
+    // Bottom: one rectangle spans full width below overlap
+    (r1ExcessBelow <= 0 && r2ExcessBelow <= 0 && overlapWidth > 0) ||
+    // Top: one rectangle spans full width above overlap
+    (r1ExcessAbove >= 0 && r2ExcessAbove >= 0 && overlapWidth > 0)
+  )
+  
+  // For vertical decomposition (left + right strips)
+  const r1ExcessLeft = b1.minX - overlapMinX  // negative if r1 doesn't extend left
+  const r1ExcessRight = b1.maxX - overlapMaxX  // positive if r1 extends right
+  const r2ExcessLeft = b2.minX - overlapMinX
+  const r2ExcessRight = b2.maxX - overlapMaxX
+  
+  const canVerticalSplit = (
+    // Left: one rectangle spans full height on left side
+    (r1ExcessLeft <= 0 && r2ExcessLeft <= 0 && overlapHeight > 0) ||
+    // Right: one rectangle spans full height on right side
+    (r1ExcessRight >= 0 && r2ExcessRight >= 0 && overlapHeight > 0)
+  )
+  
+  if (canHorizontalSplit) {
+    // Horizontal split: bottom rectangle from unionBottom to overlapMaxY
+    // top rectangle from overlapMinY to unionTop
+    const result: Point[][] = []
+    if (unionBottom < overlapMaxY) {
+      result.push([
+        { x: unionLeft, y: unionBottom },
+        { x: unionRight, y: unionBottom },
+        { x: unionRight, y: overlapMaxY },
+        { x: unionLeft, y: overlapMaxY },
+      ])
+    }
+    if (unionTop > overlapMinY) {
+      result.push([
+        { x: unionLeft, y: overlapMinY },
+        { x: unionRight, y: overlapMinY },
+        { x: unionRight, y: unionTop },
+        { x: unionLeft, y: unionTop },
+      ])
+    }
+    return result.length > 0 ? result : [[...r1], [...r2]]
+  }
+  
+  if (canVerticalSplit) {
+    // Vertical split: left rectangle from unionLeft to overlapMaxX
+    // right rectangle from overlapMinX to unionRight
+    const result: Point[][] = []
+    if (unionLeft < overlapMaxX) {
+      result.push([
+        { x: unionLeft, y: unionBottom },
+        { x: overlapMaxX, y: unionBottom },
+        { x: overlapMaxX, y: unionTop },
+        { x: unionLeft, y: unionTop },
+      ])
+    }
+    if (unionRight > overlapMinX) {
+      result.push([
+        { x: overlapMinX, y: unionBottom },
+        { x: unionRight, y: unionBottom },
+        { x: unionRight, y: unionTop },
+        { x: overlapMinX, y: unionTop },
+      ])
+    }
+    return result.length > 0 ? result : [[...r1], [...r2]]
+  }
+  
+  // Fallback: return original rectangles (will have overlap counted twice)
+  // This is better than bounding box which includes area NOT in either rectangle
+  return [[...r1], [...r2]]
+}
+
 /** Check if two polygons actually touch or share an edge (not just bounding box overlap) */
 function polygonsOverlapOrTouch(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): boolean {
   if (!boundsOverlap(bb1, bb2)) return false
@@ -448,36 +678,6 @@ function pointInPolygon(pt: Point, poly: Point[]): boolean {
     }
   }
   return inside
-}
-
-function booleanUnion(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): Point[][] {
-  // Fast path: if bounding boxes don't overlap, shapes are definitely separate
-  if (!boundsOverlap(bb1, bb2)) return [[...poly1], [...poly2]]
-
-  // Check if shapes are valid axis-aligned rectangles
-  const isRect1 = isAxisAlignedRectangle(poly1)
-  const isRect2 = isAxisAlignedRectangle(poly2)
-
-  if (isRect1 && isRect2) {
-    // Both are rectangles - check if they actually overlap or touch
-    const overlap = rectangleIntersection(poly1, poly2)
-    if (overlap.length === 0) {
-      // Rectangles don't overlap - return both as separate polygons
-      return [[...poly1], [...poly2]]
-    }
-    // Overlapping rectangles: return bounding box of union
-    return [rectangleUnion(poly1, poly2)]
-  }
-
-  // General case: check if shapes actually overlap or touch
-  if (!polygonsOverlapOrTouch(poly1, poly2, bb1, bb2)) {
-    // No real overlap/touch - return separate polygons
-    return [[...poly1], [...poly2]]
-  }
-
-  // Shapes overlap - compute convex hull (approximation for PIC layouts)
-  const combined = convexHull([...poly1, ...poly2])
-  return [combined]
 }
 
 /**

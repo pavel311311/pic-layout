@@ -39,6 +39,7 @@ import {
   CornerUpLeft,
   Home,
   Hexagon,
+  FileImage,
 } from 'lucide-vue-next'
 
 const store = useEditorStore()
@@ -53,10 +54,14 @@ function openGdsImportDialog() {
   window.dispatchEvent(new CustomEvent('open-gds-import'))
 }
 
+function openSvgExportDialog() {
+  window.dispatchEvent(new CustomEvent('open-svg-export'))
+}
+
 // Tool definitions with Lucide icon components
 const toolDefs = [
   { id: 'select', name: 'Select', shortcut: 'V', IconComponent: MousePointer2 },
-  { id: 'rectangle', name: 'Rectangle', shortcut: 'R', IconComponent: Square },
+  { id: 'rectangle', name: 'Rectangle', shortcut: 'E', IconComponent: Square },
   { id: 'polygon', name: 'Polygon', shortcut: 'P', IconComponent: Pentagon },
   { id: 'polyline', name: 'Polyline', shortcut: 'L', IconComponent: ArrowRight },
   { id: 'waveguide', name: 'Waveguide', shortcut: 'W', IconComponent: Waves },
@@ -188,6 +193,10 @@ onUnmounted(() => {
       <button class="tool-btn" @click="openGdsImportDialog" title="Import GDS" aria-label="Import GDS">
         <Upload :size="16" class="btn-icon-svg" />
         <span class="btn-label">Imp</span>
+      </button>
+      <button class="tool-btn" @click="openSvgExportDialog" title="Export SVG" aria-label="Export SVG">
+        <FileImage :size="16" class="btn-icon-svg" />
+        <span class="btn-label">SVG</span>
       </button>
     </div>
     

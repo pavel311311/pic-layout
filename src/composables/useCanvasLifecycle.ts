@@ -32,6 +32,7 @@ export interface UseCanvasLifecycleOptions {
   showGdsImportDialog: Ref<boolean>
   showBooleanDialog: Ref<boolean>
   showGdsExportDialog: Ref<boolean>
+  showSvgExportDialog: Ref<boolean>
   markDirty: () => void
 }
 
@@ -49,6 +50,7 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     showGdsImportDialog,
     showBooleanDialog,
     showGdsExportDialog,
+    showSvgExportDialog,
     markDirty,
   } = options
 
@@ -75,6 +77,10 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     showGdsExportDialog.value = true
   }
 
+  function handleOpenSvgExportDialog() {
+    showSvgExportDialog.value = true
+  }
+
   // Mount: register all window listeners
   onMounted(() => {
     initCanvas()
@@ -96,6 +102,7 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     window.addEventListener('open-gds-import', handleOpenGdsImportDialog)
     window.addEventListener('open-boolean-dialog', handleOpenBooleanDialog)
     window.addEventListener('open-gds-export', handleOpenGdsExportDialog)
+    window.addEventListener('open-svg-export', handleOpenSvgExportDialog)
     // Listen for canvas-mark-dirty events from dialogs (e.g., BooleanOperationsDialog)
     window.addEventListener('canvas-mark-dirty', () => markDirty())
     canvasRef.value?.setAttribute('tabindex', '0')
@@ -115,6 +122,7 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     window.removeEventListener('open-gds-import', handleOpenGdsImportDialog)
     window.removeEventListener('open-boolean-dialog', handleOpenBooleanDialog)
     window.removeEventListener('open-gds-export', handleOpenGdsExportDialog)
+    window.removeEventListener('open-svg-export', handleOpenSvgExportDialog)
     window.removeEventListener('canvas-mark-dirty', () => markDirty())
   })
 
@@ -124,5 +132,6 @@ export function useCanvasLifecycle(options: UseCanvasLifecycleOptions) {
     handleOpenGdsImportDialog,
     handleOpenBooleanDialog,
     handleOpenGdsExportDialog,
+    handleOpenSvgExportDialog,
   }
 }

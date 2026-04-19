@@ -93,6 +93,41 @@ function getCombinedBounds(shapes: BaseShape[]) {
   return { minX: mnX, minY: mnY, maxX: mxX, maxY: mxY }
 }
 
+/** Check if two shapes' bounding boxes overlap (used for contextual empty-result messages) */
+function boundsOverlap(a: BaseShape, b: BaseShape): boolean {
+  const ba = getShapeBounds(a), bb = getShapeBounds(b)
+  return !(ba.maxX < bb.minX || bb.maxX < ba.minX || ba.maxY < bb.minY || bb.maxY < ba.minY)
+}
+
+/** Get a contextual message explaining why a boolean result is empty (v0.3.1 UX improvement) */
+function getEmptyResultReason(op: BooleanOp, shapeA: BaseShape, shapeB: BaseShape): string {
+  const opLabels: Record<BooleanOp, string> = {
+    union: '并集',
+    intersection: '交集',
+    difference: '差集',
+    xor: '异或',
+  }
+  const overlaps = boundsOverlap(shapeA, shapeB)
+  const label = opLabels[op] ?? op
+
+  if (op === 'intersection') {
+    return overlaps
+      ? `${label}结果为空（图形不相交）`
+      : `${label}结果为空（图形不相交）`
+  }
+  if (op === 'difference') {
+    if (!overlaps) return `${label}结果为空（两图形不相交，无可相减）`
+    const bb = getShapeBounds(shapeB), ba = getShapeBounds(shapeA)
+    const bInsideA = ba.minX <= bb.minX && ba.maxX >= bb.maxX && ba.minY <= bb.minY && ba.maxY >= bb.maxY
+    return bInsideA ? `${label}结果为空（B 完全覆盖 A）` : `${label}结果为空（无重叠区域）`
+  }
+  if (op === 'xor') {
+    return overlaps ? `${label}结果为空` : `${label}结果为两图形合并`
+  }
+  // union: should never be empty
+  return `${label}结果为空`
+}
+
 /** Draw a shape on canvas at given bounds/scale */
 function drawShapePreview(
   ctx: CanvasRenderingContext2D,
@@ -257,9 +292,10 @@ watch([selectedShapes, selectedOp], async () => {
     ctx.fillStyle = '#66bb6a'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText(result.length === 1 ? '1 多边形' : `${result.length} 多边形`, W / 2, H - 4)
   } else {
-    ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '11px system-ui'; ctx.textAlign = 'center'
-    ctx.globalAlpha = 0.6
-    ctx.fillText('结果为空', W / 2, H / 2 + 20)
+    // Show contextual message explaining WHY the result is empty (v0.3.1 UX improvement)
+    const reason = getEmptyResultReason(selectedOp.value, s1, s2)
+    ctx.fillStyle = '#ffb74d'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.85
+    ctx.fillText(reason, W / 2, H / 2 + 10)
     ctx.globalAlpha = 1
   }
 }, { immediate: true })
@@ -274,7 +310,8 @@ function applyBoolean() {
     const result = polygonBoolean(shape1, shape2, selectedOp.value)
 
     if (result.length === 0) {
-      alert('布尔运算结果为空，请选择合适的图形')
+      const reason = getEmptyResultReason(selectedOp.value, shape1, shape2)
+      alert(`运算失败: ${reason}`)
       return
     }
 

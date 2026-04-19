@@ -102,6 +102,24 @@ function drillInto(cellId: string) {
   cellsStore.drillInto(cellId)
 }
 
+/**
+ * Expand all ancestors of a cell so that the cell becomes visible in the tree.
+ * Used when cycling through search matches to auto-expand the tree to show each match.
+ */
+function expandPathToCell(cellId: string) {
+  const path: string[] = []
+  let current: string | undefined = cellId
+  while (current) {
+    const cell = cellsStore.getCell(current)
+    if (!cell) break
+    if (cell.parentId) path.unshift(cell.parentId)
+    current = cell.parentId
+  }
+  for (const ancestorId of path) {
+    expandedCells.value.add(ancestorId)
+  }
+}
+
 // Drill out to parent
 function drillOut() {
   cellsStore.drillOut()
@@ -225,6 +243,28 @@ const searchQuery = ref('')
 /** Number of currently highlighted/matched cells */
 const matchCount = computed(() => cellsStore.highlightedCellIds.size)
 
+/** All matched cell IDs in tree traversal order (for Tab-key cycling) */
+const allMatchedCellIds = computed((): string[] => {
+  if (matchCount.value === 0) return []
+  const q = searchQuery.value.trim().toLowerCase()
+  const result: string[] = []
+  function collectMatches(cellId: string) {
+    const cell = cellsStore.getCell(cellId)
+    if (!cell) return
+    if (cell.name.toLowerCase().includes(q)) result.push(cellId)
+    for (const child of cellsStore.getChildCells(cellId)) {
+      collectMatches(child.id)
+    }
+  }
+  for (const root of cellsStore.rootCells) {
+    collectMatches(root.id)
+  }
+  return result
+})
+
+/** Current match position (1-indexed, for "N/M" indicator) */
+const currentMatchIndex = ref(0) // 0 = none selected
+
 /** Whether search has active query with no results */
 const noSearchResults = computed(() =>
   searchQuery.value.trim().length > 0 && matchCount.value === 0
@@ -253,6 +293,7 @@ const firstMatchedCellId = computed(() => {
 
 /** Update canvas highlights when search query changes */
 watch(searchQuery, (query) => {
+  currentMatchIndex.value = 0 // Reset cycling position on query change
   if (!query.trim()) {
     cellsStore.clearHighlightedCells()
     return
@@ -318,6 +359,16 @@ function isHighlighted(cellId: string): boolean {
   return isSearchMatch(cellId)
 }
 
+/**
+ * Check if this cell is the current match in the Tab-key cycling.
+ * Only applies when there are multiple matches and user has cycled beyond the first.
+ */
+function isCurrentMatch(cellId: string): boolean {
+  if (matchCount.value <= 1 || !searchQuery.value.trim()) return false
+  const matchedIds = allMatchedCellIds.value
+  return matchedIds[currentMatchIndex.value] === cellId
+}
+
 // Context menu items (icon is a Lucide component)
 interface ContextMenuItem {
   id: string
@@ -349,10 +400,32 @@ function onContextMenuSelect(itemId: string) {
 
 /** Navigate canvas to first search match (Enter key in search box) */
 function navigateToFirstMatch() {
+  currentMatchIndex.value = 0
   const cellId = firstMatchedCellId.value
   if (cellId) {
     drillInto(cellId)
     searchQuery.value = ''
+  }
+}
+
+/** Cycle to next search match on Tab key (v0.2.7 search UX enhancement) */
+function cycleToNextMatch() {
+  if (matchCount.value === 0) return
+  // Move to next match, wrapping around
+  const nextIndex = (currentMatchIndex.value + 1) % matchCount.value
+  currentMatchIndex.value = nextIndex
+  const matchedIds = allMatchedCellIds.value
+  if (matchedIds.length > 0) {
+    const targetId = matchedIds[nextIndex]
+    // Auto-expand parent path so the target is visible
+    expandPathToCell(targetId)
+    // Scroll focused index to the target cell
+    const flatItems = flatTree.value
+    const targetFlatIdx = flatItems.findIndex(item => item.node.cell.id === targetId)
+    if (targetFlatIdx >= 0) {
+      focusedIndex.value = targetFlatIdx
+      scrollFocusedIntoView()
+    }
   }
 }
 
@@ -455,11 +528,12 @@ watch(flatTree, () => {
         placeholder="Search cells..."
         aria-label="Search cells by name"
         @keydown.enter="navigateToFirstMatch"
+        @keydown.tab.prevent="cycleToNextMatch"
         @keydown.escape="searchQuery = ''"
       />
-      <!-- Match count badge (v0.2.7 search UX) -->
-      <span v-if="matchCount > 0" class="search-match-count" aria-live="polite">
-        {{ matchCount }}
+      <!-- Match position indicator "N/M" (v0.2.7 search UX enhancement) -->
+      <span v-if="matchCount > 0" class="search-match-count" aria-live="polite" :title="`${matchCount} match${matchCount !== 1 ? 'es' : ''} — Enter to go to first, Tab to cycle`">
+        {{ matchCount > 1 ? `${currentMatchIndex + 1}/${matchCount}` : matchCount }}
       </span>
       <button
         v-if="searchQuery"
@@ -495,6 +569,7 @@ watch(flatTree, () => {
           selected: node.cell.id === activeCellId,
           'is-top': node.cell.id === topCellId,
           'search-match': isHighlighted(node.cell.id),
+          'is-current-match': isCurrentMatch(node.cell.id),
           'is-focused': focusedIndex === index,
         }"
         :style="{ paddingLeft: `${8 + depth * 16}px` }"
@@ -775,6 +850,17 @@ watch(flatTree, () => {
 .cell-item.search-match .cell-name {
   color: var(--accent-green);
   font-weight: 600;
+}
+
+/* Current match in Tab-key cycling — highlighted more prominently */
+.cell-item.is-current-match {
+  background: color-mix(in srgb, var(--accent-primary) 30%, var(--bg-panel));
+  border-left: 2px solid var(--accent-primary);
+}
+
+.cell-item.is-current-match .cell-name {
+  color: var(--accent-primary);
+  font-weight: 700;
 }
 
 .cell-item.is-top .cell-name {

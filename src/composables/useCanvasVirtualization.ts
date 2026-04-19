@@ -64,7 +64,7 @@ function getValue<T>(ref: Ref<T> | { value: T }): T {
 
 export interface UseCanvasVirtualizationReturn {
   // Layer cache
-  initOffscreenCanvas: (width: number, height: number) => void
+  initOffscreenCanvas: (width: number, height: number, dpr: number) => void
   cacheLayer: (layerId: number, shapes: BaseShape[]) => void
   getCachedLayerBitmap: (layerId: number, shapes: BaseShape[]) => ImageBitmap | null
   invalidateLayerCache: () => void
@@ -138,22 +138,32 @@ export function useCanvasVirtualization(
     }
   }
 
-  function initOffscreenCanvas(width: number, height: number): void {
+  function initOffscreenCanvas(width: number, height: number, dpr: number): void {
     if (typeof OffscreenCanvas === 'undefined') {
       console.warn('[Canvas] OffscreenCanvas not supported, skipping layer cache')
       return
     }
 
     const quality = isLowQuality ? 0.5 : 1.0
-    const scaledWidth = Math.ceil(width * quality)
-    const scaledHeight = Math.ceil(height * quality)
+    // Canvas buffer is always sized in physical pixels to match main canvas DPR scaling.
+    // Quality only affects context scale (drawing detail), not buffer size.
+    const physWidth = Math.ceil(width * dpr)
+    const physHeight = Math.ceil(height * dpr)
 
-    if (!offscreenCanvas || offscreenCanvas.width !== scaledWidth || offscreenCanvas.height !== scaledHeight) {
-      offscreenCanvas = new OffscreenCanvas(scaledWidth, scaledHeight)
+    if (!offscreenCanvas || offscreenCanvas.width !== physWidth || offscreenCanvas.height !== physHeight) {
+      offscreenCanvas = new OffscreenCanvas(physWidth, physHeight)
       offscreenCtx = offscreenCanvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null
       if (offscreenCtx) {
-        offscreenCtx.scale(quality, quality)
+        // Scale by dpr*quality so that drawing at screen coordinates maps to physical pixels.
+        // At quality=1: 1 screen px → 1 DPR-scaled physical px (sharp).
+        // At quality=0.5: 1 screen px → 0.5 DPR-scaled physical px (faster, lower detail).
+        // When this bitmap is blitted onto the DPR-scaled main canvas, dimensions match exactly.
+        offscreenCtx.scale(dpr * quality, dpr * quality)
       }
+    } else if (offscreenCtx) {
+      // Quality changed but canvas size stayed same — update scale only
+      offscreenCtx.setTransform(1, 0, 0, 1, 0, 0)
+      offscreenCtx.scale(dpr * quality, dpr * quality)
     }
   }
 

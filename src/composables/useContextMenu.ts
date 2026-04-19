@@ -145,13 +145,14 @@ export function useContextMenu(store: ContextMenuStore) {
         ]
       },
       { id: 'sep2', label: '', separator: true },
-      // v0.4.0: GDS Import/Export submenu
+      // v0.4.0: Import/Export submenu
       {
-        id: 'gds',
-        label: 'GDS',
+        id: 'import-export',
+        label: '导入/导出',
         submenu: [
           { id: 'gds-import', label: '导入 GDS...' },
           { id: 'gds-export', label: '导出 GDS...' },
+          { id: 'svg-export', label: '导出 SVG...' },
         ]
       },
       { id: 'shortcuts', label: '快捷键帮助', shortcut: '?' },
@@ -173,6 +174,7 @@ export function useContextMenu(store: ContextMenuStore) {
       showShortcutsDialog: Ref<boolean>
       showGdsImportDialog: Ref<boolean>
       showGdsExportDialog: Ref<boolean>
+      showSvgExportDialog: Ref<boolean>
       markDirty: () => void
       announce?: (msg: string) => void
     }
@@ -226,6 +228,7 @@ export function useContextMenu(store: ContextMenuStore) {
       // v0.4.0: GDS import/export
       case 'gds-import': opts.showGdsImportDialog.value = true; break
       case 'gds-export': opts.showGdsExportDialog.value = true; break
+      case 'svg-export': opts.showSvgExportDialog.value = true; break
     }
     opts.markDirty()
   }

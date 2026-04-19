@@ -256,6 +256,9 @@ export const useEditorStore = defineStore('editor', () => {
   function selectShapesInArea(x1: number, y1: number, x2: number, y2: number) {
     shapes.selectShapesInArea(x1, y1, x2, y2, getLayerLocked)
   }
+  function selectShapesByLayer(layerId: number, addToSelection = false) {
+    shapes.selectShapesByLayer(layerId, addToSelection)
+  }
   function deleteSelectedShapes() {
     // v0.2.7: Remove selected shapes from their cell children before deleting
     for (const id of shapes.selectedShapeIds) {
@@ -563,6 +566,7 @@ export const useEditorStore = defineStore('editor', () => {
     selectShape,
     clearSelection,
     selectShapesInArea,
+    selectShapesByLayer,
     deleteSelectedShapes,
     duplicateSelectedShapes,
     copySelectedShapes,

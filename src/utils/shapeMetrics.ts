@@ -2,7 +2,7 @@
  * shapeMetrics.ts - Area and perimeter computation for shapes
  * Part of v0.2.6 PropertiesPanel enhancement
  */
-import type { BaseShape, Point, PolygonShape, RectangleShape, WaveguideShape, PolylineShape, PathShape, EdgeShape, LabelShape, ArcShape, CircleShape } from '../types/shapes'
+import type { BaseShape, Point, PolygonShape, RectangleShape, WaveguideShape, PolylineShape, PathShape, EdgeShape, LabelShape, ArcShape, CircleShape, EllipseShape } from '../types/shapes'
 
 /** Signed area of polygon (shoelace formula) */
 function polygonArea(pts: Point[]): number {
@@ -95,6 +95,20 @@ export function getShapeMetrics(shape: BaseShape): ShapeMetrics {
     case 'circle': {
       const r = (shape as CircleShape).radius ?? 0
       return { area: Math.PI * r * r, perimeter: 2 * Math.PI * r }
+    }
+
+    case 'ellipse': {
+      const e = shape as EllipseShape
+      const a = e.radiusX ?? 0
+      const b = e.radiusY ?? 0
+      const area = Math.PI * a * b
+      if (a === 0 || b === 0) return { area, perimeter: 0 }
+      // Accurate for circle (a===b): perimeter = 2πa
+      if (a === b) return { area, perimeter: 2 * Math.PI * a }
+      // Ramanujan II approximation (accurate to ~1.5×10⁻³ relative error)
+      const h = ((a - b) / (a + b)) ** 2
+      const perimeter = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)))
+      return { area, perimeter }
     }
 
     case 'arc': {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useEditorStore } from '../stores/editor'
+import { useCellsStore } from '../stores/cells'
 import { getEdgeLength, getPathLength } from '../utils/transforms'
 import type { BaseShape, PathShape, EdgeShape } from '../types/shapes'
 
@@ -10,10 +11,11 @@ const props = defineProps<{
 }>()
 
 const store = useEditorStore()
+const cellsStore = useCellsStore()
 
 const toolNames: Record<string, string> = {
   select: 'Select (V)',
-  rectangle: 'Rectangle (R)',
+  rectangle: 'Rectangle (E)',
   polygon: 'Polygon (P)',
   polyline: 'Polyline (L)',
   waveguide: 'Waveguide (W)',
@@ -101,11 +103,11 @@ const visibleLayerCount = computed(() =>
 
 // Active cell name (v0.2.7: show when drilled into a cell)
 const activeCellName = computed(() => {
-  if (!store.cells?.activeCell) return ''
-  const name = store.cells.activeCell.name
-  const topName = store.cells.topCell?.name
-  if (name === topName) return '' // At top level, don't show
-  return name
+  const active = cellsStore.activeCell
+  const top = cellsStore.topCell
+  if (!active || !top) return ''
+  if (active.id === top.id) return '' // At top level, don't show
+  return active.name
 })
 
 // v0.2.7: drill out from StatusBar cell indicator

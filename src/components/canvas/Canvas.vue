@@ -29,6 +29,7 @@ const AlignDialog = defineAsyncComponent(() => import('../dialogs/AlignDialog.vu
 const GdsImportDialog = defineAsyncComponent(() => import('../dialogs/GdsImportDialog.vue'))
 const GdsExportDialog = defineAsyncComponent(() => import('../dialogs/GdsExportDialog.vue'))
 const BooleanOperationsDialog = defineAsyncComponent(() => import('../dialogs/BooleanOperationsDialog.vue'))
+const SvgExportDialog = defineAsyncComponent(() => import('../dialogs/SvgExportDialog.vue'))
 
 // Canvas coordinate system
 const { screenToDesign, designToScreen, getSnappedPoint } = useCanvasCoordinates({
@@ -106,6 +107,7 @@ const showAlignDialog = ref(false)
 const showGdsImportDialog = ref(false)
 const showGdsExportDialog = ref(false)
 const showBooleanDialog = ref(false)
+const showSvgExportDialog = ref(false)
 
 // === Context Menu composable ===
 const ctxMenu = useContextMenu(store)
@@ -141,6 +143,7 @@ function onContextMenuSelect(id: string) {
     showShortcutsDialog,
     showGdsImportDialog,
     showGdsExportDialog,
+    showSvgExportDialog,
     markDirty: () => virtualization.markDirty(),
     announce: announceCanvasChange,
   })
@@ -456,7 +459,7 @@ async function initCanvas() {
   store.setCanvasSize(rect.width, rect.height)
   if (ctx) {
     virtualization.updateZoomQuality()
-    virtualization.initOffscreenCanvas(rect.width, rect.height)
+    virtualization.initOffscreenCanvas(rect.width, rect.height, dpr)
     render()
   }
   isLoading.value = false
@@ -499,6 +502,7 @@ useCanvasLifecycle({
   showGdsImportDialog,
   showGdsExportDialog,
   showBooleanDialog,
+  showSvgExportDialog,
   markDirty: () => virtualization.markDirty(),
 })
 
@@ -577,6 +581,9 @@ defineExpose({
     />
     <BooleanOperationsDialog
       v-model:show="showBooleanDialog"
+    />
+    <SvgExportDialog
+      v-model:show="showSvgExportDialog"
     />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">
