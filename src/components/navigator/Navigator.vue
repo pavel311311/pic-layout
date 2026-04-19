@@ -26,6 +26,7 @@ const isCollapsed = ref(false)
 
 // === Use Navigator composable ===
 // v0.2.7: Use expandedVisibleShapes so Navigator shows content of drilled-in cell
+// v0.2.7: selectedShapeIds highlights selected shapes in the minimap
 const navigator = useNavigator({
   store: {
     project: store.project,
@@ -36,6 +37,7 @@ const navigator = useNavigator({
     getLayer: (id: number) => store.getLayer(id),
     setPan: (x: number, y: number) => store.setPan(x, y),
     getShapes: () => store.expandedVisibleShapes,
+    selectedShapeIds: store.selectedShapeIds,
   },
   navWidth: NAV_WIDTH,
   navHeight: NAV_HEIGHT,
@@ -216,6 +218,22 @@ onUnmounted(() => {
             fill="none"
           />
         </g>
+
+        <!-- Selected shape highlight rectangles -->
+        <rect
+          v-for="(rect, i) in navigator.selectedShapeRects.value"
+          :key="'sel-' + i"
+          :x="rect.x"
+          :y="rect.y"
+          :width="rect.width"
+          :height="rect.height"
+          fill="var(--accent-yellow)"
+          fill-opacity="0.08"
+          stroke="var(--accent-yellow)"
+          stroke-width="0.8"
+          stroke-dasharray="2,1"
+          pointer-events="none"
+        />
 
         <!-- Viewport rectangle -->
         <rect

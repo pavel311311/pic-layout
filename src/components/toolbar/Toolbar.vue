@@ -37,6 +37,7 @@ import {
   Sun,
   Combine,
   CornerUpLeft,
+  LogIn,
   Home,
   Hexagon,
   FileImage,
@@ -147,6 +148,14 @@ function drillOut() {
   store.drillOut()
   window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
 }
+
+function drillIn() {
+  store.drillIntoSelectedCellInstance()
+  window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
+}
+
+/** True if selected shape is an expanded CellInstance (drill-in possible) */
+const canDrillIn = computed(() => store.canDrillIntoSelectedInstance())
 
 function goToTop() {
   store.goToTop()
@@ -275,7 +284,7 @@ onUnmounted(() => {
     
     <!-- View Operations -->
     <div class="tool-group">
-      <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In" aria-label="Zoom In">
+      <button class="tool-btn" @click="store.setZoom(store.zoom * 1.2)" title="Zoom In (Ctrl++)" aria-label="Zoom In">
         <ZoomIn :size="16" class="btn-icon-svg" />
         <span class="btn-label">In</span>
       </button>
@@ -283,7 +292,7 @@ onUnmounted(() => {
         <ZoomOut :size="16" class="btn-icon-svg" />
         <span class="btn-label">Out</span>
       </button>
-      <button class="tool-btn" @click="store.zoomToFit()" title="Zoom to Fit All (Home)" aria-label="Zoom to Fit All">
+      <button class="tool-btn" @click="store.zoomToFit()" title="Zoom to Fit (Ctrl+1)" aria-label="Zoom to Fit All">
         <Maximize2 :size="16" class="btn-icon-svg" />
         <span class="btn-label">Fit</span>
       </button>
@@ -312,13 +321,27 @@ onUnmounted(() => {
     
     <div class="divider"></div>
     
+    <!-- Cell Navigation (v0.2.7 - Drill-In: visible when cell instance is selected at top level) -->
+    <div v-if="canDrillIn" class="tool-group cell-nav-group">
+      <!-- Drill-in button: enter selected cell instance -->
+      <button
+        class="tool-btn cell-nav-btn"
+        @click="drillIn"
+        title="Drill Into Cell (Enter)"
+        aria-label="Drill Into Cell"
+      >
+        <LogIn :size="16" class="btn-icon-svg" />
+        <span class="btn-label">In</span>
+      </button>
+    </div>
+
     <!-- Cell Navigation (v0.2.7 - visible when drilled into a cell) -->
     <div v-if="isInsideCell" class="tool-group cell-nav-group">
       <!-- Drill-out button: go up one level -->
       <button
         class="tool-btn cell-nav-btn"
         @click="drillOut"
-        :title="'Drill-Out'"
+        :title="'Drill Out (H)'"
         aria-label="Drill Out (H)"
       >
         <CornerUpLeft :size="16" class="btn-icon-svg" />
@@ -328,7 +351,7 @@ onUnmounted(() => {
       <button
         class="tool-btn cell-nav-btn"
         @click="goToTop"
-        :title="'Go-to-Top'"
+        :title="'Go to Top (N)'"
         aria-label="Go to Top Cell (N)"
       >
         <Home :size="16" class="btn-icon-svg" />

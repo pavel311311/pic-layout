@@ -43,6 +43,7 @@
   --accent-green: #4CAF50;
   --accent-red: #E57373;
   --accent-purple: #B39DDB;
+  --accent-yellow: #FFD54F;
   --text-on-accent: #ffffff;
   --loading-bg: rgba(255, 255, 255, 0.8);
   --error-bg: rgba(255, 255, 255, 0.9);
@@ -86,6 +87,7 @@
   --accent-green: #81C784;
   --accent-red: #E57373;
   --accent-purple: #B39DDB;
+  --accent-yellow: #FFD740;
   --text-on-accent: #ffffff;
   --loading-bg: rgba(30, 30, 30, 0.8);
   --error-bg: rgba(30, 30, 30, 0.9);

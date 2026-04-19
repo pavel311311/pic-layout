@@ -106,6 +106,16 @@ export function useCanvasDrawing(options: UseCanvasDrawingOptions): UseCanvasDra
   }
 
   /**
+   * Check if a point is too close to the last confirmed point (prevents duplicate vertices).
+   */
+  function isNearLastPoint(pt: Point): boolean {
+    if (confirmedPoints.value.length === 0) return false
+    const lastPt = confirmedPoints.value[confirmedPoints.value.length - 1]
+    const dist = Math.sqrt((pt.x - lastPt.x) ** 2 + (pt.y - lastPt.y) ** 2)
+    return dist < options.getGridSize()
+  }
+
+  /**
    * Start rectangle drawing.
    */
   function startRectangle(pt: Point) {
@@ -164,6 +174,7 @@ export function useCanvasDrawing(options: UseCanvasDrawingOptions): UseCanvasDra
    * Add a point to polyline.
    */
   function addPolylinePoint(pt: Point) {
+    if (isNearLastPoint(pt)) return
     confirmedPoints.value.push(pt)
     options.announceChange(`添加顶点 (${pt.x.toFixed(3)}, ${pt.y.toFixed(3)})，共 ${confirmedPoints.value.length} 个顶点`)
     options.markDirty()
@@ -183,6 +194,7 @@ export function useCanvasDrawing(options: UseCanvasDrawingOptions): UseCanvasDra
    * Add a point to path.
    */
   function addPathPoint(pt: Point) {
+    if (isNearLastPoint(pt)) return
     confirmedPoints.value.push(pt)
     options.announceChange(`添加顶点 (${pt.x.toFixed(3)}, ${pt.y.toFixed(3)})，共 ${confirmedPoints.value.length} 个顶点`)
     options.markDirty()

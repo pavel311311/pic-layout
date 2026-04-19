@@ -111,21 +111,27 @@ function getEmptyResultReason(op: BooleanOp, shapeA: BaseShape, shapeB: BaseShap
   const label = opLabels[op] ?? op
 
   if (op === 'intersection') {
+    // Intersection is empty when shapes don't actually overlap (bounding boxes may overlap but shapes might not)
     return overlaps
-      ? `${label}结果为空（图形不相交）`
-      : `${label}结果为空（图形不相交）`
+      ? `${label}结果可能为空（边界重叠但实际图形可能不相交）`
+      : `${label}结果为空（图形边界不相交）`
   }
   if (op === 'difference') {
-    if (!overlaps) return `${label}结果为空（两图形不相交，无可相减）`
+    if (!overlaps) return `${label}结果为形状 A（B 未与 A 相交，无可相减）`
     const bb = getShapeBounds(shapeB), ba = getShapeBounds(shapeA)
     const bInsideA = ba.minX <= bb.minX && ba.maxX >= bb.maxX && ba.minY <= bb.minY && ba.maxY >= bb.maxY
-    return bInsideA ? `${label}结果为空（B 完全覆盖 A）` : `${label}结果为空（无重叠区域）`
+    return bInsideA ? `${label}结果为空（B 完全覆盖 A）` : `${label}结果可能为空（边界重叠但实际无可相减区域）`
   }
   if (op === 'xor') {
-    return overlaps ? `${label}结果为空` : `${label}结果为两图形合并`
+    // XOR is empty only when one shape completely covers the other (all overlapping area cancels out)
+    if (!overlaps) return `${label}结果为两独立图形（不相交，各自保留）`
+    const bb = getShapeBounds(shapeB), ba = getShapeBounds(shapeA)
+    const bInsideA = ba.minX <= bb.minX && ba.maxX >= bb.maxX && ba.minY <= bb.minY && ba.maxY >= bb.maxY
+    const aInsideB = bb.minX <= ba.minX && bb.maxX >= ba.maxX && bb.minY <= ba.minY && bb.maxY >= ba.maxY
+    return (bInsideA || aInsideB) ? `${label}结果为空（一方完全覆盖另一方）` : `${label}结果可能为空（边界重叠但实际无相交区域）`
   }
-  // union: should never be empty
-  return `${label}结果为空`
+  // union: should never be empty with 2 valid shapes
+  return `${label}结果为空（请检查图形是否有效）`
 }
 
 /** Draw a shape on canvas at given bounds/scale */
@@ -341,10 +347,12 @@ function applyBoolean() {
 // Create polygon shape from points
 function createPolygonFromPoints(points: Point[], layerId: number): PolygonShape {
   // Compute bounding box to set proper coordinates
-  let minX = Infinity, minY = Infinity
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const p of points) {
     if (p.x < minX) minX = p.x
     if (p.y < minY) minY = p.y
+    if (p.x > maxX) maxX = p.x
+    if (p.y > maxY) maxY = p.y
   }
 
   return {
@@ -353,6 +361,8 @@ function createPolygonFromPoints(points: Point[], layerId: number): PolygonShape
     layerId,
     x: minX,
     y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
     points: points,
     style: {
       fillColor: '#6699CC',

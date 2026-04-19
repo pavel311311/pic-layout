@@ -118,6 +118,12 @@ function updatePosition(axis: 'x' | 'y', value: number) {
   store.updateShape(selectedShape.value.id, { [axis]: value }, true)
 }
 
+/** Copy selected shape ID to clipboard */
+function copyId() {
+  if (!selectedShape.value) return
+  navigator.clipboard.writeText(selectedShape.value.id).catch(() => {})
+}
+
 function updateSize(dimension: 'width' | 'height', value: number) {
   if (!selectedShape.value || value <= 0) return
   store.pushHistory()
@@ -291,7 +297,9 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
               </select>
             </div>
             <span class="prop-label">ID:</span>
-            <span class="prop-value mono">{{ selectedShape.id.slice(0, 8) }}...</span>
+            <span class="prop-value mono id-value" :title="`Full ID: ${selectedShape.id} — Click to copy`" @click="copyId" style="cursor:pointer">
+              {{ selectedShape.id.slice(0, 8) }}...
+            </span>
           </div>
         </div>
       </div>

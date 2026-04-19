@@ -29,6 +29,11 @@ interface NavigatorStore {
    * so the Navigator shows the content of the active cell.
    */
   getShapes?: () => BaseShape[]
+  /**
+   * IDs of currently selected shapes.
+   * Used to highlight selected shapes in the Navigator minimap.
+   */
+  selectedShapeIds?: string[]
 }
 
 export interface NavigatorOptions {
@@ -51,6 +56,14 @@ export interface NavigatorShape {
   fill?: string
   stroke: string
   strokeWidth: number
+}
+
+/** Bounding box rect in navigator SVG coordinates */
+export interface NavigatorRect {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 export function useNavigator(options: NavigatorOptions) {
@@ -238,11 +251,32 @@ export function useNavigator(options: NavigatorOptions) {
     isDragging.value = false
   }
 
+  // === Selected shape bounding boxes in navigator SVG coordinates ===
+  const selectedShapeRects = computed<NavigatorRect[]>(() => {
+    const bb = boundingBox.value
+    const sx = designPerPixelX.value
+    const sy = designPerPixelY.value
+    const ids = store.selectedShapeIds ?? []
+    if (ids.length === 0) return []
+
+    const selected = displayShapes.value.filter((s) => ids.includes(s.id))
+    return selected.map((shape) => {
+      const bounds = getShapeBounds(shape)
+      return {
+        x: (bounds.minX - bb.minX) / sx,
+        y: (bounds.minY - bb.minY) / sy,
+        width: Math.max((bounds.maxX - bounds.minX) / sx, 2),
+        height: Math.max((bounds.maxY - bounds.minY) / sy, 2),
+      }
+    })
+  })
+
   return {
     boundingBox,
     viewportRect,
     viewportBounds,
     navShapes,
+    selectedShapeRects,
     isDragging,
     designToNav,
     navToDesign,

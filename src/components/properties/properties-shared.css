@@ -114,6 +114,7 @@
   color: var(--text-primary);
 }
 .prop-value.mono { font-family: monospace; font-size: 9px; }
+.prop-value.id-value:hover { color: var(--accent-blue); text-decoration: underline; }
 .prop-value.layer-value { font-weight: 500; }
 .prop-value.mixed-value { color: var(--text-muted); font-style: italic; }
 

@@ -414,18 +414,40 @@ function cycleToNextMatch() {
   // Move to next match, wrapping around
   const nextIndex = (currentMatchIndex.value + 1) % matchCount.value
   currentMatchIndex.value = nextIndex
+  scrollToMatch(nextIndex)
+}
+
+/** Cycle to previous search match on Shift+Tab (v0.2.7 search UX) */
+function cycleToPrevMatch() {
+  if (matchCount.value === 0) return
+  // Move to previous match, wrapping around
+  const prevIndex = (currentMatchIndex.value - 1 + matchCount.value) % matchCount.value
+  currentMatchIndex.value = prevIndex
+  scrollToMatch(prevIndex)
+}
+
+/** Scroll tree to show the match at the given index (shared by cycle functions) */
+function scrollToMatch(matchIndex: number) {
   const matchedIds = allMatchedCellIds.value
-  if (matchedIds.length > 0) {
-    const targetId = matchedIds[nextIndex]
-    // Auto-expand parent path so the target is visible
-    expandPathToCell(targetId)
-    // Scroll focused index to the target cell
-    const flatItems = flatTree.value
-    const targetFlatIdx = flatItems.findIndex(item => item.node.cell.id === targetId)
-    if (targetFlatIdx >= 0) {
-      focusedIndex.value = targetFlatIdx
-      scrollFocusedIntoView()
-    }
+  if (matchedIds.length === 0) return
+  const targetId = matchedIds[matchIndex]
+  // Auto-expand parent path so the target is visible
+  expandPathToCell(targetId)
+  // Scroll focused index to the target cell
+  const flatItems = flatTree.value
+  const targetFlatIdx = flatItems.findIndex(item => item.node.cell.id === targetId)
+  if (targetFlatIdx >= 0) {
+    focusedIndex.value = targetFlatIdx
+    scrollFocusedIntoView()
+  }
+}
+
+/** Handle Tab key in search input (Shift+Tab = prev, Tab = next) */
+function onSearchTab(e: KeyboardEvent) {
+  if (e.shiftKey) {
+    cycleToPrevMatch()
+  } else {
+    cycleToNextMatch()
   }
 }
 
@@ -526,13 +548,13 @@ watch(flatTree, () => {
         type="text"
         class="cell-search-input"
         placeholder="Search cells..."
-        aria-label="Search cells by name"
+        aria-label="Search cells by name. Tab/Shift+Tab to cycle matches, Enter to navigate to first match."
         @keydown.enter="navigateToFirstMatch"
-        @keydown.tab.prevent="cycleToNextMatch"
+        @keydown.tab.prevent="onSearchTab"
         @keydown.escape="searchQuery = ''"
       />
       <!-- Match position indicator "N/M" (v0.2.7 search UX enhancement) -->
-      <span v-if="matchCount > 0" class="search-match-count" aria-live="polite" :title="`${matchCount} match${matchCount !== 1 ? 'es' : ''} — Enter to go to first, Tab to cycle`">
+      <span v-if="matchCount > 0" class="search-match-count" aria-live="polite" :title="`${matchCount} match${matchCount !== 1 ? 'es' : ''} — Enter to first, Tab/Shift+Tab to cycle`">
         {{ matchCount > 1 ? `${currentMatchIndex + 1}/${matchCount}` : matchCount }}
       </span>
       <button

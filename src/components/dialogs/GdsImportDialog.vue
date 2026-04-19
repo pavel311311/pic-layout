@@ -15,7 +15,7 @@ import { importGDS } from '@/services/gdsImporter'
 import { useShapesStore } from '@/stores/shapes'
 import { useCellsStore } from '@/stores/cells'
 import { useCanvasTheme } from '@/composables/useCanvasTheme'
-import type { Cell } from '@/types/cell'
+import type { Cell, CellInstance } from '@/types/cell'
 import type { BaseShape } from '@/types/shapes'
 
 const props = defineProps<{
@@ -114,10 +114,10 @@ function deselectAllLayers() {
 }
 
 /** Check if a shape's layer is selected */
-function isLayerSelected(shape: BaseShape): boolean {
+function isLayerSelected(shape: BaseShape | CellInstance): boolean {
   // Cell instances don't have a layer — they inherit from the referenced cell
   if ((shape.type as any) === 'cell-instance') return true
-  const layer = (shape as any).layer
+  const layer = (shape as BaseShape).layerId
   if (typeof layer !== 'number') return true
   return selectedLayerIds.value.has(layer)
 }
@@ -142,7 +142,7 @@ function getPreviewShapes(): BaseShape[] {
   const shapes: BaseShape[] = []
   for (const cell of previewData.value.cells) {
     for (const child of cell.children) {
-      if (child.type !== 'cell-instance' && isLayerSelected(child as BaseShape)) {
+      if ((child.type as any) !== 'cell-instance' && isLayerSelected(child)) {
         shapes.push(child as BaseShape)
       }
     }
