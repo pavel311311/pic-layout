@@ -466,12 +466,11 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - 问题: KLayout/GDS无法在当前环境验证（klayout CLI不存在，gdspy未安装）
   - 状态: 标记为外部依赖限制，通过内部 double round-trip 测试保证正确性
 - 问题: gdsImporter.ts 死代码段（老版本 outer switch cases）未清理
-  - 状态: 暂不处理（功能正常，死代码不影响行为）
+  - 状态: 已在本次修复中清理完成
 
 ### 编译测试
 - [x] npx vitest run → 113 passed
 - [x] npm run build → 通过
 
 ### 下小时计划
-- [ ] 清理 gdsImporter.ts 死代码段（lines 582-694）
 - [ ] 开始 v0.3.1 UI 美化任务（Toolbar/StatusBar 重设计）
