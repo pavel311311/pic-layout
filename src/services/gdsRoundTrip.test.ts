@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { exportGDS } from './gdsExporter'
 import { parseGDSBuffer } from './gdsImporter'
 import type { BaseShape, Layer } from '../types/shapes'
+import type { Cell } from '../types/cell'
 
 // Standard test layers
 const LAYERS: Layer[] = [
@@ -195,5 +196,154 @@ describe('T2-4: Label export', () => {
     const cell = parsed.cells[0]
     expect(cell.texts.length).toBe(1)
     expect(cell.texts[0]?.string).toBe('接口方向: 左侧')
+  })
+})
+
+// ─── T2-6: Double Round-Trip (Export → Import → Export → Compare) ─────────────
+
+import { gdsToCells } from './gdsImporter'
+
+/**
+ * Extract all shapes (non-cell-instance children) from cells.
+ */
+function extractShapes(cells: Cell[]): BaseShape[] {
+  const shapes: BaseShape[] = []
+  for (const cell of cells) {
+    for (const child of cell.children) {
+      // Skip cell instances — they cannot be re-exported as plain shapes
+      if (child.type === 'cell-instance') continue
+      shapes.push(child as BaseShape)
+    }
+  }
+  return shapes
+}
+
+/**
+ * Compare two Uint8Array GDS binaries for exact equality.
+ * Byte-for-byte identical = deterministic encoding.
+ */
+function gdsBytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false
+  for (let i = 0; i < a.byteLength; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+describe('T2-6: Double round-trip (export → import → export → compare)', () => {
+
+  /**
+   * Single rectangle: export → parse → re-export → identical bytes.
+   * This verifies the encoding is deterministic and re-import produces
+   * geometrically equivalent data.
+   */
+  it('rect: export→parse→re-export → byte-identical GDS', async () => {
+    const shapes: BaseShape[] = [
+      { id: 'r1', type: 'rectangle', layerId: 1, x: 0, y: 0, width: 1000, height: 2000 }
+    ]
+
+    // First export
+    const gds1 = await exportGDS(shapes, LAYERS, { name: 'R1' })
+    const parsed1 = parseGDSBuffer(toArrayBuffer(gds1))
+
+    // Re-import → extract shapes → re-export
+    const cells = gdsToCells(parsed1)
+    const shapes2 = extractShapes(cells)
+    const gds2 = await exportGDS(shapes2, LAYERS, { name: 'R1' })
+
+    expect(gdsBytesEqual(gds1, gds2)).toBe(true)
+  })
+
+  /**
+   * Multi-shape: rect + polygon + path + label should survive double round-trip.
+   * We verify structural equivalence (same cell count, same shape counts per cell)
+   * rather than byte-identical GDS, since gdsToCells may normalize coordinates
+   * or add default values that don't affect geometry.
+   */
+  it('rect+polygon+path+label: double round-trip → structure preserved', async () => {
+    const shapes: BaseShape[] = [
+      { id: 'r1', type: 'rectangle', layerId: 1, x: 0, y: 0, width: 1000, height: 2000 },
+      {
+        id: 'p1', type: 'polygon', layerId: 1,
+        x: 0, y: 0, width: 3000, height: 3000,
+        points: [{ x: 0, y: 0 }, { x: 3000, y: 0 }, { x: 3000, y: 3000 }, { x: 0, y: 3000 }]
+      },
+      { id: 'path1', type: 'path', layerId: 1, points: [{ x: 0, y: 0 }, { x: 5000, y: 0 }, { x: 5000, y: 1000 }], width: 500 } as BaseShape,
+      { id: 'lbl1', type: 'label', layerId: 3, x: 500, y: 500, text: 'WG01' },
+    ]
+
+    const gds1 = await exportGDS(shapes, LAYERS, { name: 'MULTI' })
+    const parsed1 = parseGDSBuffer(toArrayBuffer(gds1))
+    const cells = gdsToCells(parsed1)
+    const shapes2 = extractShapes(cells)
+    const gds2 = await exportGDS(shapes2, LAYERS, { name: 'MULTI' })
+    const parsed2 = parseGDSBuffer(toArrayBuffer(gds2))
+
+    // Structural equivalence: same cell count, same shape counts
+    expect(parsed1.cells.length).toBe(parsed2.cells.length)
+    for (let i = 0; i < parsed1.cells.length; i++) {
+      const c1 = parsed1.cells[i]
+      const c2 = parsed2.cells[i]
+      expect(c1.name).toBe(c2.name)
+      expect(c1.boundaries.length).toBe(c2.boundaries.length)
+      expect(c1.paths.length).toBe(c2.paths.length)
+      expect(c1.texts.length).toBe(c2.texts.length)
+      // Verify polygon boundary has same XY points
+      if (c1.boundaries.length > 0) {
+        expect(c2.boundaries[0].points).toEqual(c1.boundaries[0].points)
+      }
+    }
+  })
+
+  /**
+   * Chinese label should survive double round-trip.
+   */
+  it('Chinese label: double round-trip → byte-identical', async () => {
+    const shapes: BaseShape[] = [
+      { id: 'lbl1', type: 'label', layerId: 3, x: 1000, y: 2000, text: '接口方向: 左侧' },
+    ]
+
+    const gds1 = await exportGDS(shapes, LAYERS, { name: 'CHINESE' })
+    const parsed1 = parseGDSBuffer(toArrayBuffer(gds1))
+    const cells = gdsToCells(parsed1)
+    const shapes2 = extractShapes(cells)
+    const gds2 = await exportGDS(shapes2, LAYERS, { name: 'CHINESE' })
+
+    expect(gdsBytesEqual(gds1, gds2)).toBe(true)
+  })
+
+  /**
+   * Multiple cells: each cell's shapes survive double round-trip independently.
+   */
+  it('multiple cells: double round-trip → all cells and shapes preserved', async () => {
+    // Two separate single-cell GDS exports (simulate multi-cell layout)
+    const cell1Shapes: BaseShape[] = [
+      { id: 'r1', type: 'rectangle', layerId: 1, x: 0, y: 0, width: 1000, height: 1000 }
+    ]
+    const cell2Shapes: BaseShape[] = [
+      { id: 'p1', type: 'polygon', layerId: 2,
+        x: 0, y: 0, width: 500, height: 500,
+        points: [{ x: 0, y: 0 }, { x: 500, y: 0 }, { x: 500, y: 500 }, { x: 0, y: 500 }]
+      }
+    ]
+
+    const gds1 = await exportGDS(cell1Shapes, LAYERS, { name: 'CELL_A' })
+    const gds2 = await exportGDS(cell2Shapes, LAYERS, { name: 'CELL_B' })
+
+    // Round-trip each
+    const parsed1 = parseGDSBuffer(toArrayBuffer(gds1))
+    const parsed2 = parseGDSBuffer(toArrayBuffer(gds2))
+
+    const cells1 = gdsToCells(parsed1)
+    const cells2 = gdsToCells(parsed2)
+
+    const shapes1Out = extractShapes(cells1)
+    const shapes2Out = extractShapes(cells2)
+
+    const gds1Out = await exportGDS(shapes1Out, LAYERS, { name: 'CELL_A' })
+    const gds2Out = await exportGDS(shapes2Out, LAYERS, { name: 'CELL_B' })
+
+    expect(gdsBytesEqual(gds1, gds1Out)).toBe(true)
+    expect(gdsBytesEqual(gds2, gds2Out)).toBe(true)
   })
 })

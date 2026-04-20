@@ -161,7 +161,7 @@ function readFloat64BE(view: DataView, offset: number): number {
 }
 
 /**
- * Read GDS string (null-terminated ASCII)
+ * Read GDS string (null-terminated, supports UTF-8 / multi-byte encoding)
  * Includes bounds checking to handle corrupt/truncated files gracefully.
  */
 function readString(view: DataView, offset: number, length: number): string {
@@ -172,7 +172,7 @@ function readString(view: DataView, offset: number, length: number): string {
   }
   const byteLen = Math.max(0, end - offset)
   const bytes = new Uint8Array(view.buffer, view.byteOffset + offset, byteLen)
-  return new TextDecoder('ascii').decode(bytes)
+  return new TextDecoder('utf-8').decode(bytes)
 }
 
 /**
@@ -327,13 +327,13 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
           if (subRecordLength < 4 || subOffset + subRecordLength > containerEnd) break
           if (subOffset + subRecordLength > buffer.byteLength) break
           const subRecordTypeRaw = readUint16BE(view, subOffset + 2)
-          const subRecordType = subRecordTypeRaw & 0xFF00
+          const subRecordType = (subRecordTypeRaw >> 8) & 0xFF
           const subDataType = subRecordTypeRaw & 0x00FF
           const subDataStart = subOffset + 4
           const subDataLen = subRecordLength - 4
 
           switch (subRecordType) {
-            case GDS_RECORD.LAYER: {
+            case 0x0D: { // LAYER
               if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
                 currentElementLayer = view.getUint8(subDataStart)
               } else if (subDataType === GDS_DATATYPE.INTEGER16 && subDataLen >= 2) {
@@ -341,36 +341,38 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
               }
               break
             }
-            case GDS_RECORD.DATATYPE: {
+            case 0x0E: { // DATATYPE
               if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
                 currentElementDatatype = view.getUint8(subDataStart)
               }
               break
             }
-            case GDS_RECORD.WIDTH: {
+            case 0x0F: { // WIDTH
               if (subDataType === GDS_DATATYPE.INTEGER32 && subDataLen >= 4) {
                 currentPathWidth = readInt32BE(view, subDataStart)
                 if (currentPathWidth < 0) currentPathWidth = -currentPathWidth
               }
               break
             }
-            case GDS_RECORD.PATHTYPE: {
+            case 0x21: { // PATHTYPE
               if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
                 currentPathType = view.getUint8(subDataStart)
               }
               break
             }
-            case GDS_RECORD.XY: {
-              const numPairs = Math.floor(subDataLen / 8)
+            case 0x10: { // XY
+              const numPairs = Math.floor((subDataLen - 4) / 8)
               currentXY = []
               for (let i = 0; i < numPairs; i++) {
-                const x = readInt32BE(view, subDataStart + i * 8)
-                const y = readInt32BE(view, subDataStart + i * 8 + 4)
+                const xDb = readInt32BE(view, subDataStart + 4 + i * 8)
+                const yDb = readInt32BE(view, subDataStart + 4 + i * 8 + 4)
+                const x = result.userUnits ? Math.round(xDb / result.userUnits) : xDb
+                const y = result.userUnits ? Math.round(yDb / result.userUnits) : yDb
                 currentXY.push({ x, y })
               }
               break
             }
-            case GDS_RECORD.ENDEL: {
+            case 0x11: { // ENDEL
               if (currentCell) {
                 addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
                   currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
@@ -420,23 +422,23 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
           if (subRecordLength < 4 || subOffset + subRecordLength > containerEnd) break
           if (subOffset + subRecordLength > buffer.byteLength) break
           const subRecordTypeRaw = readUint16BE(view, subOffset + 2)
-          const subRecordType = subRecordTypeRaw & 0xFF00
+          const subRecordType = (subRecordTypeRaw >> 8) & 0xFF
           const subDataType = subRecordTypeRaw & 0x00FF
           const subDataStart = subOffset + 4
           const subDataLen = subRecordLength - 4
 
           switch (subRecordType) {
-            case GDS_RECORD.TEXTTYPE: {
+            case 0x16: { // TEXTTYPE
               if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
                 currentTextType = view.getUint8(subDataStart)
               }
               break
             }
-            case GDS_RECORD.STRING: {
+            case 0x19: { // STRING
               currentTextString = readString(view, subDataStart, subDataLen)
               break
             }
-            case GDS_RECORD.LAYER: {
+            case 0x0D: { // LAYER
               if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
                 currentElementLayer = view.getUint8(subDataStart)
               } else if (subDataType === GDS_DATATYPE.INTEGER16 && subDataLen >= 2) {
@@ -444,28 +446,29 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
               }
               break
             }
-            case GDS_RECORD.XY: {
-              // Text position: single XY pair
+            case 0x10: { // XY - Text position: single XY pair (no count field, 8 bytes)
               if (subDataLen >= 8) {
                 currentXY = []
-                const x = readInt32BE(view, subDataStart)
-                const y = readInt32BE(view, subDataStart + 4)
+                const xDb = readInt32BE(view, subDataStart)
+                const yDb = readInt32BE(view, subDataStart + 4)
+                const x = result.userUnits ? Math.round(xDb / result.userUnits) : xDb
+                const y = result.userUnits ? Math.round(yDb / result.userUnits) : yDb
                 currentXY.push({ x, y })
               }
               break
             }
-            case GDS_RECORD.WIDTH: {
+            case 0x0F: { // WIDTH
               if (subDataType === GDS_DATATYPE.INTEGER32 && subDataLen >= 4) {
                 currentPathWidth = readInt32BE(view, subDataStart)
                 if (currentPathWidth < 0) currentPathWidth = -currentPathWidth
               }
               break
             }
-            case GDS_RECORD.STRANS:
-            case GDS_RECORD.MAG:
-            case GDS_RECORD.ANGLE:
+            case 0x1A: // STRANS
+            case 0x1B: // MAG
+            case 0x1C: // ANGLE
               break
-            case GDS_RECORD.ENDEL: {
+            case 0x11: { // ENDEL
               if (currentCell) {
                 addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
                   currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
@@ -495,130 +498,102 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         continue
       }
 
-      case GDS_RECORD.LAYER: {
-        // Layer number (INTEGER8 or INTEGER16)
-        if (dataType === GDS_DATATYPE.INTEGER8 && dataLen >= 1) {
-          currentElementLayer = view.getUint8(dataStart)
-        } else if (dataType === GDS_DATATYPE.INTEGER16 && dataLen >= 2) {
-          currentElementLayer = readUint16BE(view, dataStart)
-        }
-        break
-      }
+      case 0x0B: // SREF
+      case 0x0C: { // AREF (some tools use 0x0C for array references)
+        // SREF/AREF container - parse sub-records (STRANS, SNAME, XY, COLROW, ENDEL)
+        let subOffset = offset + 4
+        const containerEnd = offset + recordLength
+        let containerEnded = false
 
-      case GDS_RECORD.DATATYPE: {
-        // Data type (INTEGER8)
-        if (dataType === GDS_DATATYPE.INTEGER8 && dataLen >= 1) {
-          currentElementDatatype = view.getUint8(dataStart)
-        }
-        break
-      }
+        srefLoop:
+        while (subOffset < containerEnd) {
+          const subRecordLength = readUint16BE(view, subOffset)
+          if (subRecordLength < 4 || subOffset + subRecordLength > containerEnd) break
+          if (subOffset + subRecordLength > buffer.byteLength) break
+          const subRecordTypeRaw = readUint16BE(view, subOffset + 2)
+          const subRecordType = (subRecordTypeRaw >> 8) & 0xFF
+          const subDataType = subRecordTypeRaw & 0x00FF
+          const subDataStart = subOffset + 4
+          const subDataLen = subRecordLength - 4
 
-      case GDS_RECORD.TEXTTYPE: {
-        if (dataType === GDS_DATATYPE.INTEGER8 && dataLen >= 1) {
-          currentTextType = view.getUint8(dataStart)
-        }
-        break
-      }
+          switch (subRecordType) {
+            case 0x1A: { // STRANS
+              if (subDataType === GDS_DATATYPE.BITNULL && subDataLen >= 2) {
+                const flags = readUint16BE(view, subDataStart)
+                currentMirrorX = (flags & 0x2000) !== 0 // bit 13 = mirror X
+              }
+              break
+            }
+            case 0x12: { // SNAME
+              currentSNAME = readString(view, subDataStart, subDataLen)
+              break
+            }
+            case 0x10: { // XY
+              // AREF XY: [count(4)][P0(8)][P1(8)][P2(8)] — has count field
+              // SREF XY: [x(4)][y(4)] — no count field
+              let numPairs: number
+              let coordStart: number
+              if (subDataLen >= 12) {
+                // AREF format with count field
+                numPairs = readInt32BE(view, subDataStart) // count is first 4 bytes
+                coordStart = subDataStart + 4
+              } else {
+                // SREF format without count field
+                numPairs = Math.floor(subDataLen / 8)
+                coordStart = subDataStart
+              }
+              currentXY = []
+              for (let i = 0; i < numPairs; i++) {
+                const xDb = readInt32BE(view, coordStart + i * 8)
+                const yDb = readInt32BE(view, coordStart + i * 8 + 4)
+                const x = result.userUnits ? Math.round(xDb / result.userUnits) : xDb
+                const y = result.userUnits ? Math.round(yDb / result.userUnits) : yDb
+                currentXY.push({ x, y })
+              }
+              // Compute AREF row/col spacing if multiple pairs
+              if (numPairs >= 3 && currentSNAME) {
+                const dx = currentXY[1].x - currentXY[0].x
+                const dy = currentXY[2].y - currentXY[0].y
+                currentColSpacing = currentCols > 1 ? Math.round(dx / (currentCols - 1)) : dx
+                currentRowSpacing = currentRows > 1 ? Math.round(dy / (currentRows - 1)) : dy
+              }
+              break
+            }
+            case 0x13: { // COLROW
+              if (subDataType === GDS_DATATYPE.INTEGER16 && subDataLen >= 4) {
+                currentRows = readUint16BE(view, subDataStart)
+                currentCols = readUint16BE(view, subDataStart + 2)
+              }
+              break
+            }
+            case 0x11: { // ENDEL
+              if (currentCell) {
+                addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
+                  currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
+                  currentSNAME, currentRows, currentCols, currentRowSpacing, currentColSpacing,
+                  currentRotation, currentMirrorX, currentMagnification)
+                result.rawLayers.add(currentElementLayer)
+              }
+              inElement = false
+              containerEnded = true
+              offset = subOffset + subRecordLength
+              if (subRecordLength % 2 !== 0) offset++
+              break srefLoop
+            }
+            default:
+              break
+          }
 
-      case GDS_RECORD.WIDTH: {
-        // Path width (INTEGER32, can be negative for absolute)
-        if (dataType === GDS_DATATYPE.INTEGER32 && dataLen >= 4) {
-          currentPathWidth = readInt32BE(view, dataStart)
-          if (currentPathWidth < 0) currentPathWidth = -currentPathWidth
+          subOffset += subRecordLength
+          if (subRecordLength % 2 !== 0) subOffset++
         }
-        break
-      }
 
-      case GDS_RECORD.PATHTYPE: {
-        // Path end style (INTEGER8)
-        if (dataType === GDS_DATATYPE.INTEGER8 && dataLen >= 1) {
-          currentPathType = view.getUint8(dataStart)
+        if (!containerEnded) {
+          offset = offset + recordLength
+          if (recordLength % 2 !== 0) offset++
+          inElement = false
         }
-        break
-      }
-
-      case GDS_RECORD.XY: {
-        // Coordinate array - array of INTEGER32 pairs (x, y)
-        const numPairs = Math.floor(dataLen / 8)
-        currentXY = []
-        for (let i = 0; i < numPairs; i++) {
-          const x = readInt32BE(view, dataStart + i * 8)
-          const y = readInt32BE(view, dataStart + i * 8 + 4)
-          currentXY.push({ x, y })
-        }
-        // For AREF: compute row/col spacing from XY displacement vectors
-        // XY[0] = placement origin
-        // XY[1] = end of column displacement (x2, y2) → cols spacing
-        // XY[2] = end of row displacement (x3, y3) → rows spacing
-        if (numPairs >= 3 && currentSNAME) {
-          const dx = currentXY[1].x - currentXY[0].x
-          const dy = currentXY[2].y - currentXY[0].y
-          currentColSpacing = currentCols > 1 ? Math.round(dx / (currentCols - 1)) : dx
-          currentRowSpacing = currentRows > 1 ? Math.round(dy / (currentRows - 1)) : dy
-        }
-        break
-      }
-
-      case GDS_RECORD.STRING: {
-        // Text string (ASCII)
-        currentTextString = readString(view, dataStart, dataLen)
-        break
-      }
-
-      case GDS_RECORD.SNAME: {
-        // Reference cell name (ASCII)
-        currentSNAME = readString(view, dataStart, dataLen)
-        break
-      }
-
-      case GDS_RECORD.COLROW: {
-        // Array rows/cols (2 INTEGER16 values)
-        if (dataType === GDS_DATATYPE.INTEGER16 && dataLen >= 4) {
-          currentRows = readUint16BE(view, dataStart)
-          currentCols = readUint16BE(view, dataStart + 2)
-        }
-        break
-      }
-
-      case GDS_RECORD.STRANS: {
-        // Transformation flags (BITARRAY)
-        if (dataType === GDS_DATATYPE.BITNULL && dataLen >= 2) {
-          const flags = readUint16BE(view, dataStart)
-          currentMirrorX = (flags & 0x0001) !== 0        // Bit 0: mirror along X
-          currentMagnification = undefined  // Will be set by MAG record
-          currentRotation = undefined       // Will be set by ANGLE record
-        }
-        break
-      }
-
-      case GDS_RECORD.MAG: {
-        // Magnification (REAL8)
-        if (dataType === GDS_DATATYPE.REAL8 && dataLen >= 8) {
-          currentMagnification = readFloat64BE(view, dataStart)
-        }
-        break
-      }
-
-      case GDS_RECORD.ANGLE: {
-        // Rotation angle in degrees (REAL8)
-        if (dataType === GDS_DATATYPE.REAL8 && dataLen >= 8) {
-          currentRotation = readFloat64BE(view, dataStart)
-        }
-        break
-      }
-
-      case GDS_RECORD.ENDEL: {
-        // End of element - add to current cell
-        if (currentCell) {
-          addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
-            currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
-            currentSNAME, currentRows, currentCols, currentRowSpacing, currentColSpacing,
-            currentRotation, currentMirrorX, currentMagnification)
-          // Track raw GDS layers
-          result.rawLayers.add(currentElementLayer)
-        }
-        inElement = false
-        break
+        continue
       }
 
       case 0x04: { // ENDLIB

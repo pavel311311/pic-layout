@@ -131,6 +131,7 @@ export interface EdgeShape extends BaseShape {
   y1: number  // Start Y
   x2: number  // End X
   y2: number  // End Y
+  width?: number  // Line width in user units (default 1μm); converted to db units in GDS
 }
 
 // Layer definition (KLayout compatible)

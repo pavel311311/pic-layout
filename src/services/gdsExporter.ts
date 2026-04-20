@@ -45,9 +45,10 @@ const GDS_RECORD = {
   ENDNES: { type: 0x20, dtype: 0x00 },     // End of nose (no data)
   LIBDIRSIZE: { type: 0x21, dtype: 0x02 }, // Library directory size
   LIBSEC: { type: 0x22, dtype: 0x02 },     // Library section size
+  PATHTYPE: { type: 0x21, dtype: 0x01 },  // Path end style (INT8): 0=square, 1=round, 2=variable
   // Cell reference records
   SREF: { type: 0x0B, dtype: 0x00 },       // Single cell reference (container)
-  AREF: { type: 0x00, dtype: 0x00 },       // Array cell reference (uses SREF structure + COLROW)
+  AREF: { type: 0x0C, dtype: 0x00 },       // Array cell reference (uses SREF structure + COLROW)
   STRANS: { type: 0x8A, dtype: 0x00 },     // Structure transformation (bitmask flags)
 }
 
@@ -94,6 +95,7 @@ export interface GDSEdge extends GDSElement {
   y1: number
   x2: number
   y2: number
+  width?: number  // user-unit width (converted to db units by exporter)
 }
 
 export type GDSElementUnion = GDSBoundary | GDSText | GDSPath | GDSEdge | GDSRef
@@ -216,9 +218,12 @@ function encodeReal8Data(value: number): Uint8Array {
  * GDS strings are null-padded to an even length.
  */
 function encodeASCIIData(str: string): Uint8Array {
-  const byteLen = str.length + (str.length % 2 === 0 ? 0 : 1) // pad to even
-  const arr = new Uint8Array(byteLen)
-  for (let i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i)
+  // Use TextEncoder for proper UTF-8 encoding (supports CJK, symbols, etc.)
+  const encoded = new TextEncoder().encode(str)
+  // Pad to even byte boundary (GDS requirement)
+  const padLen = encoded.length % 2 === 0 ? 0 : 1
+  const arr = new Uint8Array(encoded.length + padLen)
+  arr.set(encoded)
   // trailing null bytes already zero-initialized
   return arr
 }
@@ -263,7 +268,11 @@ function buildBoundary(layer: number, datatype: number, points: Point[], scale: 
 
 /**
  * Build a PATH element record (container).
- * Structure: PATH → LAYER → DATATYPE → [WIDTH] → XY → ENDEL
+ * Structure: PATH → LAYER → DATATYPE → [WIDTH] → [PATHTYPE] → XY → ENDEL
+ *
+ * NOTE: width is expected in database units (not user units).
+ *   - PATHS: strokeWidth is already in db units — do NOT multiply by scale
+ *   - EDGES: width is in user units — caller must pre-scale by dbPerUm
  */
 function buildPath(layer: number, datatype: number, width: number, points: Point[], scale: number, pathtype = 0): Uint8Array {
   const pts = points.map(p => [
@@ -275,8 +284,17 @@ function buildPath(layer: number, datatype: number, width: number, points: Point
   const dtypeRec = encodeRecord(GDS_RECORD.DATATYPE.type, GDS_RECORD.DATATYPE.dtype, encodeInt16Data(datatype))
 
   // WIDTH is optional; 0 means "inherit from layer" in some PDKs
-  const w = Math.round(width * scale)
+  // width is already in database units — do NOT multiply by scale
+  const w = Math.round(width)
   const widthRec = encodeRecord(GDS_RECORD.WIDTH.type, GDS_RECORD.WIDTH.dtype, encodeInt32Data(w))
+
+  // PATHTYPE is optional; 0 = square, 1 = round, 2 = variable
+  // Written as single-byte INTEGER8 (dtype=0x01), not 2-byte INT16
+  const pathtypeRec = pathtype !== 0
+    ? encodeRecord(GDS_RECORD.PATHTYPE.type, GDS_RECORD.PATHTYPE.dtype, (() => {
+        const d = new Uint8Array(1); d[0] = pathtype & 0xFF; return d
+      })())
+    : new Uint8Array(0)
 
   const xyData = new Uint8Array(4 + pts.length * 8)
   writeBE32(xyData, 0, pts.length)
@@ -287,11 +305,12 @@ function buildPath(layer: number, datatype: number, width: number, points: Point
   const xyRec = encodeRecord(GDS_RECORD.XY.type, GDS_RECORD.XY.dtype, xyData)
   const endelRec = encodeRecord(GDS_RECORD.ENDEL.type, GDS_RECORD.ENDEL.dtype, new Uint8Array(0))
 
-  const body = new Uint8Array(layerRec.length + dtypeRec.length + widthRec.length + xyRec.length + endelRec.length)
+  const body = new Uint8Array(layerRec.length + dtypeRec.length + widthRec.length + pathtypeRec.length + xyRec.length + endelRec.length)
   let off = 0
   body.set(layerRec, off); off += layerRec.length
   body.set(dtypeRec, off); off += dtypeRec.length
   body.set(widthRec, off); off += widthRec.length
+  body.set(pathtypeRec, off); off += pathtypeRec.length
   body.set(xyRec, off); off += xyRec.length
   body.set(endelRec, off)
 
@@ -621,11 +640,13 @@ function shapeToGDSElement(
       const y1 = (shape as any).y1 ?? shape.y
       const x2 = (shape as any).x2 ?? shape.x
       const y2 = (shape as any).y2 ?? shape.y
+      const width = (shape as any).width ?? 1
       return {
         elementType: 'edge',
         layer: gdsLayer,
         datatype: gdsDatatype,
         x1, y1, x2, y2,
+        width,
       }
     }
     case 'label': {
@@ -731,10 +752,12 @@ export async function exportGDS(
       } else if (el.elementType === 'path') {
         parts.push(buildPath(el.layer, el.datatype, el.width, el.points, dbPerUm, el.pathtype))
       } else if (el.elementType === 'edge') {
-        // Export edge as a 1-nm-width path (GDSII has no native edge type)
+        // Export edge as a path with width in database units.
+        // EDGE width=1 means 1nm, scaled to dbPerUm database units for the GDS WIDTH record.
         const edgeEl = el as GDSEdge
+        const edgeWidth = (edgeEl as any).width ?? 1  // user-unit width → db-unit width
         parts.push(buildPath(
-          edgeEl.layer, edgeEl.datatype, 1,
+          edgeEl.layer, edgeEl.datatype, edgeWidth * dbPerUm,
           [{ x: edgeEl.x1, y: edgeEl.y1 }, { x: edgeEl.x2, y: edgeEl.y2 }],
           dbPerUm, 0
         ))
