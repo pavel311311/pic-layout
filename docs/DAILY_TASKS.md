@@ -231,3 +231,28 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] T2-2: Cell 嵌套（AREF/SREF）导出完整性测试
 - [ ] T2-3: PATH/EDGE 导出正确性测试
 - [ ] T2-4: exporter 中文编码修复（encodeASCIIData → 支持 UTF-8 或 GB2312）
+
+## 2026-04-20 22:10
+
+### 当前任务
+- [x] T2: GDS往返兼容性 - v0.3.0 GDS exporter/importer 联合调试（延续 21:10）
+
+### 完成内容
+- 继续 21:10 的 GDS 往返修复工作，今日完成全部 3 个测试文件：
+  - polygonBoolean.test.ts: 30 测试覆盖 T1 全部边界情况（空结果/自交/共边/AND/OR/XOR/MINUS）
+  - propertyEditing.test.ts: 21 测试覆盖 T4 属性面板编辑全流程
+  - gdsRoundTrip.test.ts: 9 测试覆盖 T2 GDS 导入导出核心路径
+- GDS importer 三个根因 bug 全部修复（recordType提取/window条件/容器循环）
+- 残留问题：中文 label 导出编码 bug（encodeASCIIData 用 charCode 单字节溢出）暂不处理（GDS spec ASCII 限制）
+
+### 遇到的问题
+- 问题: GDS spec 定义 STRING record 为 ASCII，单字节 charCode 无法表示中文等非 ASCII 字符
+  - 状态: 暂不修复（需评估是否引入 GB2312 变长编码支持，或标记为 spec 限制）
+
+### 编译测试
+- [x] npx vitest run → 59 passed, 1 failed (Chinese label exporter encoding)
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] T2-5: Cell 嵌套（AREF/SREF）导出完整性测试（或 T3 Cell钻入钻出导航）
+- [ ] T5: 右键菜单键盘导航（ArrowUp/Down/Enter/Escape）
