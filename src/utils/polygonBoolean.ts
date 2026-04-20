@@ -692,7 +692,8 @@ function booleanIntersection(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: B
   const isRect2 = isAxisAlignedRectangle(poly2)
 
   if (isRect1 && isRect2) {
-    return [rectangleIntersection(poly1, poly2)]
+    const rect = rectangleIntersection(poly1, poly2)
+    return rect.length >= 4 ? [rect] : []
   }
 
   if (isRect1) {
@@ -810,6 +811,124 @@ function booleanXor(poly1: Point[], poly2: Point[], bb1: Bounds, bb2: Bounds): P
 /**
  * Operation labels for UI
  */
+/**
+ * Validate shapes before boolean operations.
+ * Returns an error message if shapes are invalid, or null if valid.
+ *
+ * Checks:
+ * - Self-intersecting polygons (bow-tie / figure-8 shapes)
+ * - Co-edge shapes (adjacent shapes with shared boundary)
+ */
+export function validateBooleanShapes(shape1: BaseShape, shape2: BaseShape): string | null {
+  const poly1 = shapeToPolygon(shape1)
+  const poly2 = shapeToPolygon(shape2)
+
+  if (poly1.length >= 3 && detectSelfIntersection(poly1)) {
+    return '图形 A 为自交多边形（边界线交叉），无法进行布尔运算'
+  }
+  if (poly2.length >= 3 && detectSelfIntersection(poly2)) {
+    return '图形 B 为自交多边形（边界线交叉），无法进行布尔运算'
+  }
+
+  // Co-edge check: two shapes that share an exact edge boundary
+  if (poly1.length >= 3 && poly2.length >= 3 && detectSharedEdge(poly1, poly2)) {
+    return '两图形共用边界线（完全重合的边），请先分离图形后再操作'
+  }
+
+  return null
+}
+
+/**
+ * Detect if a polygon is self-intersecting (bow-tie / figure-8 shape).
+ * Checks whether any pair of non-adjacent edges intersect.
+ */
+function detectSelfIntersection(poly: Point[]): boolean {
+  const n = poly.length
+  if (n < 4) return false
+
+  for (let i = 0; i < n; i++) {
+    const a1 = poly[i]
+    const a2 = poly[(i + 1) % n]
+    // Check against all edges that are not adjacent to edge i
+    for (let j = i + 2; j < n; j++) {
+      // Skip the adjacent edge (i+1) which shares vertex a2
+      if (j === (i + n - 1) % n) continue // skip the edge that shares vertex a1
+      const b1 = poly[j]
+      const b2 = poly[(j + 1) % n]
+      if (segmentsIntersect(a1, a2, b1, b2)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Detect if two polygons share an entire edge (co-edge / shared boundary).
+ * Returns true if any edge of poly1 is exactly coincident with any edge of poly2.
+ */
+function detectSharedEdge(poly1: Point[], poly2: Point[]): boolean {
+  const tol = 1e-9 // floating-point tolerance for coordinate comparison
+
+  for (let i = 0; i < poly1.length; i++) {
+    const a1 = poly1[i]
+    const a2 = poly1[(i + 1) % poly1.length]
+
+    for (let j = 0; j < poly2.length; j++) {
+      const b1 = poly2[j]
+      const b2 = poly2[(j + 1) % poly2.length]
+
+      // Check if edges are collinear and overlap (shared segment)
+      if (edgesAreCoincident(a1, a2, b1, b2, tol)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Check if two line segments are coincident (same line, overlapping extent).
+ */
+function edgesAreCoincident(
+  a1: Point, a2: Point,
+  b1: Point, b2: Point,
+  tol: number
+): boolean {
+  // First check if they're parallel (cross product near zero)
+  const cross = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x)
+  if (Math.abs(cross) > tol) return false
+
+  // Check if they're also collinear (b1 lies on a1-a2)
+  if (!pointOnSegment(b1, a1, a2, tol)) return false
+  if (!pointOnSegment(b2, a1, a2, tol)) return false
+
+  // Now check if the segments actually overlap in projection
+  // Project both segments onto the shared axis
+  const dx = a2.x - a1.x, dy = a2.y - a1.y
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // Project onto X axis
+    const aMin = Math.min(a1.x, a2.x), aMax = Math.max(a1.x, a2.x)
+    const bMin = Math.min(b1.x, b2.x), bMax = Math.max(b1.x, b2.x)
+    return !(bMax < aMin - tol || bMin > aMax + tol)
+  } else {
+    // Project onto Y axis
+    const aMin = Math.min(a1.y, a2.y), aMax = Math.max(a1.y, a2.y)
+    const bMin = Math.min(b1.y, b2.y), bMax = Math.max(b1.y, b2.y)
+    return !(bMax < aMin - tol || bMin > aMax + tol)
+  }
+}
+
+function pointOnSegment(pt: Point, a: Point, b: Point, tol: number): boolean {
+  // Check if pt is on the line segment a-b (collinear + within bounds)
+  const cross = (pt.y - a.y) * (b.x - a.x) - (pt.x - a.x) * (b.y - a.y)
+  if (Math.abs(cross) > tol) return false
+  const dot = (pt.x - a.x) * (b.x - a.x) + (pt.y - a.y) * (b.y - a.y)
+  const lenSq = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
+  if (lenSq < tol) return Math.abs(pt.x - a.x) < tol && Math.abs(pt.y - a.y) < tol
+  return dot >= -tol && dot <= lenSq + tol
+}
+
 export const BOOLEAN_OP_LABELS: Record<BooleanOp, string> = {
   union: '合并 (Union)',
   intersection: '交集 (AND)',

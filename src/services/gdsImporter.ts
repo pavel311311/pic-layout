@@ -211,20 +211,20 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
   let currentMagnification: number | undefined
   let inElement = false
 
-  while (offset < buffer.byteLength - 4) {
+  while (offset + 4 <= buffer.byteLength) {
     const recordLength = readUint16BE(view, offset)
     // Guard against corrupt record length that would read past the buffer
     if (recordLength < 4 || offset + recordLength > buffer.byteLength) break
 
     const recordTypeRaw = readUint16BE(view, offset + 2)
-    const recordType = recordTypeRaw & 0xFF00  // Upper byte = record type
-    const dataType = recordTypeRaw & 0x00FF    // Lower byte = data type
+    const recordType = (recordTypeRaw >> 8) & 0xFF  // Upper byte = record type
+    const dataType = recordTypeRaw & 0xFF            // Lower byte = data type
 
     const dataStart = offset + 4
     const dataLen = recordLength - 4
 
     switch (recordType) {
-      case GDS_RECORD.HEADER: {
+      case 0x00: { // HEADER
         // Version number (INTEGER16)
         if (dataType === GDS_DATATYPE.INTEGER16 && dataLen >= 2) {
           result.version = readUint16BE(view, dataStart)
@@ -232,13 +232,13 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.LIBNAME: {
+      case 0x02: { // LIBNAME
         // Library name (ASCII)
         result.libraryName = readString(view, dataStart, dataLen)
         break
       }
 
-      case GDS_RECORD.UNITS: {
+      case 0x03: { // UNITS
         // Two REAL8 values: database units per user unit, then user units per database unit
         if (dataType === GDS_DATATYPE.REAL8 && dataLen >= 16) {
           result.databaseUnits = readFloat64BE(view, dataStart)       // DB units / user unit
@@ -247,7 +247,7 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.BGNSTR: {
+      case 0x05: { // BGNSTR
         // Start new cell - finalize previous cell if exists
         if (currentCell) {
           flushElement(currentCell, currentElementLayer, currentElementDatatype,
@@ -284,7 +284,7 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.STRNAME: {
+      case 0x06: { // STRNAME
         // Cell name (ASCII)
         if (currentCell) {
           currentCell.name = readString(view, dataStart, dataLen)
@@ -292,7 +292,7 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.ENDSTR: {
+      case 0x07: { // ENDSTR
         // End of cell - finalize any pending element
         if (currentCell) {
           flushElement(currentCell, currentElementLayer, currentElementDatatype,
@@ -305,9 +305,8 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.BOUNDARY:
-      case GDS_RECORD.PATH:
-      case GDS_RECORD.TEXT: {
+      case 0x08: // BOUNDARY
+      case 0x09: { // PATH
         // Starting a new element - flush previous if exists
         if (currentCell) {
           flushElement(currentCell, currentElementLayer, currentElementDatatype,
@@ -316,7 +315,184 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
             currentRotation, currentMirrorX, currentMagnification)
         }
         inElement = true
-        break
+
+        // Parse sub-records (LAYER, DATATYPE, WIDTH, PATHTYPE, XY) until ENDEL
+        let subOffset = offset + 4
+        const containerEnd = offset + recordLength
+        let containerEnded = false
+
+        containerLoop:
+        while (subOffset < containerEnd) {
+          const subRecordLength = readUint16BE(view, subOffset)
+          if (subRecordLength < 4 || subOffset + subRecordLength > containerEnd) break
+          if (subOffset + subRecordLength > buffer.byteLength) break
+          const subRecordTypeRaw = readUint16BE(view, subOffset + 2)
+          const subRecordType = subRecordTypeRaw & 0xFF00
+          const subDataType = subRecordTypeRaw & 0x00FF
+          const subDataStart = subOffset + 4
+          const subDataLen = subRecordLength - 4
+
+          switch (subRecordType) {
+            case GDS_RECORD.LAYER: {
+              if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
+                currentElementLayer = view.getUint8(subDataStart)
+              } else if (subDataType === GDS_DATATYPE.INTEGER16 && subDataLen >= 2) {
+                currentElementLayer = readUint16BE(view, subDataStart)
+              }
+              break
+            }
+            case GDS_RECORD.DATATYPE: {
+              if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
+                currentElementDatatype = view.getUint8(subDataStart)
+              }
+              break
+            }
+            case GDS_RECORD.WIDTH: {
+              if (subDataType === GDS_DATATYPE.INTEGER32 && subDataLen >= 4) {
+                currentPathWidth = readInt32BE(view, subDataStart)
+                if (currentPathWidth < 0) currentPathWidth = -currentPathWidth
+              }
+              break
+            }
+            case GDS_RECORD.PATHTYPE: {
+              if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
+                currentPathType = view.getUint8(subDataStart)
+              }
+              break
+            }
+            case GDS_RECORD.XY: {
+              const numPairs = Math.floor(subDataLen / 8)
+              currentXY = []
+              for (let i = 0; i < numPairs; i++) {
+                const x = readInt32BE(view, subDataStart + i * 8)
+                const y = readInt32BE(view, subDataStart + i * 8 + 4)
+                currentXY.push({ x, y })
+              }
+              break
+            }
+            case GDS_RECORD.ENDEL: {
+              if (currentCell) {
+                addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
+                  currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
+                  currentSNAME, currentRows, currentCols, currentRowSpacing, currentColSpacing,
+                  currentRotation, currentMirrorX, currentMagnification)
+                result.rawLayers.add(currentElementLayer)
+              }
+              inElement = false
+              containerEnded = true
+              offset = subOffset + subRecordLength
+              if (subRecordLength % 2 !== 0) offset++
+              break containerLoop
+            }
+            default:
+              break
+          }
+
+          subOffset += subRecordLength
+          if (subRecordLength % 2 !== 0) subOffset++
+        }
+
+        if (!containerEnded) {
+          offset = offset + recordLength
+          if (recordLength % 2 !== 0) offset++
+          inElement = false
+        }
+        continue
+      }
+
+      case 0x0A: { // TEXT
+        // TEXT element - parse sub-records (TEXTTYPE, STRING, etc.)
+        if (currentCell) {
+          flushElement(currentCell, currentElementLayer, currentElementDatatype,
+            currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
+            currentSNAME, currentRows, currentCols, currentRowSpacing, currentColSpacing,
+            currentRotation, currentMirrorX, currentMagnification)
+        }
+        inElement = true
+
+        let subOffset = offset + 4
+        const containerEnd = offset + recordLength
+        let containerEnded = false
+
+        textLoop:
+        while (subOffset < containerEnd) {
+          const subRecordLength = readUint16BE(view, subOffset)
+          if (subRecordLength < 4 || subOffset + subRecordLength > containerEnd) break
+          if (subOffset + subRecordLength > buffer.byteLength) break
+          const subRecordTypeRaw = readUint16BE(view, subOffset + 2)
+          const subRecordType = subRecordTypeRaw & 0xFF00
+          const subDataType = subRecordTypeRaw & 0x00FF
+          const subDataStart = subOffset + 4
+          const subDataLen = subRecordLength - 4
+
+          switch (subRecordType) {
+            case GDS_RECORD.TEXTTYPE: {
+              if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
+                currentTextType = view.getUint8(subDataStart)
+              }
+              break
+            }
+            case GDS_RECORD.STRING: {
+              currentTextString = readString(view, subDataStart, subDataLen)
+              break
+            }
+            case GDS_RECORD.LAYER: {
+              if (subDataType === GDS_DATATYPE.INTEGER8 && subDataLen >= 1) {
+                currentElementLayer = view.getUint8(subDataStart)
+              } else if (subDataType === GDS_DATATYPE.INTEGER16 && subDataLen >= 2) {
+                currentElementLayer = readUint16BE(view, subDataStart)
+              }
+              break
+            }
+            case GDS_RECORD.XY: {
+              // Text position: single XY pair
+              if (subDataLen >= 8) {
+                currentXY = []
+                const x = readInt32BE(view, subDataStart)
+                const y = readInt32BE(view, subDataStart + 4)
+                currentXY.push({ x, y })
+              }
+              break
+            }
+            case GDS_RECORD.WIDTH: {
+              if (subDataType === GDS_DATATYPE.INTEGER32 && subDataLen >= 4) {
+                currentPathWidth = readInt32BE(view, subDataStart)
+                if (currentPathWidth < 0) currentPathWidth = -currentPathWidth
+              }
+              break
+            }
+            case GDS_RECORD.STRANS:
+            case GDS_RECORD.MAG:
+            case GDS_RECORD.ANGLE:
+              break
+            case GDS_RECORD.ENDEL: {
+              if (currentCell) {
+                addElementToCell(currentCell, currentElementLayer, currentElementDatatype,
+                  currentPathWidth, currentPathType, currentXY, currentTextString, currentTextType,
+                  currentSNAME, currentRows, currentCols, currentRowSpacing, currentColSpacing,
+                  currentRotation, currentMirrorX, currentMagnification)
+                result.rawLayers.add(currentElementLayer)
+              }
+              inElement = false
+              containerEnded = true
+              offset = subOffset + subRecordLength
+              if (subRecordLength % 2 !== 0) offset++
+              break textLoop
+            }
+            default:
+              break
+          }
+
+          subOffset += subRecordLength
+          if (subRecordLength % 2 !== 0) subOffset++
+        }
+
+        if (!containerEnded) {
+          offset = offset + recordLength
+          if (recordLength % 2 !== 0) offset++
+          inElement = false
+        }
+        continue
       }
 
       case GDS_RECORD.LAYER: {
@@ -445,7 +621,7 @@ export function parseGDSBuffer(buffer: ArrayBuffer): ParsedGDSFile {
         break
       }
 
-      case GDS_RECORD.ENDLIB: {
+      case 0x04: { // ENDLIB
         // End of library - finalize last cell
         if (currentCell) {
           flushElement(currentCell, currentElementLayer, currentElementDatatype,

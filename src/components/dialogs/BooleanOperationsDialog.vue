@@ -10,13 +10,15 @@
  */
 import { ref, computed, watch, nextTick } from 'vue'
 import { NModal, NButton, NSpace, NRadioGroup, NRadio, NText } from '@/plugins/naive'
-import { polygonBoolean, BOOLEAN_OP_LABELS, type BooleanOp } from '@/utils/polygonBoolean'
+import { useMessage } from 'naive-ui'
+import { polygonBoolean, validateBooleanShapes, BOOLEAN_OP_LABELS, type BooleanOp } from '@/utils/polygonBoolean'
 import { useEditorStore } from '@/stores/editor'
 import { useCanvasTheme } from '@/composables/useCanvasTheme'
 import type { BaseShape, Point, PolygonShape, RectangleShape } from '@/types/shapes'
 import { generateId } from '@/utils/shapeId'
 
 const canvasTheme = useCanvasTheme()
+const message = useMessage()
 
 const props = defineProps<{
   show: boolean
@@ -235,6 +237,16 @@ watch([selectedShapes, selectedOp], async () => {
   // Two shapes: show input shapes on left/right, result preview in center
   const [s1, s2] = selectedShapes.value
   let result: Point[][] = []
+
+  // Check shape validity before computing (v0.3.0 boundary tests: self-intersect, co-edge)
+  const validationError = validateBooleanShapes(s1, s2)
+  if (validationError) {
+    ctx.fillStyle = '#ef5350'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.85
+    ctx.fillText(validationError, W / 2, H / 2 + 10)
+    ctx.globalAlpha = 1
+    return
+  }
+
   try {
     result = polygonBoolean(s1, s2, selectedOp.value)
   } catch (err) {
@@ -312,12 +324,19 @@ function applyBoolean() {
 
   const [shape1, shape2] = selectedShapes.value
 
+  // Validate shapes before attempting operation (v0.3.0 boundary tests)
+  const validationError = validateBooleanShapes(shape1, shape2)
+  if (validationError) {
+    message.warning(validationError, { duration: 4000 })
+    return
+  }
+
   try {
     const result = polygonBoolean(shape1, shape2, selectedOp.value)
 
     if (result.length === 0) {
       const reason = getEmptyResultReason(selectedOp.value, shape1, shape2)
-      alert(`运算失败: ${reason}`)
+      message.warning(reason, { duration: 4000 })
       return
     }
 
@@ -340,7 +359,7 @@ function applyBoolean() {
     emit('update:show', false)
   } catch (err) {
     console.error('Boolean operation failed:', err)
-    alert('布尔运算失败: ' + (err as Error).message)
+    message.error('布尔运算失败: ' + (err as Error).message, { duration: 5000 })
   }
 }
 

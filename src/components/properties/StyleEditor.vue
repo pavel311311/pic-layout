@@ -3,7 +3,7 @@
  * StyleEditor.vue - Fill/Stroke/Patterm/Dash editor sub-panel
  * Extracted from PropertiesPanel.vue (v0.2.6 refactor)
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import type { ShapeStyle, FillPattern, BaseShape, Layer } from '../../types/shapes'
 
 const props = defineProps<{
@@ -50,6 +50,19 @@ const effectiveStrokeWidth = computed(() =>
 
 function onStyleUpdate(updates: Partial<ShapeStyle>) {
   emit('update', updates)
+  // Debounce history push — color picker @input fires per pixel during drag.
+  // Without debounce, dragging across 50px = 50 history entries.
+  scheduleStyleHistory()
+}
+
+// Debounced history push so rapid style changes = 1 history entry
+let styleHistoryTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleStyleHistory() {
+  if (styleHistoryTimer) clearTimeout(styleHistoryTimer)
+  styleHistoryTimer = setTimeout(() => {
+    emit('pushHistory')
+    styleHistoryTimer = null
+  }, 300)
 }
 
 function onResetFill() {
@@ -61,6 +74,14 @@ function onResetStroke() {
   emit('pushHistory')
   emit('resetStroke')
 }
+
+// Flush pending history timer on unmount
+onUnmounted(() => {
+  if (styleHistoryTimer) {
+    clearTimeout(styleHistoryTimer)
+    styleHistoryTimer = null
+  }
+})
 </script>
 
 <template>

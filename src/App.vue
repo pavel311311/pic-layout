@@ -128,6 +128,7 @@ const themeOverrides = {
 
 <template>
   <NConfigProvider :theme-overrides="themeOverrides">
+    <NMessageProvider>
     <div class="app-container">
       <!-- 顶部工具栏 - 固定 -->
       <header class="toolbar-header">
@@ -197,6 +198,7 @@ const themeOverrides = {
         <StatusBar :cursor-x="cursorX" :cursor-y="cursorY" />
       </footer>
     </div>
+  </NMessageProvider>
   </NConfigProvider>
 </template>
 

@@ -23,13 +23,13 @@ import type { Cell, CellInstance } from '../types/cell'
 // Format: record_type | (data_type << 8) — but GDS stores them as separate bytes
 // In byte arrays: [record_length(2), record_type(1), data_type(1), ...data...]
 const GDS_RECORD = {
-  HEADER: { type: 0x00, dtype: 0x00 },      // Version number
+  HEADER: { type: 0x00, dtype: 0x02 },      // Version number (INTEGER16 per GDS spec)
   BGNLIB: { type: 0x01, dtype: 0x02 },      // Library creation/mod dates (INT16[6])
-  LIBNAME: { type: 0x02, dtype: 0x06 },     // Library name (ASCII)
-  UNITS: { type: 0x03, dtype: 0x05 },      // Database/user units (REAL8[2])
+  LIBNAME: { type: 0x02, dtype: 0x08 },     // Library name (ASCII)
+  UNITS: { type: 0x03, dtype: 0x04 },      // Database/user units (REAL8[2])
   ENDLIB: { type: 0x04, dtype: 0x00 },      // End of library (no data)
   BGNSTR: { type: 0x05, dtype: 0x02 },     // Cell creation/mod dates (INT16[6])
-  STRNAME: { type: 0x06, dtype: 0x06 },     // Cell name (ASCII)
+  STRNAME: { type: 0x06, dtype: 0x08 },     // Cell name (ASCII)
   ENDSTR: { type: 0x07, dtype: 0x00 },     // End of cell (no data)
   BOUNDARY: { type: 0x08, dtype: 0x00 },   // Polygon boundary (container)
   PATH: { type: 0x09, dtype: 0x00 },       // Path element (container)
@@ -39,9 +39,9 @@ const GDS_RECORD = {
   WIDTH: { type: 0x0F, dtype: 0x03 },      // Path width (INT32)
   XY: { type: 0x10, dtype: 0x03 },         // Coordinate array (INT32 pairs)
   ENDEL: { type: 0x11, dtype: 0x00 },     // End of element (no data)
-  SNAME: { type: 0x12, dtype: 0x06 },      // Reference cell name (ASCII)
+  SNAME: { type: 0x12, dtype: 0x08 },      // Reference cell name (ASCII)
   COLROW: { type: 0x13, dtype: 0x02 },     // Array rows/cols (INT16[2])
-  STRING: { type: 0x19, dtype: 0x06 },     // Text string (ASCII)
+  STRING: { type: 0x19, dtype: 0x08 },     // Text string (ASCII)
   ENDNES: { type: 0x20, dtype: 0x00 },     // End of nose (no data)
   LIBDIRSIZE: { type: 0x21, dtype: 0x02 }, // Library directory size
   LIBSEC: { type: 0x22, dtype: 0x02 },     // Library section size
@@ -166,10 +166,12 @@ function writeBE32(arr: Uint8Array, offset: number, value: number): void {
  * @param data    - Raw data bytes (already properly encoded)
  */
 function encodeRecord(type: number, dtype: number, data: Uint8Array): Uint8Array {
-  const totalLen = 4 + data.length
-  const paddedLen = totalLen % 2 === 0 ? totalLen : totalLen + 1
+  // GDS record length field = bytes from 'type' to end of data (includes type+dtype+data)
+  // = data.length + 4 (the 4-byte header: 2 length bytes + type + dtype)
+  const recordLen = data.length + 4
+  const paddedLen = recordLen % 2 === 0 ? recordLen : recordLen + 1
   const result = new Uint8Array(paddedLen)
-  writeBE16(result, 0, paddedLen - 2) // length excludes itself (the 2 length bytes)
+  writeBE16(result, 0, recordLen) // GDS length = all bytes from type to end
   result[2] = type
   result[3] = dtype
   result.set(data, 4)
@@ -679,8 +681,12 @@ export async function exportGDS(
   const dbPerUm = options.dbPerUm ?? DATABASE_UNITS_PER_UM
 
   // ── HEADER ────────────────────────────────────────────────────────────────
-  // 4 bytes: length=2, type=0x00, dtype=0x05, data=version 800
-  parts.push(new Uint8Array([0x00, 0x02, GDS_RECORD.HEADER.type, GDS_RECORD.HEADER.dtype, 0x03, 0x20]))
+  // Record format: length(2) + type(1) + dtype(1) + data(2) = 6 bytes
+  // length field = 4 (bytes from type to end, excluding length bytes themselves)
+  // type=0x00 (HEADER), dtype=0x02 (INTEGER16) per GDS spec
+  // data: version 800 (0x0320) = 2 bytes big-endian
+  parts.push(encodeRecord(GDS_RECORD.HEADER.type, GDS_RECORD.HEADER.dtype,
+    new Uint8Array([0x03, 0x20])))
 
   // ── BGNLIB ──────────────────────────────────────────────────────────────
   parts.push(encodeRecord(

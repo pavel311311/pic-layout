@@ -14,6 +14,7 @@
  * - NSwitch: GdsExportDialog
  * - NCheckbox: GdsImportDialog
  * - NModal: ArrayCopyDialog, BooleanOperationsDialog
+ * - NMessageProvider: BooleanOperationsDialog (空结果提示)
  * - NScrollbar: LayerPanel
  * - NSpace: AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
  * - NText: AlignDialog, ArrayCopyDialog, BooleanOperationsDialog
@@ -30,6 +31,7 @@ import {
   NGi,
   NInput,
   NInputNumber,
+  NMessageProvider,
   NModal,
   NRadioGroup,
   NRadio,
@@ -53,6 +55,7 @@ const components = {
   NGi,
   NInput,
   NInputNumber,
+  NMessageProvider,
   NModal,
   NRadioGroup,
   NRadio,
@@ -81,6 +84,7 @@ export {
   NGi,
   NInput,
   NInputNumber,
+  NMessageProvider,
   NModal,
   NRadioGroup,
   NRadio,

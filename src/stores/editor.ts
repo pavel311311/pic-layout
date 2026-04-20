@@ -14,7 +14,7 @@ import { DEFAULT_LAYERS } from './layers.default'
 import { generateId } from '../utils/shapeId'
 import { expandInstance } from '../utils/cellInstanceRenderer'
 import type { CellChild, CellInstance } from '../types/cell'
-import { polygonBoolean, type BooleanOp } from '../utils/polygonBoolean'
+import { polygonBoolean, validateBooleanShapes, type BooleanOp } from '../utils/polygonBoolean'
 import { getShapeBounds } from '../utils/transforms'
 
 export const useEditorStore = defineStore('editor', () => {
@@ -346,7 +346,10 @@ export const useEditorStore = defineStore('editor', () => {
    * The result replaces both original shapes.
    * Note: For complex polygons, results may be approximate. Arc/circle use bounding box.
    */
-  function booleanOpSelectedShapes(op: BooleanOp) {
+  function booleanOpSelectedShapes(
+    op: BooleanOp,
+    onError?: (msg: string) => void
+  ) {
     const selectedIds = shapes.selectedShapeIds
     if (selectedIds.length !== 2) {
       console.warn('Boolean operations require exactly 2 selected shapes')
@@ -357,9 +360,24 @@ export const useEditorStore = defineStore('editor', () => {
     const shape2 = shapes.shapes.find(s => s.id === selectedIds[1])
     if (!shape1 || !shape2) return
 
+    // Validate shapes before boolean operation (v0.3.0 boundary test)
+    const validationError = validateBooleanShapes(shape1, shape2)
+    if (validationError) {
+      console.warn('Boolean validation failed:', validationError)
+      onError?.(validationError)
+      return
+    }
+
     const resultPolygons = polygonBoolean(shape1, shape2, op)
     if (resultPolygons.length === 0 || resultPolygons.every(p => p.length < 3)) {
-      // No result (e.g., no intersection)
+      // No result: show contextual message (v0.3.0 empty result handling)
+      const emptyMessages: Record<BooleanOp, string> = {
+        union: '合并结果为空（两个图形无重合区域）',
+        intersection: '交集结果为空（两个图形不相交）',
+        difference: '相减结果为空（第二个图形未与第一个图形相交）',
+        xor: '异或结果为空（两个图形完全重合或无重合）',
+      }
+      onError?.(emptyMessages[op] ?? '未知错误')
       return
     }
 

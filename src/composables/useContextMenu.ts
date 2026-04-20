@@ -24,7 +24,7 @@ export interface ContextMenuStore {
   mirrorSelectedShapesV: () => void
   scaleSelectedShapes: (sx: number, sy: number) => void
   offsetSelectedShapes: (o: number) => void
-  booleanOpSelectedShapes: (op: 'union' | 'intersection' | 'difference' | 'xor') => void
+  booleanOpSelectedShapes: (op: 'union' | 'intersection' | 'difference' | 'xor', onError?: (msg: string) => void) => void
   alignSelectedShapes: (a: string) => void
   distributeSelectedShapes: (d: string) => void
   duplicateSelectedShapes: () => void
@@ -210,10 +210,10 @@ export function useContextMenu(store: ContextMenuStore) {
       case 'duplicate': store.duplicateSelectedShapes(); break
       case 'array-copy': opts.showArrayCopyDialog.value = true; break
       // v0.3.0: Boolean operations
-      case 'bool-union': store.booleanOpSelectedShapes('union'); break
-      case 'bool-intersection': store.booleanOpSelectedShapes('intersection'); break
-      case 'bool-difference': store.booleanOpSelectedShapes('difference'); break
-      case 'bool-xor': store.booleanOpSelectedShapes('xor'); break
+      case 'bool-union': store.booleanOpSelectedShapes('union', opts.announce); break
+      case 'bool-intersection': store.booleanOpSelectedShapes('intersection', opts.announce); break
+      case 'bool-difference': store.booleanOpSelectedShapes('difference', opts.announce); break
+      case 'bool-xor': store.booleanOpSelectedShapes('xor', opts.announce); break
       // v0.2.7: Cell navigation
       case 'drill-into': {
         const ok = store.drillIntoSelectedCellInstance()
