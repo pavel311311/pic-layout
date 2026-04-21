@@ -548,19 +548,32 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ## 2026-04-21 11:10
 
 ### 当前任务
-- [ ] v0.3.1: SvgExportDialog 美化 - taste-skill-main 规范重构
+- [x] v0.3.1: SvgExportDialog 美化 - taste-skill-main 规范重构
 
 ### 完成内容
-- （进行中）
+- SvgExportDialog 完全重设计（v0.3.1 第三个 Dialog）：
+  - 从 `NModal preset="card"` 改为 Teleport + Transition 弹窗模式
+  - 移除所有 emoji，改用内联 SVG 图标（export/download/grid/stroke/background/empty 等场景图标）
+  - stats-bar 替代原有 footer.stats（shapes/layers/padding/stroke 单行展示）
+  - 3行 options-grid（Padding/Stroke Width/Background），每行带内联 SVG 图标
+  - color-swatch 按钮（light/dark bg toggle）替代原有简陋按钮
+  - preview-section 替换原有 preview-container（label + scroll + checkerboard bg）
+  - CSS 重设计：spring 动画 / diffusion shadow / Zinc palette / monospace 数据
+  - backdrop-filter blur(2px) 替代纯 opacity overlay
+  - entrance: scale(0.97)+translateY + opacity fade
+  - 响应式断点（520px，stats-bar 紧凑布局，options 变纵向）
+  - npm run build 通过（SvgExportDialog: 12KB→3.5KB CSS 5KB→1KB）
 
 ### 遇到的问题
-- （无）
+- 无
 
 ### 编译测试
-- [ ] npm run build 通过
+- [x] npm run build → 通过（SvgExportDialog 12KB→3.5KB + 5KB→1KB CSS）
 
 ### 下小时计划
 - [ ] v0.3.1: GdsImportDialog 美化（保持 NModal 框架，重设计内部内容区）
+- [ ] v0.3.1: GdsExportDialog 美化（同上）
+- [ ] v0.3.1: ArrayCopyDialog 美化
 
 ---
 
