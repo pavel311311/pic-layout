@@ -446,6 +446,48 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] T1: 更新 DAILY_TASKS 任务列表（T1/T2 功能测试全部完成，标记 ✓）
 - [ ] T2: T2-2 Cell 嵌套 AREF/SREF 导出完整性（已有 gdsCellHierarchy 3 测试，可能已完整）
 
+## 2026-04-21 07:10
+
+### 当前任务
+- [x] v0.3.1: Toolbar + StatusBar 美化（taste-skill-main 规范）
+
+### 完成内容
+- **style.css 全面重构**（v0.3.1 第一轮）：
+  - 字体: 引入 Geist/Satoshi（Satoshi fallback）
+  - 颜色: 全面切换 Zinc/Slate 灰阶（禁用 KLayout 旧灰色）
+  - Dark theme: 背景从 `#1e1e1e` → `#09090b`（zinc-950），panel `#333` → `#212121`
+  - 边框: 统一 `border-light`（`#d4d4d8`/`#52525b`）
+  - 阴影: 从硬阴影 → diffusion shadow `shadow-elevated`（极淡扩散）
+  - 新增 CSS 变量: `--ease-spring` / `--duration-fast` / `--shadow-elevated`
+  - 滚动条: 12px → 8px 细型，accent-blue focus ring
+  - 按钮: 统一 `border-radius: 6px`，active 状态 spring 上移
+  - `::selection` 使用 `rgba(59,130,246,0.25)`
+
+- **Toolbar.vue CSS 重设计**：
+  - 工具按钮: `border-radius: 8px`（旧 2px），间距 `gap: 1px`
+  - 高度 52px（紧凑），宽度 48px，hover `translateY(-1px)` + shadow
+  - Active 状态: `color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel))`
+  - 字体: `letter-spacing: 0.02em`，`font-weight: 500`
+  - Cell导航: 从 `--accent-purple` 改为 `--accent-blue`（统一强调色）
+
+- **StatusBar.vue CSS 重设计**：
+  - 高度 22px（紧凑），`letter-spacing: 0.01em`
+  - 所有标签/数值 `font-weight: 600/700`，字体统一 monospace
+  - Snap badge: 圆角 4px，`font-weight: 700`，letter-spacing 0.04em
+  - Cell 指示器: accent-blue + hover spring 背景
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（29 assets + brotli）
+
+### 下小时计划
+- [ ] v0.3.1: Dialog 美化（BooleanOperationsDialog / GdsImportDialog / GdsExportDialog / AlignDialog / ArrayCopyDialog / ShortcutsDialog）
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查）
+
+---
+
 ## 2026-04-21 06:10
 
 ### 当前任务
@@ -474,3 +516,28 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 
 ### 下小时计划
 - [ ] 开始 v0.3.1 UI 美化任务（Toolbar/StatusBar 重设计）
+
+## 2026-04-21 08:10
+
+### 当前任务
+- [x] v0.3.1: Dialog 美化（从 ShortcutsDialog 开始） - v0.3.1 UI 美化第一轮
+
+### 完成内容
+- 审查 7 个 Dialog 的现状：
+  - BooleanOperationsDialog: 基本完好，preview canvas 布局紧凑
+  - GdsExportDialog: preset="dialog"，整体 OK
+  - GdsImportDialog: 最复杂，cell/layer 选择 + canvas 预览，有 emoji 📂
+  - ShortcutsDialog: 自定义 overlay + n-modal 小写混用，最大重构空间
+  - AlignDialog: n-modal 小写混用，用 NButtonGroup 排列，OK
+  - ArrayCopyDialog: 最简洁，preset="dialog"，OK
+  - SvgExportDialog: preset="card"，英文 label，OK
+- 今日选 ShortcutsDialog 作为第一个美化对象（完全自定义 overlay，重构价值最高）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [ ] npm run build → 待测试
+
+### 下小时计划
+- [ ] v0.3.1: 继续其他 Dialog 美化（AlignDialog / GdsImportDialog / GdsExportDialog）

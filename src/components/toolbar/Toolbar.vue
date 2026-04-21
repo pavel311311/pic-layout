@@ -407,53 +407,61 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* v0.3.1 Taste-skill-main: professional tool panel */
 .toolbar {
-  height: 56px;
+  height: 52px;
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 10px;
   background: var(--bg-toolbar);
-  gap: 4px;
+  border-bottom: 1px solid var(--border-light);
+  gap: 2px;
 }
 
 .tool-group {
   display: flex;
-  gap: 2px;
+  gap: 1px;
 }
 
+/* Tool button — rounded-lg, spring hover */
 .tool-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 48px;
-  padding: 4px;
+  width: 48px;
+  height: 44px;
+  padding: 3px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.1s;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-spring);
+  position: relative;
 }
 
 .tool-btn:hover:not(:disabled) {
-  background: var(--bg-primary);
+  background: var(--bg-panel);
   border-color: var(--border-color);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 
 .tool-btn:active:not(:disabled) {
-  background: var(--bg-header);
+  transform: translateY(0px);
+  box-shadow: none;
 }
 
 .tool-btn.active {
-  background: var(--accent-blue);
-  background: color-mix(in srgb, var(--accent-blue) 30%, var(--bg-panel));
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
   border-color: var(--accent-blue);
+  color: var(--accent-blue);
 }
 
 .tool-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -462,102 +470,114 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin-bottom: 2px;
-  color: var(--text-primary);
 }
 
 .btn-icon-svg svg {
   stroke: currentColor;
+  transition: stroke var(--duration-fast) var(--ease-spring);
 }
 
 .btn-label {
   font-size: 9px;
-  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
   text-align: center;
-  line-height: 1;
-}
-
-.tool-btn.active .btn-label {
-  color: var(--accent-blue);
+  line-height: 1.1;
+  color: inherit;
 }
 
 .divider {
   width: 1px;
-  height: 40px;
+  height: 36px;
   background: var(--border-light);
   margin: 0 6px;
+  flex-shrink: 0;
 }
 
+/* Ruler measurement display */
 .measurement-display {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, var(--border-light));
+  border-radius: 8px;
 }
 
 .measure-icon-svg {
-  display: flex;
-  align-items: center;
   color: var(--accent-blue);
 }
 
 .measure-value {
   font-size: 12px;
-  font-family: monospace;
+  font-family: 'Geist Mono', 'SF Mono', monospace;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
 .spacer {
   flex: 1;
+  min-width: 8px;
 }
 
+/* Layer indicator */
 .layer-indicator {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .layer-color-box {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 1px solid var(--border-dark);
-  border-radius: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .layer-name {
   font-size: 11px;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
+/* Grid settings */
 .grid-settings {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .grid-label {
   font-size: 10px;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
 .grid-select {
-  height: 20px;
-  padding: 0 4px;
+  height: 22px;
+  padding: 0 6px;
   border: 1px solid var(--border-light);
-  border-radius: 2px;
-  font-size: 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
   background: var(--bg-panel);
   color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-spring);
+}
+
+.grid-select:hover {
+  border-color: var(--border-color);
 }
 
 .snap-toggle {
@@ -565,35 +585,39 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
+  user-select: none;
 }
 
 .snap-toggle input {
   cursor: pointer;
+  accent-color: var(--accent-blue);
 }
 
 .project-info {
   padding: 4px 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .project-name {
   font-size: 11px;
-  color: var(--text-secondary);
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-/* Cell Navigation (v0.2.7) */
+/* Cell Navigation — v0.2.7 — electric blue accent */
 .cell-nav-group {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 2px 6px;
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 40%, transparent);
-  border-radius: 3px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 25%, var(--border-light));
+  border-radius: 8px;
 }
 
 .cell-nav-btn {
@@ -601,24 +625,25 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 40px;
   padding: 3px;
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 10%, var(--bg-secondary));
-  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 30%, var(--border-light));
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, var(--border-light));
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.1s;
-  color: var(--accent-purple, #b39ddb);
+  color: var(--accent-blue);
+  transition: all var(--duration-fast) var(--ease-spring);
 }
 
 .cell-nav-btn:hover {
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 25%, var(--bg-primary));
-  border-color: var(--accent-purple, #b39ddb);
+  background: color-mix(in srgb, var(--accent-blue) 15%, var(--bg-panel));
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
 }
 
 .cell-nav-btn:active {
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 35%, var(--bg-primary));
+  transform: translateY(0);
 }
 
 .cell-nav-indicator {
@@ -626,32 +651,34 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 20%, var(--bg-secondary));
-  border: 1px solid color-mix(in srgb, var(--accent-purple, #b39ddb) 35%, var(--border-light));
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, var(--border-light));
+  border-radius: 6px;
   min-width: 80px;
 }
 
 .cell-nav-icon {
-  color: var(--accent-purple, #b39ddb);
+  color: var(--accent-blue);
   flex-shrink: 0;
 }
 
 .cell-nav-name {
   font-size: 10px;
-  font-weight: 500;
-  color: var(--accent-purple, #b39ddb);
+  font-weight: 600;
+  color: var(--accent-blue);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60px;
+  max-width: 56px;
+  letter-spacing: 0.01em;
 }
 
 .cell-nav-depth {
   font-size: 9px;
-  color: color-mix(in srgb, var(--accent-purple, #b39ddb) 70%, var(--text-muted));
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
+  font-weight: 500;
+  color: color-mix(in srgb, var(--accent-blue) 70%, var(--text-muted));
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
   padding: 0 3px;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 </style>

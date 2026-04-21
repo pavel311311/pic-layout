@@ -189,183 +189,194 @@ function drillOutFromStatusBar() {
   </div>
 </template>
 
-<style scoped>
+/* v0.3.1 StatusBar — monospace data, compact, professional */
 .status-bar {
   width: 100%;
-  height: 24px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
-  font-size: 10px;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  padding: 0 10px;
+  font-size: 11px;
+  font-family: 'Geist Mono', 'SF Mono', 'Consolas', monospace;
   background: var(--bg-header);
+  border-top: 1px solid var(--border-light);
   color: var(--text-secondary);
   user-select: none;
+  letter-spacing: 0.01em;
 }
 
 .status-left,
 .status-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .separator {
   color: var(--border-color);
   margin: 0 2px;
+  opacity: 0.6;
 }
 
-/* Tool mode */
+/* Tool mode — primary color */
 .mode {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 11px;
 }
 
-/* Layer info */
+/* Layer info — dot + name */
 .layer-info {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .layer-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   border: 1px solid var(--border-dark);
   flex-shrink: 0;
 }
 
 .layer-name {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 11px;
 }
 
 .layer-count {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
+  font-weight: 400;
 }
 
-/* Cell info (v0.2.7 - drill-down indicator) */
+/* Cell info — electric blue accent, clickable */
 .cell-info {
   display: flex;
   align-items: center;
-  gap: 3px;
-  color: var(--accent-purple, #b39ddb);
+  gap: 4px;
+  color: var(--accent-blue);
+  font-weight: 600;
 }
 
 .cell-info--clickable {
   cursor: pointer;
-  padding: 1px 4px;
-  border-radius: 2px;
-  transition: background 0.1s;
+  padding: 1px 6px;
+  border-radius: 4px;
+  transition: all var(--duration-fast) var(--ease-spring);
 }
 
 .cell-info--clickable:hover {
-  background: color-mix(in srgb, var(--accent-purple, #b39ddb) 15%, transparent);
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
 }
 
 .cell-icon {
-  font-size: 9px;
+  font-size: 10px;
   opacity: 0.8;
 }
 
 .cell-name {
-  font-weight: 500;
-  font-size: 10px;
-  color: var(--accent-purple, #b39ddb);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--accent-blue);
+  letter-spacing: 0.02em;
 }
 
 /* Grid info */
 .grid {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 
 .grid .label {
   color: var(--text-muted);
+  font-size: 10px;
 }
 
 .grid .value {
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 /* Snap badge */
 .snap-badge {
-  padding: 1px 4px;
+  padding: 1px 5px;
   background: var(--accent-blue);
-  color: var(--bg-panel);
-  font-size: 8px;
-  font-weight: 600;
-  border-radius: 2px;
-  letter-spacing: 0.5px;
+  color: var(--text-on-accent);
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
 }
 
-/* Selection */
+/* Selection & measurement — accent colors */
 .selection {
   color: var(--accent-blue);
-  font-weight: 500;
+  font-weight: 600;
 }
 
-/* Measurement */
 .measurement {
   color: var(--accent-green);
-  font-weight: 500;
-  font-size: 10px;
+  font-weight: 600;
+  font-size: 11px;
 }
 
 /* Coordinates */
 .coords {
   display: flex;
   align-items: center;
-  gap: 3px;
-  min-width: 130px;
+  gap: 4px;
+  min-width: 140px;
 }
 
 .coords .label {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
 }
 
 .coords .value {
   color: var(--text-primary);
-  min-width: 60px;
+  min-width: 56px;
   text-align: right;
+  font-weight: 500;
 }
 
 /* Zoom */
 .zoom {
-  min-width: 45px;
+  min-width: 44px;
   text-align: right;
 }
 
 .zoom .value {
   color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Shapes count */
 .shapes {
   display: flex;
   align-items: center;
-  gap: 3px;
-  min-width: 90px;
+  gap: 4px;
+  min-width: 88px;
   justify-content: flex-end;
 }
 
 .shapes .value {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .shapes .label {
   color: var(--text-muted);
+  font-size: 10px;
 }
 
-/* Dark theme specific overrides */
-:deep(.theme-dark) .layer-dot {
-  border-color: var(--border-light);
+.shapes .layer-count {
+  color: var(--text-muted);
+  font-size: 10px;
 }
-</style>

@@ -1,106 +1,118 @@
 /* ============================================
-   Theme System - Light & Dark Mode
-   KLayout-style professional color scheme
+   PicLayout Theme System v0.3.1
+   Taste-skill-main compliance: Geist/Satoshi fonts, Zinc palette, spring animations
    ============================================ */
 
 /* Light Theme (default) */
 :root, .theme-light {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   line-height: 1.4;
   font-weight: 400;
 
   color-scheme: light;
-  color: #000000;
-  background-color: #e0e0e0;
+  color: #18181b;
+  background-color: #f4f4f5;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* KLayout-style colors - Light */
-  --bg-primary: #f0f0f0;
-  --bg-secondary: #e8e8e8;
+  /* v0.3.1 Taste-skill-main palette — Zinc/Slate, no AI purple/blue glow */
+  --bg-primary: #f4f4f5;
+  --bg-secondary: #e4e4e7;
   --bg-panel: #ffffff;
-  --bg-toolbar: #e0e0e0;
-  --bg-header: #d4d4d4;
-  --bg-header-gradient: linear-gradient(180deg, #e8e8e8 0%, #d0d0d0 100%);
+  --bg-toolbar: #f0f0f3;
+  --bg-header: #e4e4e7;
+  --bg-header-gradient: linear-gradient(180deg, #f4f4f5 0%, #e4e4e7 100%);
   --bg-canvas: #ffffff;
-  --bg-ruler: #e0e0e0;
-  --bg-ruler-corner: #d8d8d8;
-  
-  --border-color: #a0a0a0;
-  --border-light: #c0c0c0;
-  --border-dark: #808080;
-  
-  --text-primary: #000000;
-  --text-secondary: #404040;
-  --text-muted: #808080;
-  
-  --accent-blue: #4FC3F7;
-  --accent-orange: #FF9800;
-  --accent-green: #4CAF50;
-  --accent-red: #E57373;
-  --accent-purple: #B39DDB;
-  --accent-yellow: #FFD54F;
+  --bg-ruler: #e4e4e7;
+  --bg-ruler-corner: #d4d4d8;
+
+  --border-color: #a1a1aa;
+  --border-light: #d4d4d8;
+  --border-dark: #71717a;
+
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #a1a1aa;
+
+  /* Single accent: Electric Blue — no neon purple/blue glow */
+  --accent-blue: #3b82f6;
+  --accent-orange: #f97316;
+  --accent-green: #22c55e;
+  --accent-red: #ef4444;
+  --accent-yellow: #eab308;
   --text-on-accent: #ffffff;
-  --loading-bg: rgba(255, 255, 255, 0.8);
-  --error-bg: rgba(255, 255, 255, 0.9);
-  
-  --shadow: 1px 1px 2px rgba(0,0,0,0.2);
-  --shadow-panel: 2px 2px 4px rgba(0,0,0,0.15);
-  
-  /* Scrollbar colors */
-  --scrollbar-track: #e0e0e0;
-  --scrollbar-thumb: #c0c0c0;
-  --scrollbar-thumb-hover: #a0a0a0;
+  --loading-bg: rgba(255, 255, 255, 0.9);
+  --error-bg: rgba(254, 242, 242, 0.95);
+
+  /* Diffusion shadow — not harsh */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-panel: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 20px 40px -15px rgba(0, 0, 0, 0.06);
+
+  /* Scrollbar */
+  --scrollbar-track: #e4e4e7;
+  --scrollbar-thumb: #a1a1aa;
+  --scrollbar-thumb-hover: #71717a;
 }
 
-/* Dark Theme - Professional dark mode for PIC editors */
+/* Dark Theme */
 .theme-dark {
   color-scheme: dark;
-  color: #e0e0e0;
-  background-color: #1e1e1e;
+  color: #fafafa;
+  background-color: #09090b;
 
-  /* KLayout-style colors - Dark */
-  --bg-primary: #252526;
-  --bg-secondary: #2d2d30;
-  --bg-panel: #333333;
-  --bg-toolbar: #2d2d30;
-  --bg-header: #252526;
-  --bg-header-gradient: linear-gradient(180deg, #333333 0%, #252526 100%);
-  --bg-canvas: #1e1e1e;
-  --bg-ruler: #252526;
-  --bg-ruler-corner: #1e1e1e;
-  
-  --border-color: #404040;
-  --border-light: #505050;
-  --border-dark: #303030;
-  
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0a0;
-  --text-muted: #606060;
-  
-  --accent-blue: #4FC3F7;
-  --accent-orange: #FF9800;
-  --accent-green: #81C784;
-  --accent-red: #E57373;
-  --accent-purple: #B39DDB;
-  --accent-yellow: #FFD740;
+  /* v0.3.1 Zinc palette for dark — no pure black, use zinc-950 */
+  --bg-primary: #18181b;
+  --bg-secondary: #27272a;
+  --bg-panel: #212121;
+  --bg-toolbar: #1c1c1f;
+  --bg-header: #18181b;
+  --bg-header-gradient: linear-gradient(180deg, #27272a 0%, #18181b 100%);
+  --bg-canvas: #09090b;
+  --bg-ruler: #18181b;
+  --bg-ruler-corner: #09090b;
+
+  --border-color: #3f3f46;
+  --border-light: #52525b;
+  --border-dark: #27272a;
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+
+  --accent-blue: #60a5fa;
+  --accent-orange: #fb923c;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-yellow: #facc15;
   --text-on-accent: #ffffff;
-  --loading-bg: rgba(30, 30, 30, 0.8);
-  --error-bg: rgba(30, 30, 30, 0.9);
-  
-  --shadow: 1px 1px 2px rgba(0,0,0,0.4);
-  --shadow-panel: 2px 2px 4px rgba(0,0,0,0.3);
-  
-  /* Dark scrollbar */
-  --scrollbar-track: #252526;
-  --scrollbar-thumb: #404040;
-  --scrollbar-thumb-hover: #505050;
+  --loading-bg: rgba(24, 24, 27, 0.9);
+  --error-bg: rgba(24, 24, 27, 0.95);
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-panel: 0 4px 16px -4px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+
+  --scrollbar-track: #18181b;
+  --scrollbar-thumb: #52525b;
+  --scrollbar-thumb-hover: #71717a;
 }
 
+/* Spring animation variables (taste-skill-main MOTION_INTENSITY=6) */
+:root {
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* Base reset */
 * {
   margin: 0;
   padding: 0;
@@ -113,10 +125,10 @@ html, body, #app {
   overflow: hidden;
 }
 
-/* KLayout-style scrollbar - respects theme */
+/* KLayout-style scrollbar — thin, professional */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -125,7 +137,8 @@ html, body, #app {
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  border: none;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -136,25 +149,53 @@ html, body, #app {
   background: var(--scrollbar-track);
 }
 
-/* Input styles */
-input, textarea {
+/* Focus visible — electric blue ring */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Input base */
+input, textarea, select {
   font-family: inherit;
   font-size: inherit;
+  color: inherit;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  transition: border-color var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-fast) var(--ease-spring);
 }
 
-input:focus, textarea:focus {
-  outline: 1px solid var(--accent-blue);
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-/* Button base */
+/* Button base — rounded-lg, spring feel */
 button {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-spring);
 }
 
-/* Theme transition - smooth theme switching */
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Theme transition */
 .theme-light, .theme-dark, :root {
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--duration-normal) var(--ease-spring),
+              color var(--duration-normal) var(--ease-spring),
+              border-color var(--duration-normal) var(--ease-spring);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(59, 130, 246, 0.25);
+  color: inherit;
 }
