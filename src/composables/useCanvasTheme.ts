@@ -55,7 +55,7 @@ const LIGHT_COLORS: CanvasThemeColors = {
 
 /** Dark theme colors */
 const DARK_COLORS: CanvasThemeColors = {
-  background: '#1e1e1e',
+  background: '#09090b',
   grid: 'rgba(255, 255, 255, 0.08)',
   crosshair: '#FF9800',
   selection: '#4FC3F7',

@@ -605,3 +605,50 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] v0.3.1: GdsImportDialog 美化（保持 NModal 框架，重设计内部内容区）
 - [ ] v0.3.1: GdsExportDialog 美化（同上）
 - [ ] v0.3.1: SvgExportDialog 美化（保持 NModal 框架，重设计内部内容区）
+
+## 2026-04-21 12:10
+
+### 当前任务
+- [x] v0.3.1: GdsImportDialog + GdsExportDialog 美化 - taste-skill-main 规范重构
+
+### 完成内容
+- GdsExportDialog 完全重设计（v0.3.1 第四个 Dialog）：
+  - 从 `NModal preset="dialog"` 改为 Teleport + Transition 弹窗模式
+  - 移除所有 N 组件（NInput/NSelect/NSwitch/NInputNumber），改用原生元素 + CSS
+  - 移除 emoji，改用内联 SVG 图标（export/download/precision/scope/layers/stats）
+  - stats-grid 展示 4 项指标（shapes/layers/cells/precision），monospace 数值字体
+  - text-input 带 suffix `.gds` 后缀展示，select 使用自定义 chevron 图标
+  - layer-tags 可点击切换（toggle），field-label 带 inline SVG 图标
+  - scope hint 根据选择动态切换（中英说明）
+  - CSS: spring 动画 / diffusion shadow / Zinc palette / monospace 数据
+  - backdrop-filter blur(2px) 替代纯 opacity overlay
+  - entrance: scale(0.97)+translateY + opacity fade
+  - 响应式断点（460px，stats-grid 变为 2 列）
+  - npm run build 通过（GdsExportDialog: 17KB→4.9KB CSS 7.3KB→1.3KB）
+
+- GdsImportDialog 完全重设计（v0.3.1 第五个 Dialog）：
+  - 从 `NModal preset="dialog"` 改为 Teleport + Transition 弹窗模式
+  - 移除所有 N 组件（NModal/NButton/NSpace/NText/NCheckbox/NSelect）
+  - 移除 emoji（📂），改用内联 SVG 图标（import/download/file/grid/info/layers/cells）
+  - drop-zone 居中展示 SVG file 图标 + title/hint 文字
+  - loading-area 用 SVG spinner 替代 Naive spinner，动画 spin 1s linear infinite
+  - canvas-wrapper 替代原有 canvas-preview-wrapper，canvas-badge 显示 shape count
+  - metadata-grid 用 meta-label（uppercase）+ meta-value 替代原有结构
+  - layer-tags 可点击切换（toggleLayer），section-label 带 inline SVG 图标
+  - cell-item 展示为点击卡片（toggleCell），checkbox 改为 inline SVG check 图标
+  - Import button 显示动态文字："Import N Cells"
+  - CSS: spring 动画 / diffusion shadow / Zinc palette / monospace 数据
+  - backdrop-filter blur(2px) 替代纯 opacity overlay
+  - entrance: scale(0.97)+translateY + opacity fade
+  - 响应式断点（600px，metadata-grid 保持 2 列）
+  - npm run build 通过（GdsImportDialog: 18KB→5.3KB CSS 7.8KB→1.4KB）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] v0.3.1: 全部 7 个 Dialog 美化完成（AlignDialog/GdsExportDialog/GdsImportDialog 均为新设计）
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查）
