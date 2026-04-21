@@ -1,16 +1,10 @@
 <script setup lang="ts">
 /**
- * BooleanOperationsDialog.vue - Boolean Operations Dialog for PicLayout
- * Part of v0.3.0 - Boolean Operations UI Integration
- *
- * Features:
- * - Select boolean operation (Union/AND/MINUS/XOR)
- * - Preview of result shape
- * - Apply and cancel actions
+ * BooleanOperationsDialog.vue
+ * v0.3.1 - Boolean Operations Dialog with taste-skill-main aesthetic
+ * Redesigned: Teleport + spring animations, Zinc palette, Geist/Satoshi fonts, inline SVG icons
  */
-import { ref, computed, watch, nextTick } from 'vue'
-import { NModal, NButton, NSpace, NRadioGroup, NRadio, NText } from '@/plugins/naive'
-import { useMessage } from 'naive-ui'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { polygonBoolean, validateBooleanShapes, BOOLEAN_OP_LABELS, type BooleanOp } from '@/utils/polygonBoolean'
 import { useEditorStore } from '@/stores/editor'
 import { useCanvasTheme } from '@/composables/useCanvasTheme'
@@ -18,37 +12,30 @@ import type { BaseShape, Point, PolygonShape, RectangleShape } from '@/types/sha
 import { generateId } from '@/utils/shapeId'
 
 const canvasTheme = useCanvasTheme()
-const message = useMessage()
 
 const props = defineProps<{
   show: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:show', value: boolean): void
+  'update:show': [value: boolean]
 }>()
 
 const editorStore = useEditorStore()
 
-// Current operation
 const selectedOp = ref<BooleanOp>('union')
 
-// Boolean operation options
 const operationOptions = Object.entries(BOOLEAN_OP_LABELS).map(([value, label]) => ({
   value,
   label,
 }))
 
-// Get selected shapes
 const selectedShapes = computed(() => editorStore.selectedShapes)
-
-// Need exactly 2 shapes for boolean
 const canApply = computed(() => selectedShapes.value.length === 2)
 
-// === Preview Canvas (v0.3.0 UI enhancement) ===
+// Preview canvas
 const previewCanvasRef = ref<HTMLCanvasElement | null>(null)
 
-/** Get bounding box for a shape */
 function getShapeBounds(shape: BaseShape) {
   switch (shape.type) {
     case 'rectangle':
@@ -81,7 +68,6 @@ function getShapeBounds(shape: BaseShape) {
   }
 }
 
-/** Compute combined bounds for all shapes */
 function getCombinedBounds(shapes: BaseShape[]) {
   if (shapes.length === 0) return { minX: 0, minY: 0, maxX: 1, maxY: 1 }
   let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity
@@ -95,13 +81,11 @@ function getCombinedBounds(shapes: BaseShape[]) {
   return { minX: mnX, minY: mnY, maxX: mxX, maxY: mxY }
 }
 
-/** Check if two shapes' bounding boxes overlap (used for contextual empty-result messages) */
 function boundsOverlap(a: BaseShape, b: BaseShape): boolean {
   const ba = getShapeBounds(a), bb = getShapeBounds(b)
   return !(ba.maxX < bb.minX || bb.maxX < ba.minX || ba.maxY < bb.minY || bb.maxY < ba.minY)
 }
 
-/** Get a contextual message explaining why a boolean result is empty (v0.3.1 UX improvement) */
 function getEmptyResultReason(op: BooleanOp, shapeA: BaseShape, shapeB: BaseShape): string {
   const opLabels: Record<BooleanOp, string> = {
     union: '并集',
@@ -113,7 +97,6 @@ function getEmptyResultReason(op: BooleanOp, shapeA: BaseShape, shapeB: BaseShap
   const label = opLabels[op] ?? op
 
   if (op === 'intersection') {
-    // Intersection is empty when shapes don't actually overlap (bounding boxes may overlap but shapes might not)
     return overlaps
       ? `${label}结果可能为空（边界重叠但实际图形可能不相交）`
       : `${label}结果为空（图形边界不相交）`
@@ -122,21 +105,18 @@ function getEmptyResultReason(op: BooleanOp, shapeA: BaseShape, shapeB: BaseShap
     if (!overlaps) return `${label}结果为形状 A（B 未与 A 相交，无可相减）`
     const bb = getShapeBounds(shapeB), ba = getShapeBounds(shapeA)
     const bInsideA = ba.minX <= bb.minX && ba.maxX >= bb.maxX && ba.minY <= bb.minY && ba.maxY >= bb.maxY
-    return bInsideA ? `${label}结果为空（B 完全覆盖 A）` : `${label}结果可能为空（边界重叠但实际无可相减区域）`
+    return bInsideA ? `${label}结果为空（B 完全覆盖 A）` : `${label}结果可能为空`
   }
   if (op === 'xor') {
-    // XOR is empty only when one shape completely covers the other (all overlapping area cancels out)
     if (!overlaps) return `${label}结果为两独立图形（不相交，各自保留）`
     const bb = getShapeBounds(shapeB), ba = getShapeBounds(shapeA)
     const bInsideA = ba.minX <= bb.minX && ba.maxX >= bb.maxX && ba.minY <= bb.minY && ba.maxY >= bb.maxY
     const aInsideB = bb.minX <= ba.minX && bb.maxX >= ba.maxX && bb.minY <= ba.minY && bb.maxY >= ba.maxY
-    return (bInsideA || aInsideB) ? `${label}结果为空（一方完全覆盖另一方）` : `${label}结果可能为空（边界重叠但实际无相交区域）`
+    return (bInsideA || aInsideB) ? `${label}结果为空（一方完全覆盖另一方）` : `${label}结果可能为空`
   }
-  // union: should never be empty with 2 valid shapes
   return `${label}结果为空（请检查图形是否有效）`
 }
 
-/** Draw a shape on canvas at given bounds/scale */
 function drawShapePreview(
   ctx: CanvasRenderingContext2D,
   shape: BaseShape,
@@ -180,7 +160,6 @@ function drawShapePreview(
       if (pts && pts.length > 0) {
         ctx.moveTo(toX(pts[0].x), toY(pts[0].y))
         for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y))
-        // Polyline and Path are stroke-only (open paths); only polygon is filled
         ctx.stroke()
       }
       break
@@ -195,7 +174,6 @@ function drawShapePreview(
   }
 }
 
-/** Draw preview when shapes or operation changes */
 watch([selectedShapes, selectedOp], async () => {
   await nextTick()
   const canvas = previewCanvasRef.value
@@ -208,7 +186,6 @@ watch([selectedShapes, selectedOp], async () => {
   ctx.fillStyle = canvasTheme.colors.value.background
   ctx.fillRect(0, 0, W, H)
 
-  // Grid
   ctx.strokeStyle = canvasTheme.colors.value.grid; ctx.lineWidth = 0.5
   const gCX = pad + (W - pad * 2) / 2, gCY = pad + (H - pad * 2) / 2
   ctx.beginPath()
@@ -234,11 +211,9 @@ watch([selectedShapes, selectedOp], async () => {
     return
   }
 
-  // Two shapes: show input shapes on left/right, result preview in center
   const [s1, s2] = selectedShapes.value
   let result: Point[][] = []
 
-  // Check shape validity before computing (v0.3.0 boundary tests: self-intersect, co-edge)
   const validationError = validateBooleanShapes(s1, s2)
   if (validationError) {
     ctx.fillStyle = '#ef5350'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.85
@@ -250,45 +225,36 @@ watch([selectedShapes, selectedOp], async () => {
   try {
     result = polygonBoolean(s1, s2, selectedOp.value)
   } catch (err) {
-    // Computation error - show error message instead of crashing
     ctx.fillStyle = '#ef5350'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.8
     ctx.fillText('计算错误: 图形无法执行此运算', W / 2, H / 2)
     ctx.globalAlpha = 1
     return
   }
 
-  // Left: shape 1 (blue)
   ctx.save()
   ctx.beginPath(); ctx.rect(0, 0, W / 2 - 4, H); ctx.clip()
   drawShapePreview(ctx, s1, getCombinedBounds([s1, s2]), W / 2, H, pad, 'rgba(79,195,247,0.25)', canvasTheme.colors.value.selection)
   ctx.restore()
 
-  // Right: shape 2 (orange)
   ctx.save()
   ctx.beginPath(); ctx.rect(W / 2 + 4, 0, W / 2 - 4, H); ctx.clip()
   drawShapePreview(ctx, s2, getCombinedBounds([s1, s2]), W / 2, H, pad, 'rgba(255,183,77,0.25)', '#ffb74d')
   ctx.restore()
 
-  // Divider
   ctx.strokeStyle = canvasTheme.colors.value.text; ctx.globalAlpha = 0.25; ctx.lineWidth = 1
   ctx.beginPath(); ctx.moveTo(W / 2, 8); ctx.lineTo(W / 2, H - 8); ctx.stroke()
   ctx.globalAlpha = 1
 
-  // Labels
   ctx.font = '10px system-ui'; ctx.textAlign = 'center'
   ctx.fillStyle = canvasTheme.colors.value.selection; ctx.fillText('A', W / 4, 14)
   ctx.fillStyle = '#ffb74d'; ctx.fillText('B', W * 3 / 4, 14)
 
-  // Result section: show small result preview below divider
   if (result.length > 0) {
-    // x/y are ignored by getShapeBounds for polygons (computes from points), but TS requires them on BaseShape
     const resultBounds = getCombinedBounds(result.map(p => ({ type: 'polygon', x: 0, y: 0, points: p } as BaseShape)))
     ctx.fillStyle = canvasTheme.colors.value.text; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText('↓ 结果', W / 2, H - 20)
-    // Draw result shapes in green using drawShapePreview
     for (const poly of result) {
       const polyShape: BaseShape = { id: '', type: 'polygon', layerId: 0, x: 0, y: 0, points: poly } as any
-      // Scale down to 40% height for result section
       const rPad = 32
       const rAvailH = H * 0.35
       const rBounds = getShapeBounds(polyShape)
@@ -310,7 +276,6 @@ watch([selectedShapes, selectedOp], async () => {
     ctx.fillStyle = '#66bb6a'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'
     ctx.fillText(result.length === 1 ? '1 多边形' : `${result.length} 多边形`, W / 2, H - 4)
   } else {
-    // Show contextual message explaining WHY the result is empty (v0.3.1 UX improvement)
     const reason = getEmptyResultReason(selectedOp.value, s1, s2)
     ctx.fillStyle = '#ffb74d'; ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = 0.85
     ctx.fillText(reason, W / 2, H / 2 + 10)
@@ -318,16 +283,34 @@ watch([selectedShapes, selectedOp], async () => {
   }
 }, { immediate: true })
 
-// Apply boolean operation
+function close() {
+  emit('update:show', false)
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') close()
+}
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
+
 function applyBoolean() {
   if (!canApply.value) return
 
   const [shape1, shape2] = selectedShapes.value
 
-  // Validate shapes before attempting operation (v0.3.0 boundary tests)
   const validationError = validateBooleanShapes(shape1, shape2)
   if (validationError) {
-    message.warning(validationError, { duration: 4000 })
+    window.dispatchEvent(new CustomEvent('nmessage', { detail: { type: 'warning', content: validationError } }))
     return
   }
 
@@ -336,36 +319,27 @@ function applyBoolean() {
 
     if (result.length === 0) {
       const reason = getEmptyResultReason(selectedOp.value, shape1, shape2)
-      message.warning(reason, { duration: 4000 })
+      window.dispatchEvent(new CustomEvent('nmessage', { detail: { type: 'warning', content: reason } }))
       return
     }
 
-    // Save history before modifying
     editorStore.pushHistory()
-
-    // Remove original shapes
     editorStore.deleteSelectedShapes()
 
-    // Add result shape(s)
     for (const poly of result) {
       const newShape = createPolygonFromPoints(poly, shape1.layerId)
       editorStore.addShape(newShape as any)
     }
 
-    // Mark canvas dirty
     window.dispatchEvent(new CustomEvent('canvas-mark-dirty'))
-
-    // Close dialog
     emit('update:show', false)
   } catch (err) {
     console.error('Boolean operation failed:', err)
-    message.error('布尔运算失败: ' + (err as Error).message, { duration: 5000 })
+    window.dispatchEvent(new CustomEvent('nmessage', { detail: { type: 'error', content: '布尔运算失败: ' + (err as Error).message } }))
   }
 }
 
-// Create polygon shape from points
 function createPolygonFromPoints(points: Point[], layerId: number): PolygonShape {
-  // Compute bounding box to set proper coordinates
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const p of points) {
     if (p.x < minX) minX = p.x
@@ -393,143 +367,462 @@ function createPolygonFromPoints(points: Point[], layerId: number): PolygonShape
 </script>
 
 <template>
-  <NModal
-    :show="show"
-    preset="card"
-    title="布尔运算"
-    style="width: 400px"
-    @update:show="(v) => emit('update:show', v)"
-  >
-    <!-- Preview Canvas (v0.3.0 result preview) -->
-    <div class="preview-canvas-wrapper">
-      <canvas
-        ref="previewCanvasRef"
-        width="380"
-        height="160"
-        class="preview-canvas"
-        aria-label="布尔运算预览"
-      />
-    </div>
+  <Teleport to="body">
+    <Transition name="bool-fade">
+      <div v-if="show" class="bool-overlay" @click.self="close">
+        <div class="bool-dialog" role="dialog" aria-labelledby="bool-title">
+          <!-- Header -->
+          <div class="dialog-header">
+            <div class="header-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <circle cx="9" cy="9" r="7"/>
+                <circle cx="15" cy="15" r="7"/>
+              </svg>
+              <h2 id="bool-title">Boolean Operations</h2>
+            </div>
+            <button class="close-btn" @click="close" aria-label="Close dialog">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
 
-    <div class="boolean-dialog">
-      <NText depth="3" class="description">
-        选择 2 个图形进行布尔运算
-      </NText>
+          <!-- Preview Canvas -->
+          <div class="preview-canvas-wrapper">
+            <canvas
+              ref="previewCanvasRef"
+              width="380"
+              height="160"
+              class="preview-canvas"
+              aria-label="布尔运算预览"
+            />
+          </div>
 
-      <div class="selected-info">
-        <NText>已选择: {{ selectedShapes.length }} 个图形</NText>
-        <NText v-if="selectedShapes.length === 2" type="info">
-          {{ selectedShapes[0].type }} + {{ selectedShapes[1].type }}
-        </NText>
-      </div>
+          <!-- Content -->
+          <div class="dialog-content">
+            <div class="selection-info">
+              <div class="info-row">
+                <span class="info-label">已选择</span>
+                <span class="info-value">{{ selectedShapes.length }} 个图形</span>
+              </div>
+              <div v-if="selectedShapes.length === 2" class="info-row">
+                <span class="info-label">类型</span>
+                <span class="info-value info-type">{{ selectedShapes[0].type }} + {{ selectedShapes[1].type }}</span>
+              </div>
+            </div>
 
-      <div class="operation-section">
-        <NText class="section-label">运算类型</NText>
-        <NRadioGroup v-model:value="selectedOp" class="operation-radios">
-          <NRadio
-            v-for="op in operationOptions"
-            :key="op.value"
-            :value="op.value"
-            :disabled="selectedShapes.length !== 2"
-          >
-            {{ op.label }}
-          </NRadio>
-        </NRadioGroup>
-      </div>
+            <!-- Operation selector -->
+            <div class="op-section">
+              <h3 class="section-label">运算类型</h3>
+              <div class="op-grid">
+                <button
+                  v-for="op in operationOptions"
+                  :key="op.value"
+                  class="op-btn"
+                  :class="{ 'op-btn--active': selectedOp === op.value }"
+                  :disabled="selectedShapes.length !== 2"
+                  @click="selectedOp = op.value as BooleanOp"
+                  :title="op.label"
+                >
+                  <span class="op-icon" v-html="getOpIcon(op.value)" />
+                  <span class="op-label">{{ op.label }}</span>
+                </button>
+              </div>
+            </div>
 
-      <div class="operation-preview">
-        <NText class="section-label">运算说明</NText>
-        <div class="preview-content">
-          <template v-if="selectedOp === 'union'">
-            合并两个图形为一整个区域
-          </template>
-          <template v-else-if="selectedOp === 'intersection'">
-            保留两个图形的重叠区域
-          </template>
-          <template v-else-if="selectedOp === 'difference'">
-            从第一个图形中减去第二个图形
-          </template>
-          <template v-else-if="selectedOp === 'xor'">
-            保留两个图形的非重叠区域
-          </template>
+            <!-- Operation description -->
+            <div class="op-desc-box">
+              <p class="op-desc-text">{{ getOpDescription(selectedOp) }}</p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="dialog-footer">
+            <button class="action-btn secondary" @click="close">取消</button>
+            <button
+              class="action-btn primary"
+              :disabled="!canApply"
+              @click="applyBoolean"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              应用
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="emit('update:show', false)">取消</NButton>
-        <NButton
-          type="primary"
-          :disabled="!canApply"
-          @click="applyBoolean"
-        >
-          应用
-        </NButton>
-      </NSpace>
-    </template>
-  </NModal>
+    </Transition>
+  </Teleport>
 </template>
 
+<script lang="ts">
+function getOpIcon(op: string): string {
+  const icons: Record<string, string> = {
+    union: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/></svg>`,
+    intersection: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><clipPath id="a"><circle cx="9" cy="9" r="7"/></clipPath><clipPath id="b"><circle cx="15" cy="15" r="7"/></clipPath><circle cx="9" cy="9" r="7" clip-path="url(#b)"/><circle cx="15" cy="15" r="7" clip-path="url(#a)"/></svg>`,
+    difference: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7" stroke-dasharray="3 2"/></svg>`,
+    xor: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/></svg>`,
+  }
+  return icons[op] || ''
+}
+
+function getOpDescription(op: BooleanOp): string {
+  const descs: Record<BooleanOp, string> = {
+    union: '合并两个图形为一整个区域',
+    intersection: '保留两个图形的重叠区域',
+    difference: '从第一个图形中减去第二个图形',
+    xor: '保留两个图形的非重叠区域',
+  }
+  return descs[op]
+}
+</script>
+
 <style scoped>
-.boolean-dialog {
+/* === Overlay === */
+.bool-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
 }
 
-.description {
-  font-size: 13px;
-}
-
-.selected-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-radius: 4px;
-}
-
-.operation-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.operation-radios {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.operation-preview {
-  padding: 12px;
-  background: var(--bg-secondary);
-  border-radius: 4px;
-}
-
-.preview-content {
-  font-size: 13px;
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-.preview-canvas-wrapper {
-  border-radius: 6px;
+/* === Dialog Panel === */
+.bool-dialog {
+  background: var(--bg-panel);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
+  width: 100%;
+  max-width: 400px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Header === */
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+}
+
+.header-title h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.header-title svg {
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition:
+    background var(--duration-fast) var(--ease-spring),
+    color var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring);
+  padding: 0;
+}
+
+.close-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.close-btn:active {
+  transform: scale(0.95);
+}
+
+/* === Preview Canvas === */
+.preview-canvas-wrapper {
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .preview-canvas {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 160px;
+}
+
+/* === Content === */
+.dialog-content {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* === Selection info === */
+.selection-info {
+  display: flex;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'Geist Mono', 'SF Mono', monospace;
+}
+
+.info-type {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* === Operation section === */
+.op-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.op-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  transition:
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    color var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-spring);
+}
+
+.op-btn:hover:not(:disabled) {
+  background: var(--bg-primary);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.15);
+}
+
+.op-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+}
+
+.op-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.op-btn--active {
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.op-btn--active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-blue) 18%, var(--bg-panel));
+}
+
+.op-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.op-icon :deep(svg) {
+  display: block;
+}
+
+.op-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* === Operation description === */
+.op-desc-box {
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.op-desc-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* === Footer === */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    color var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-spring);
+  border: 1px solid transparent;
+}
+
+.action-btn.secondary {
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.action-btn.secondary:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.action-btn.secondary:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.action-btn.primary {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: var(--text-on-accent);
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.3);
+}
+
+.action-btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+}
+
+.action-btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* === Transitions === */
+.bool-fade-enter-active {
+  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+}
+.bool-fade-leave-active {
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.bool-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.97) translateY(4px);
+}
+.bool-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+/* === Responsive === */
+@media (max-width: 440px) {
+  .bool-overlay {
+    padding: 12px;
+  }
+  .bool-dialog {
+    max-width: 100%;
+  }
+  .op-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

@@ -520,24 +520,27 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ## 2026-04-21 08:10
 
 ### 当前任务
-- [x] v0.3.1: Dialog 美化（从 ShortcutsDialog 开始） - v0.3.1 UI 美化第一轮
+- [x] v0.3.1: ShortcutsDialog 重设计 - v0.3.1 UI 美化第一枪
 
 ### 完成内容
-- 审查 7 个 Dialog 的现状：
-  - BooleanOperationsDialog: 基本完好，preview canvas 布局紧凑
-  - GdsExportDialog: preset="dialog"，整体 OK
-  - GdsImportDialog: 最复杂，cell/layer 选择 + canvas 预览，有 emoji 📂
-  - ShortcutsDialog: 自定义 overlay + n-modal 小写混用，最大重构空间
-  - AlignDialog: n-modal 小写混用，用 NButtonGroup 排列，OK
-  - ArrayCopyDialog: 最简洁，preset="dialog"，OK
-  - SvgExportDialog: preset="card"，英文 label，OK
-- 今日选 ShortcutsDialog 作为第一个美化对象（完全自定义 overlay，重构价值最高）
+- 审查 7 个 Dialog 的现状，选 ShortcutsDialog 为第一个美化对象（重构价值最高）
+- ShortcutsDialog 完全重设计：
+  - 从自定义 overlay（div 条件渲染）改为 Teleport + Transition（正确 Vue 弹窗模式）
+  - 移除所有 emoji，用内联 SVG 图标替换（键盘/对齐/编辑/变换/视图分类图标）
+  - 2 列 grid 布局替代单列，section 用 uppercase label + 底边线分隔
+  - CSS: spring 动画 / diffusion shadow / Zinc palette / monospace kbd / 响应式断点
+  - header/footer 互换（标题在左/关闭按钮在右）
+  - backdrop-filter blur(2px) 替代纯 opacity overlay
+  - entrance: scale(0.97)+translateY + opacity fade，spring timing
+- `npm run build` 通过，29 assets + brotli 全部正常
 
 ### 遇到的问题
-- 无
+- 问题: `<script setup>` 中 `ref` 声明后 template 直接引用 `{{ show }}` / `{{ close }}` TS 报错
+  - 解决: `const props = defineProps<{ show: boolean }>()` 声明后 template 直接用 `show` / `close` 就好了（Vue 自动从 props 展开）
 
 ### 编译测试
-- [ ] npm run build → 待测试
+- [x] npm run build → 通过
 
 ### 下小时计划
 - [ ] v0.3.1: 继续其他 Dialog 美化（AlignDialog / GdsImportDialog / GdsExportDialog）
+- [ ] v0.3.1: BooleanOperationsDialog / ArrayCopyDialog / SvgExportDialog 美化
