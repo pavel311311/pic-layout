@@ -652,3 +652,97 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.3.1: 全部 7 个 Dialog 美化完成（AlignDialog/GdsExportDialog/GdsImportDialog 均为新设计）
 - [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查）
+
+## 2026-04-21 15:10
+
+### 当前任务
+- [x] v0.3.1: Navigator 美化（taste-skill-main 规范）
+
+### 完成内容
+- Navigator.vue 完全重设计（v0.3.1 第三个组件）：
+  - Header 重新设计：inline SVG icon（accent-blue）/ uppercase label / collapse chevron 动画
+  - viewport-wrap 加圆角/阴影/hover focus ring（accent-blue）
+  - viewport-rect 加 hover 反馈（fill-opacity + stroke-width）
+  - action-bar 添加 bb-label（显示 bounding box 尺寸 `1234 × 567`）
+  - nav-zoom-hint 改为 "drag viewport" 提示，添加 info icon
+  - CSS: spring 动画 / diffusion shadow / Zinc palette / monospace 数据
+  - Transition: scaleY + opacity + translateY 组合动画（替代旧 `v-show`）
+  - 所有边框从 `--border-color` 改为 `--border-light`（一致 taste-skill 规范）
+  - font-weight 600, letter-spacing 0.04em 统一
+  - `npm run build` 通过
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
+- [ ] v0.3.1: PropertiesPanel 美化（下一个待美化组件）
+
+## 2026-04-21 16:44
+
+### 当前任务
+- [x] v0.3.1: PropertiesPanel 美化（taste-skill-main 规范）
+
+### 完成内容
+- PropertiesPanel.vue 完全重设计（v0.3.1 第四个组件）：
+  - Panel Header: 内联 SVG icon（accent-blue）/ uppercase label / accent-blue multi-badge（绿色）
+  - Empty State: 内联 SVG icon（虚线矩形+圆形）/ title + hint 文字
+  - 所有 Section Header: 添加 section-icon（14px 内联 SVG）/ chevron-icon 替代文字箭头
+  - General: info-grid（52px label / monospace value）替代原有 prop-grid
+  - Location/Size/Edge: coords-grid（24px label / monospace value）
+  - 多选指标: Area/Perimeter/Bounds 显示为 mono 数据
+  - ID 字段: 添加 copy icon（inline SVG）+ hover 效果
+  - Quick size: 按钮 hover spring 上移
+  - Operations: Copy/Delete 按钮带内联 SVG 图标
+  - CSS 重设计: properties-shared.css 完全重写（taste-skill-main Zinc palette）
+  - StyleEditor / PathEditor / PointsEditor 全部统一使用相同设计语言
+
+- properties-shared.css 完全重写（v0.3.1）：
+  - 字体: Geist/Satoshi（CSS 变量未定义但 fallback 工作）
+  - 颜色: Zinc 灰阶 / accent-blue focus ring
+  - 阴影: 移除所有硬阴影，border-light 替代 border-color
+  - 按钮: border-radius 5-6px / hover spring 上移 / transform active
+  - 输入: border-radius 5px / focus ring 2px accent-blue
+  - Section header: 添加 section-icon + chevron-icon 替代 collapse-icon 文字箭头
+
+### 遇到的问题
+- 问题: PropertiesPanel.vue 缺少 `<script setup lang="ts">` 声明（报错 "Element is missing end tag" at line 22）
+  - 解决: 在文件头部注释后插入完整的 `<script setup lang="ts">`
+
+### 编译测试
+- [x] npm run build → 通过（PropertiesPanel: 36KB→7.9KB, CSS: 11.7KB→1.7KB）
+
+### 下小时计划
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
+- [ ] v0.3.1: 其他 UI 组件美化（LayerPanel / canvas toolbar）
+
+## 2026-04-21 17:10
+
+### 当前任务
+- [x] v0.3.1: LayerPanel 美化（taste-skill-main 规范）
+
+### 完成内容
+- LayerPanel.vue 完全重设计（v0.3.1 第五个组件）：
+  - 移除 NColorPicker 依赖，改用自定义纯 CSS 颜色选择器（8 个色块按钮，选中带白边框 + accent-blue 外环）
+  - 移除 NScrollbar，改用原生 overflow-y: auto + 自定义滚动条样式
+  - layer-item hover 添加 `translateY(-1px)` spring 上移动效
+  - layer-item active 添加 `scale(0.98)` 反馈
+  - nav-viewport-wrap hover 添加 `box-shadow: var(--shadow-elevated)` 扩散阴影
+  - add-btn hover 添加 `translateY(-1px)` spring 效果
+  - footer-divider 使用 monospace 字体
+  - 所有 transition 统一为 `var(--ease-spring)`（替代硬编码 cubic-bezier）
+  - swatch-btn hover scale(1.12) + shadow，active scale(0.95)
+- `npm run build` 通过（LayerPanel: 21.8KB→6.2KB, CSS: 15.3KB→2.3KB）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
+- [ ] v0.3.1: CellTree 美化（LayerPanel 内的 CellTree 组件）
