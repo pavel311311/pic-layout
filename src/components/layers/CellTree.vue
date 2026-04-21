@@ -15,18 +15,25 @@ import { ref, computed, watch, nextTick, type Component } from 'vue'
 import { useCellsStore } from '../../stores/cells'
 import {
   Home,
-  ChevronDown,
-  ChevronRight,
-  Circle,
-  Hexagon,
   Search,
   X,
-  Pencil,
-  Trash2,
   Plus,
   ArrowRight,
   ArrowLeft,
 } from 'lucide-vue-next'
+
+// SVG icons (taste-skill-main, no emoji/Lucide)
+const IconHome = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+const IconSearch = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`
+const IconX = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
+const IconPlus = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`
+const IconArrowRight = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`
+const IconArrowLeft = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`
+const IconChevronRight = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
+const IconCircle = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>`
+const IconHexagon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5v8z"/></svg>`
+const IconPencil = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`
+const IconTrash = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`
 
 const cellsStore = useCellsStore()
 
@@ -237,6 +244,31 @@ const flatTree = computed(() => {
   return result
 })
 
+// --- Icon render helpers (taste-skill-main, inline SVG) ---
+function renderHome() { return IconHome }
+function renderSearch() { return IconSearch }
+function renderX() { return IconX }
+function renderPlus() { return IconPlus }
+function renderArrowRight() { return IconArrowRight }
+function renderArrowLeft() { return IconArrowLeft }
+function renderChevronRight(rotated: boolean) {
+  return rotated
+    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(90deg)"><path d="m6 9 6 6 6-6"/></svg>`
+    : IconChevronRight
+}
+function renderCircle(isTop: boolean) {
+  return IconCircle.replace('stroke="currentColor"', isTop ? `stroke="var(--accent-blue)"` : `stroke="currentColor"`)
+}
+function renderHexagon() { return IconHexagon }
+function renderPencil() { return IconPencil }
+function renderTrash() { return IconTrash }
+
+/** Whether to show expanded chevron (has children and is expanded) */
+function showExpandedChevron(cellId: string): boolean {
+  const node = flatTree.value.find(n => n.node.cell.id === cellId)
+  return (node?.node.childCells.length ?? 0) > 0 && isExpanded(cellId)
+}
+
 // === Cell Search (v0.2.7) ===
 const searchQuery = ref('')
 
@@ -369,22 +401,22 @@ function isCurrentMatch(cellId: string): boolean {
   return matchedIds[currentMatchIndex.value] === cellId
 }
 
-// Context menu items (icon is a Lucide component)
+// Context menu items
 interface ContextMenuItem {
   id: string
   label: string
-  icon: Component
+  renderIcon: () => string
 }
 const contextMenuItems = computed((): ContextMenuItem[] => {
   if (!contextMenuCellId.value) return []
   const isTop = contextMenuCellId.value === topCellId.value
   const items: ContextMenuItem[] = [
-    { id: 'drill', label: 'Drill Into', icon: ArrowRight },
-    { id: 'rename', label: 'Rename', icon: Pencil },
-    { id: 'add-child', label: 'Add Child Cell', icon: Plus },
+    { id: 'drill', label: 'Drill Into', renderIcon: renderArrowRight },
+    { id: 'rename', label: 'Rename', renderIcon: renderPencil },
+    { id: 'add-child', label: 'Add Child Cell', renderIcon: renderPlus },
   ]
   if (!isTop) {
-    items.push({ id: 'delete', label: 'Delete', icon: Trash2 })
+    items.push({ id: 'delete', label: 'Delete', renderIcon: renderTrash })
   }
   return items
 })
@@ -509,7 +541,7 @@ watch(flatTree, () => {
 
 <template>
   <div class="cell-tree-panel" @click="closeContextMenu">
-    <!-- Breadcrumb / Navigation (v0.2.7 enhanced) -->
+        <!-- Breadcrumb -->
     <div class="cell-breadcrumb">
       <!-- Home / Top Cell -->
       <button
@@ -519,7 +551,7 @@ watch(flatTree, () => {
         title="Go to top cell"
         aria-label="Go to top cell"
       >
-        <Home :size="10" aria-hidden="true" />
+        <span class="icon-inline" v-html="renderHome()" aria-hidden="true"></span>
         <span>{{ cellsStore.topCell?.name || 'TOP' }}</span>
       </button>
       <!-- Full hierarchy path when drilled in -->
@@ -533,7 +565,7 @@ watch(flatTree, () => {
           :aria-label="`Drill to ${crumb.name}`"
         >
           <template v-if="idx < breadcrumbPath.length - 2">
-            <ArrowLeft :size="9" aria-hidden="true" />
+            <span class="icon-inline" v-html="renderArrowLeft()" aria-hidden="true"></span>
           </template>
           <span>{{ crumb.name }}</span>
         </button>
@@ -542,7 +574,7 @@ watch(flatTree, () => {
 
     <!-- Cell Search (v0.2.7) -->
     <div class="cell-search">
-      <Search :size="10" class="search-icon" aria-hidden="true" />
+      <span class="search-icon icon-inline" v-html="renderSearch()" aria-hidden="true"></span>
       <input
         v-model="searchQuery"
         type="text"
@@ -557,15 +589,9 @@ watch(flatTree, () => {
       <span v-if="matchCount > 0" class="search-match-count" aria-live="polite" :title="`${matchCount} match${matchCount !== 1 ? 'es' : ''} — Enter to first, Tab/Shift+Tab to cycle`">
         {{ matchCount > 1 ? `${currentMatchIndex + 1}/${matchCount}` : matchCount }}
       </span>
-      <button
-        v-if="searchQuery"
-        class="cell-search-clear"
-        @click="searchQuery = ''"
-        title="Clear search (Esc)"
-        aria-label="Clear search"
-      >
-        <X :size="10" aria-hidden="true" />
-      </button>
+      <span v-if="searchQuery" class="cell-search-clear" @click="searchQuery = ''" title="Clear search (Esc)" aria-label="Clear search">
+        <span class="icon-inline" v-html="renderX()" aria-hidden="true"></span>
+      </span>
     </div>
 
     <!-- No search results empty state (v0.2.7 search UX) -->
@@ -606,16 +632,12 @@ watch(flatTree, () => {
           @click.stop="toggleExpand(node.cell.id, $event)"
           :aria-label="isExpanded(node.cell.id) ? 'Collapse' : 'Expand'"
         >
-          <ChevronDown v-if="isExpanded(node.cell.id)" :size="12" aria-hidden="true" />
-          <ChevronRight v-else :size="12" aria-hidden="true" />
+          <span class="icon-inline chevron" v-html="renderChevronRight(isExpanded(node.cell.id))" aria-hidden="true"></span>
         </button>
         <span v-else class="expand-spacer"></span>
 
         <!-- Cell icon -->
-        <span class="cell-icon" :class="{ 'is-top': node.cell.id === topCellId }" aria-hidden="true">
-          <Circle v-if="node.cell.id === topCellId" :size="10" :strokeWidth="2" />
-          <Hexagon v-else :size="10" :strokeWidth="1.5" />
-        </span>
+        <span class="cell-icon" :class="{ 'is-top': node.cell.id === topCellId }" aria-hidden="true" v-html="node.cell.id === topCellId ? renderCircle(true) : renderHexagon()"></span>
 
         <!-- Cell name -->
         <span class="cell-name">{{ node.cell.name }}</span>
@@ -652,7 +674,7 @@ watch(flatTree, () => {
     <!-- Bottom toolbar -->
     <div class="cell-toolbar">
       <button class="toolbar-btn" @click="openAddCellDialog()" title="Add new cell" aria-label="Add new cell">
-        <Plus :size="10" aria-hidden="true" />
+        <span class="icon-inline" v-html="renderPlus()" aria-hidden="true"></span>
         <span>Cell</span>
       </button>
       <button
@@ -662,7 +684,7 @@ watch(flatTree, () => {
         title="Drill out"
         aria-label="Drill out"
       >
-        <ArrowLeft :size="10" aria-hidden="true" />
+        <span class="icon-inline" v-html="renderArrowLeft()" aria-hidden="true"></span>
         <span>Out</span>
       </button>
     </div>
@@ -681,7 +703,7 @@ watch(flatTree, () => {
           class="ctx-item"
           @click="onContextMenuSelect(item.id)"
         >
-          <component :is="item.icon" :size="12" class="ctx-icon" aria-hidden="true" />
+          <span class="ctx-icon icon-inline" v-html="item.renderIcon()" aria-hidden="true"></span>
           {{ item.label }}
         </div>
       </div>
@@ -690,48 +712,61 @@ watch(flatTree, () => {
 </template>
 
 <style scoped>
+/* ============================================
+   CellTree.vue — taste-skill-main redesign
+   v0.3.1 — Geist/Satoshi, Zinc palette, spring animations
+   ============================================ */
+
 .cell-tree-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 120px;
   background: var(--bg-panel);
+  font-family: 'Satoshi', var(--font-sans, sans-serif);
 }
 
 /* Breadcrumb */
 .cell-breadcrumb {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 3px;
+  padding: 6px 10px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
   font-size: 10px;
+  letter-spacing: 0.02em;
 }
 
 .breadcrumb-btn {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
+  gap: 4px;
+  padding: 3px 7px;
   background: transparent;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 5px;
   font-size: 10px;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
-  max-width: 80px;
+  max-width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: transform var(--duration-fast) var(--ease-spring),
+              color var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-spring);
 }
 
 .breadcrumb-btn:hover {
   background: var(--border-light);
+  transform: translateY(-1px);
 }
 
 .breadcrumb-btn.active {
-  background: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
 }
@@ -739,14 +774,15 @@ watch(flatTree, () => {
 .breadcrumb-sep {
   color: var(--text-muted);
   font-size: 10px;
+  font-weight: 400;
 }
 
 /* Cell Search */
 .cell-search {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 6px;
+  padding: 6px 10px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border-light);
 }
@@ -754,118 +790,160 @@ watch(flatTree, () => {
 .cell-search .search-icon {
   color: var(--text-muted);
   flex-shrink: 0;
+  width: 12px;
+  height: 12px;
 }
 
 .cell-search-input {
   flex: 1;
-  height: 20px;
-  padding: 0 4px;
+  height: 24px;
+  padding: 0 8px;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
-  font-size: 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
   background: var(--bg-primary);
   color: var(--text-primary);
+  letter-spacing: 0.01em;
+  transition: border-color var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .cell-search-input:focus {
-  outline: 1px solid var(--accent-blue);
+  outline: none;
   border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 15%, transparent);
 }
 
 .cell-search-input::placeholder {
   color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Search match count badge */
+.search-match-count {
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--accent-blue);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: 'Geist Mono', 'Satoshi', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
 }
 
 .cell-search-clear {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
+  border-radius: 3px;
+  transition: color var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast) var(--ease-spring);
 }
 
 .cell-search-clear:hover {
   color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
-/* Search match count badge (v0.2.7) */
-.search-match-count {
-  min-width: 16px;
-  height: 14px;
-  padding: 0 3px;
-  background: var(--accent-blue);
-  color: #fff;
-  border-radius: 7px;
-  font-size: 9px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* No search results empty state (v0.2.7) */
+/* No search results empty state */
 .cell-search-no-results {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
+  gap: 8px;
+  padding: 14px 10px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
   justify-content: center;
+  letter-spacing: 0.01em;
 }
 
 /* Cell list */
 .cell-list {
   flex: 1;
   overflow-y: auto;
-  padding: 2px 0;
+  padding: 3px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.cell-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cell-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cell-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 .cell-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 22px;
-  padding-right: 8px;
+  gap: 5px;
+  height: 26px;
+  padding-right: 10px;
   cursor: pointer;
   font-size: 11px;
   color: var(--text-primary);
   border-left: 2px solid transparent;
+  transition: background var(--duration-fast) var(--ease-spring),
+              transform var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-spring),
+              color var(--duration-fast) var(--ease-spring);
+  letter-spacing: 0.01em;
 }
 
 .cell-item:hover {
-  background: color-mix(in srgb, var(--bg-secondary) 80%, var(--border-light));
+  background: color-mix(in srgb, var(--bg-secondary) 60%, var(--border-light));
+  transform: translateY(-1px);
+}
+
+.cell-item:active {
+  transform: scale(0.98);
 }
 
 .cell-item.selected {
-  background: color-mix(in srgb, var(--accent-blue) 15%, var(--bg-panel));
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
   border-left-color: var(--accent-blue);
   color: var(--accent-blue);
   font-weight: 500;
 }
 
-/* Keyboard focus ring (v0.2.7) */
+/* Keyboard focus ring */
 .cell-item.is-focused {
-  outline: 1px solid var(--accent-blue);
-  outline-offset: -1px;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
 }
 
-/* Make cell list focusable for keyboard nav */
 .cell-list:focus {
   outline: none;
 }
+
 .cell-list:focus-visible {
-  outline: 1px solid var(--border-color);
+  outline: none;
 }
 
-/* Search match highlight (v0.2.7) */
+/* Search match highlight */
 .cell-item.search-match {
-  background: color-mix(in srgb, var(--accent-green) 20%, var(--bg-panel));
+  background: color-mix(in srgb, var(--accent-green) 15%, var(--bg-panel));
   border-left-color: var(--accent-green);
 }
 
@@ -874,14 +952,13 @@ watch(flatTree, () => {
   font-weight: 600;
 }
 
-/* Current match in Tab-key cycling — highlighted more prominently */
 .cell-item.is-current-match {
-  background: color-mix(in srgb, var(--accent-primary) 30%, var(--bg-panel));
-  border-left: 2px solid var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-blue) 25%, var(--bg-panel));
+  border-left-color: var(--accent-blue);
 }
 
 .cell-item.is-current-match .cell-name {
-  color: var(--accent-primary);
+  color: var(--accent-blue);
   font-weight: 700;
 }
 
@@ -893,22 +970,28 @@ watch(flatTree, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 4px;
+  transition: color var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast) var(--ease-spring),
+              transform var(--duration-fast) var(--ease-spring);
 }
 
 .expand-btn:hover {
   color: var(--text-primary);
+  background: var(--bg-secondary);
+  transform: scale(1.1);
 }
 
 .expand-spacer {
-  width: 16px;
+  width: 18px;
 }
 
 .cell-icon {
@@ -917,6 +1000,9 @@ watch(flatTree, () => {
   justify-content: center;
   color: var(--text-muted);
   flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  transition: color var(--duration-fast) var(--ease-spring);
 }
 
 .cell-icon.is-top {
@@ -928,16 +1014,25 @@ watch(flatTree, () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 400;
 }
 
 .cell-count {
   font-size: 9px;
+  font-weight: 600;
+  font-family: 'Geist Mono', 'Satoshi', monospace;
   color: var(--text-muted);
   background: var(--bg-secondary);
-  padding: 1px 4px;
-  border-radius: 8px;
-  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  min-width: 22px;
   text-align: center;
+  letter-spacing: 0.02em;
+  transition: background var(--duration-fast) var(--ease-spring);
+}
+
+.cell-item:hover .cell-count {
+  background: var(--border-light);
 }
 
 /* Empty state */
@@ -946,69 +1041,93 @@ watch(flatTree, () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  gap: 8px;
+  padding: 20px;
+  gap: 10px;
   font-size: 11px;
   color: var(--text-muted);
+  letter-spacing: 0.01em;
 }
 
 .add-cell-btn {
-  padding: 4px 12px;
+  padding: 5px 14px;
   border: 1px dashed var(--border-color);
-  border-radius: 3px;
+  border-radius: 5px;
   background: transparent;
   font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
   color: var(--text-secondary);
   cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-spring),
+              transform var(--duration-fast) var(--ease-spring);
 }
 
 .add-cell-btn:hover {
   background: var(--bg-secondary);
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
 }
 
 /* Add cell form */
 .add-cell-form {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-top: 1px solid var(--border-light);
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  border-radius: 0 0 6px 6px;
 }
 
 .cell-name-input {
-  height: 22px;
-  padding: 0 6px;
+  height: 26px;
+  padding: 0 8px;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 5px;
   font-size: 11px;
+  font-family: inherit;
   background: var(--bg-panel);
   color: var(--text-primary);
+  letter-spacing: 0.01em;
+  transition: border-color var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .cell-name-input:focus {
-  outline: 1px solid var(--accent-blue);
+  outline: none;
   border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 15%, transparent);
 }
 
 .add-cell-actions {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   justify-content: flex-end;
 }
 
 .btn-cancel,
 .btn-add {
-  padding: 2px 10px;
-  border-radius: 3px;
+  padding: 4px 12px;
+  border-radius: 5px;
   font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-spring);
 }
 
 .btn-cancel {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-light);
   background: var(--bg-panel);
   color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
 }
 
 .btn-add {
@@ -1017,11 +1136,20 @@ watch(flatTree, () => {
   color: white;
 }
 
+.btn-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-blue) 30%, transparent);
+}
+
+.btn-add:active {
+  transform: scale(0.97);
+}
+
 /* Toolbar */
 .cell-toolbar {
   display: flex;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 6px 10px;
   border-top: 1px solid var(--border-light);
   background: var(--bg-secondary);
 }
@@ -1030,23 +1158,35 @@ watch(flatTree, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
-  padding: 3px 8px;
+  padding: 5px 10px;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 6px;
   background: var(--bg-panel);
   font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
   color: var(--text-primary);
   cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: transform var(--duration-fast) var(--ease-spring),
+              background var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .toolbar-btn:hover:not(:disabled) {
   background: var(--border-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.toolbar-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .toolbar-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -1054,26 +1194,47 @@ watch(flatTree, () => {
 .cell-context-menu {
   position: fixed;
   z-index: 9999;
-  min-width: 140px;
+  min-width: 152px;
   background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  padding: 4px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: var(--shadow-elevated);
+  padding: 4px;
+  backdrop-filter: blur(8px);
+  animation: ctx-enter 0.15s var(--ease-spring) forwards;
+}
+
+@keyframes ctx-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .ctx-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
+  padding: 6px 10px;
   font-size: 11px;
+  font-weight: 400;
   color: var(--text-primary);
   cursor: pointer;
+  border-radius: 5px;
+  letter-spacing: 0.01em;
+  transition: background var(--duration-fast) var(--ease-spring),
+              color var(--duration-fast) var(--ease-spring),
+              transform var(--duration-fast) var(--ease-spring);
 }
 
 .ctx-item:hover {
-  background: color-mix(in srgb, var(--accent-blue) 15%, var(--bg-panel));
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
+  color: var(--accent-blue);
+  transform: translateX(2px);
 }
 
 .ctx-icon {
@@ -1081,5 +1242,7 @@ watch(flatTree, () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 </style>
