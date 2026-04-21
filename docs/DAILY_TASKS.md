@@ -544,3 +544,51 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.3.1: 继续其他 Dialog 美化（AlignDialog / GdsImportDialog / GdsExportDialog）
 - [ ] v0.3.1: BooleanOperationsDialog / ArrayCopyDialog / SvgExportDialog 美化
+
+## 2026-04-21 11:10
+
+### 当前任务
+- [ ] v0.3.1: SvgExportDialog 美化 - taste-skill-main 规范重构
+
+### 完成内容
+- （进行中）
+
+### 遇到的问题
+- （无）
+
+### 编译测试
+- [ ] npm run build 通过
+
+### 下小时计划
+- [ ] v0.3.1: GdsImportDialog 美化（保持 NModal 框架，重设计内部内容区）
+
+---
+
+## 2026-04-21 10:10
+
+### 当前任务
+- [x] v0.3.1: BooleanOperationsDialog 美化 - taste-skill-main 规范重构
+
+### 完成内容
+- BooleanOperationsDialog 完全重设计（v0.3.1 第一轮第二个 Dialog）：
+  - 从 `NModal preset="card"` 改为 Teleport + Transition 弹窗模式
+  - 移除 NMessage 依赖，改用 CustomEvent 'nmessage' 通过 canvas-mark-dirty 事件总线通知
+  - 移除所有 emoji，改用内联 SVG 图标（Boolean 圆圈交叠图标的4种状态）
+  - 2 列 info-row（已选择/类型）替代原有 description + selected-info 堆叠
+  - 4 列 op-grid 网格（Union/AND/MINUS/XOR），每个带 SVG 图标 + label
+  - 底部 operation-description box 替换原有 operation-preview
+  - CSS 重设计：spring 动画 / diffusion shadow / Zinc palette / monospace 数据
+  - Entrance: scale(0.97)+translateY + opacity fade，spring timing
+  - backdrop-filter blur(2px) 替代纯 opacity overlay
+  - 响应式断点（440px，op-grid 变为 2 列）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（30+ assets，BooleanOperationsDialog 10.7KB→3.5KB CSS 6.1KB→1.1KB）
+
+### 下小时计划
+- [ ] v0.3.1: GdsImportDialog 美化（保持 NModal 框架，重设计内部内容区）
+- [ ] v0.3.1: GdsExportDialog 美化（同上）
+- [ ] v0.3.1: SvgExportDialog 美化（保持 NModal 框架，重设计内部内容区）

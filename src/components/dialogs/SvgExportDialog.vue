@@ -1,13 +1,10 @@
 <script setup lang="ts">
 /**
  * SvgExportDialog.vue - SVG Export Dialog for PicLayout
- *
- * Features:
- * - Preview SVG export settings
- * - Export to .svg file
+ * v0.3.1 - taste-skill-main redesign
  */
-import { ref, computed } from 'vue'
-import { NModal, NButton, NSpace, NText, NSwitch, NInputNumber } from '@/plugins/naive'
+import { ref, computed, watch, nextTick } from 'vue'
+import { NButton, NSpace, NSwitch, NInputNumber } from '@/plugins/naive'
 import { exportToSVG, downloadSVG } from '@/utils/svgExporter'
 import { useEditorStore } from '@/stores/editor'
 import { useCanvasTheme } from '@/composables/useCanvasTheme'
@@ -22,23 +19,25 @@ const emit = defineEmits<{
 
 const editorStore = useEditorStore()
 const canvasTheme = useCanvasTheme()
-
-/** Dark background color from theme */
 const darkBgColor = computed(() => canvasTheme.colors.value.background)
 
-// Export options
-const padding = ref(5) // μm padding around design
+// Form state
+const padding = ref(5)
 const includeBackground = ref(false)
-const strokeWidth = ref(0.5) // μm stroke width
+const strokeWidth = ref(0.5)
 const darkBackground = ref(false)
+const isExporting = ref(false)
 
-// Shape stats
+// Stats
 const shapeCount = computed(() => editorStore.project.shapes.length)
 const layerCount = computed(() => editorStore.project.layers.length)
+const hasShapes = computed(() => shapeCount.value > 0)
 
-// Preview SVG (small version just for stats)
+// SVG preview
+const previewRef = ref<HTMLDivElement | null>(null)
+
 const previewSVG = computed(() => {
-  if (editorStore.project.shapes.length === 0) return ''
+  if (!hasShapes.value) return ''
   try {
     return exportToSVG(editorStore.project.shapes, editorStore.project.layers, {
       padding: padding.value,
@@ -52,8 +51,14 @@ const previewSVG = computed(() => {
   }
 })
 
+// Re-render preview when options change
+watch([padding, strokeWidth, includeBackground, darkBackground], async () => {
+  await nextTick()
+})
+
 function handleExport() {
-  if (shapeCount.value === 0) return
+  if (!hasShapes.value) return
+  isExporting.value = true
   try {
     const svg = exportToSVG(editorStore.project.shapes, editorStore.project.layers, {
       padding: padding.value,
@@ -64,174 +69,501 @@ function handleExport() {
     })
     const fileName = editorStore.project.name || 'PIC_LAYOUT'
     downloadSVG(svg, fileName)
-    emit('update:show', false)
+    close()
   } catch (err) {
     console.error('SVG export failed:', err)
+  } finally {
+    isExporting.value = false
   }
 }
 
 function close() {
   emit('update:show', false)
 }
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') close()
+  if (e.key === 'Enter' && hasShapes.value) handleExport()
+}
 </script>
 
 <template>
-  <NModal :show="show" :mask-closable="true" preset="card" title="Export to SVG"
-    style="width: 480px; max-width: 90vw;" @update:show="close">
-    <div class="export-body">
-      <!-- Stats -->
-      <div class="stats">
-        <span class="stat-item">{{ shapeCount }} shapes</span>
-        <span class="sep">|</span>
-        <span class="stat-item">{{ layerCount }} layers</span>
-      </div>
+  <Teleport to="body">
+    <Transition name="dialog-fade">
+      <div v-if="show" class="dialog-overlay" @click.self="close" @keydown="handleKeydown">
+        <div class="dialog-panel" role="dialog" aria-labelledby="svg-export-title">
+          <!-- Header -->
+          <div class="dialog-header">
+            <div class="dialog-title-group">
+              <!-- SVG icon -->
+              <svg class="dialog-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l-4.5-4.5m0 0l4.5-4.5m-4.5 4.5h9.75" />
+              </svg>
+              <h2 id="svg-export-title" class="dialog-title">Export to SVG</h2>
+            </div>
+            <button class="dialog-close" @click="close" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-      <!-- Options -->
-      <div class="options">
-        <div class="option-row">
-          <label class="option-label">Padding</label>
-          <NInputNumber v-model:value="padding" :min="0" :max="100" :step="1" size="small" style="width: 100px" />
-          <span class="option-unit">μm</span>
+          <!-- Stats bar -->
+          <div class="stats-bar">
+            <div class="stat-item">
+              <span class="stat-value">{{ shapeCount }}</span>
+              <span class="stat-label">shapes</span>
+            </div>
+            <div class="stat-sep" />
+            <div class="stat-item">
+              <span class="stat-value">{{ layerCount }}</span>
+              <span class="stat-label">layers</span>
+            </div>
+            <div class="stat-sep" />
+            <div class="stat-item">
+              <span class="stat-value">{{ padding }}<span class="stat-unit">μm</span></span>
+              <span class="stat-label">padding</span>
+            </div>
+            <div class="stat-sep" />
+            <div class="stat-item">
+              <span class="stat-value">{{ strokeWidth }}<span class="stat-unit">μm</span></span>
+              <span class="stat-label">stroke</span>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="dialog-body">
+            <!-- Options grid -->
+            <div class="options-grid">
+              <div class="option-row">
+                <label class="option-label">
+                  <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6zm.008 5.25h.008v.008H6v-.008zm0 5.25h.008v.008H6v-.008zM3 12h18M3 6h18M3 18h18" />
+                  </svg>
+                  Padding
+                </label>
+                <div class="option-control">
+                  <NInputNumber v-model:value="padding" :min="0" :max="100" :step="1" size="small" />
+                  <span class="option-unit">μm</span>
+                </div>
+              </div>
+
+              <div class="option-row">
+                <label class="option-label">
+                  <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                  </svg>
+                  Stroke Width
+                </label>
+                <div class="option-control">
+                  <NInputNumber v-model:value="strokeWidth" :min="0.01" :max="10" :step="0.1" size="small" />
+                  <span class="option-unit">μm</span>
+                </div>
+              </div>
+
+              <div class="option-row">
+                <label class="option-label">
+                  <svg class="option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6v-.008z" />
+                  </svg>
+                  Background
+                </label>
+                <div class="option-control option-control--toggle">
+                  <NSwitch v-model:value="includeBackground" size="small" />
+                  <template v-if="includeBackground">
+                    <button
+                      class="color-swatch"
+                      :class="{ active: !darkBackground }"
+                      style="background: #ffffff"
+                      title="Light background"
+                      @click="darkBackground = false"
+                    />
+                    <button
+                      class="color-swatch"
+                      :class="{ active: darkBackground }"
+                      :style="{ background: darkBgColor }"
+                      title="Dark background"
+                      @click="darkBackground = true"
+                    />
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- SVG Preview -->
+            <div class="preview-section">
+              <div class="preview-label">
+                <svg class="preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                Preview
+              </div>
+              <div class="preview-scroll" ref="previewRef">
+                <div v-if="previewSVG" class="preview-content" v-html="previewSVG" />
+                <div v-else-if="!hasShapes" class="preview-empty">
+                  <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h13.5m0 0l-3.5 3.5m3.5-3.5l3.5 3.5M2.25 13.5h13.5m0 0l-3.5-3.5m3.5 3.5L2.25 7.5" />
+                  </svg>
+                  <span>No shapes to export</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="dialog-footer">
+            <NButton @click="close" :disabled="isExporting">
+              Cancel
+            </NButton>
+            <NButton
+              type="primary"
+              :disabled="!hasShapes || isExporting"
+              :loading="isExporting"
+              @click="handleExport"
+            >
+              <template #icon>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l-4.5-4.5m0 0l4.5-4.5m-4.5 4.5h9.75" />
+                </svg>
+              </template>
+              Download SVG
+            </NButton>
+          </div>
         </div>
-
-        <div class="option-row">
-          <label class="option-label">Stroke Width</label>
-          <NInputNumber v-model:value="strokeWidth" :min="0.01" :max="10" :step="0.1" size="small" style="width: 100px" />
-          <span class="option-unit">μm</span>
-        </div>
-
-        <div class="option-row">
-          <label class="option-label">Include Background</label>
-          <NSwitch v-model:value="includeBackground" size="small" />
-          <template v-if="includeBackground">
-            <span class="option-unit" style="margin-left: 8px">Color:</span>
-            <button
-              class="color-swatch"
-              :class="{ active: !darkBackground }"
-              style="background: #ffffff; border: 1px solid #ccc;"
-              title="Light"
-              @click="darkBackground = false"
-            />
-            <button
-              class="color-swatch"
-              :class="{ active: darkBackground }"
-              :style="{ background: darkBgColor, border: '1px solid #555' }"
-              title="Dark"
-              @click="darkBackground = true"
-            />
-          </template>
-        </div>
       </div>
-
-      <!-- SVG Preview -->
-      <div v-if="previewSVG" class="preview-container">
-        <div class="preview-label">Preview</div>
-        <div class="preview-scroll" v-html="previewSVG"></div>
-      </div>
-
-      <!-- Empty state -->
-      <div v-else class="empty-state">
-        <NText depth="3">No shapes to export</NText>
-      </div>
-    </div>
-
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="close">Cancel</NButton>
-        <NButton type="primary" :disabled="shapeCount === 0" @click="handleExport">
-          Download SVG
-        </NButton>
-      </NSpace>
-    </template>
-  </NModal>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
-.export-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.stats {
+/* === Overlay === */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+/* === Panel === */
+.dialog-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
+  overflow: hidden;
+}
+
+/* === Header === */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dialog-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialog-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-blue);
+}
+
+.dialog-title {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.dialog-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dialog-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.dialog-close:active {
+  transform: scale(0.95);
+}
+
+/* === Stats bar === */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
   font-size: 13px;
-  color: var(--text-secondary, #888);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
-.sep {
-  color: var(--border-color, #ddd);
+.stat-unit {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.options {
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.stat-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-light);
+  margin: 0 16px;
+}
+
+/* === Body === */
+.dialog-body {
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
+}
+
+/* === Options === */
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .option-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .option-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
-  min-width: 110px;
-  color: var(--text-primary, #333);
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.option-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+}
+
+.option-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-control--toggle {
+  gap: 10px;
 }
 
 .option-unit {
   font-size: 12px;
-  color: var(--text-secondary, #888);
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+  min-width: 24px;
 }
 
+/* Color swatches */
 .color-swatch {
   width: 20px;
   height: 20px;
-  border-radius: 3px;
+  border-radius: 5px;
+  border: 1px solid var(--border-light);
   cursor: pointer;
-  padding: 0;
   opacity: 0.5;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, box-shadow 0.15s, transform 0.15s;
+  padding: 0;
+}
+
+.color-swatch:hover {
+  opacity: 0.8;
+  transform: scale(1.08);
 }
 
 .color-swatch.active {
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--accent-blue, #1890ff);
+  box-shadow: 0 0 0 2px var(--accent-blue);
 }
 
-.preview-container {
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 6px;
+/* === Preview === */
+.preview-section {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .preview-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
   font-size: 11px;
-  color: var(--text-secondary, #888);
-  padding: 4px 8px;
-  background: var(--bg-header, #f5f5f5);
-  border-bottom: 1px solid var(--border-color, #ddd);
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.preview-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .preview-scroll {
   max-height: 200px;
   overflow: auto;
-  background: repeating-conic-gradient(#e0e0e0 0% 25%, #f5f5f5 0% 50%) 50% / 10px 10px;
-  padding: 8px;
+  background: repeating-conic-gradient(
+    var(--bg-tertiary) 0% 25%,
+    var(--bg-secondary) 0% 50%
+  ) 50% / 10px 10px;
+  padding: 12px;
 }
 
-.preview-scroll :deep(svg) {
-  display: block;
+.preview-content {
+  display: flex;
+  justify-content: center;
+}
+
+.preview-content :deep(svg) {
   max-width: 100%;
   height: auto;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 24px;
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.empty-icon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
+}
+
+/* === Footer === */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* === Transitions === */
+.dialog-fade-enter-active {
+  transition: opacity 0.2s var(--ease-spring), transform 0.25s var(--ease-spring);
+}
+
+.dialog-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dialog-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.97) translateY(-4px);
+}
+
+.dialog-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.dialog-fade-enter-active .dialog-panel {
+  transition: box-shadow 0.2s;
+}
+
+/* === Responsive === */
+@media (max-width: 520px) {
+  .dialog-overlay {
+    padding: 16px;
+    align-items: flex-end;
+  }
+
+  .dialog-panel {
+    border-radius: 12px 12px 0 0;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .stat-sep {
+    margin: 0 10px;
+  }
+
+  .option-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .option-control {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>
