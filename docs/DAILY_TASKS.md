@@ -746,3 +746,62 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
 - [ ] v0.3.1: CellTree 美化（LayerPanel 内的 CellTree 组件）
+
+## 2026-04-21 19:10
+
+### 当前任务
+- [x] v0.3.1: CellTree 美化（taste-skill-main SVG图标替换）
+
+### 完成内容
+- CellTree.vue 完全重设计（v0.3.1 第六个组件）：
+  - 移除 lucide-vue-next 依赖（Circle/ChevronDown/ChevronRight/Hexagon/Pencil/Search/Trash2/Home/ArrowRight/ArrowLeft/Plus/X），改用内联 SVG 图标
+  - 所有图标导出为常量 SVG 字符串（IconHome/IconSearch/IconX/IconPlus/IconArrowRight/IconArrowLeft/IconChevronRight/IconCircle/IconHexagon/IconPencil/IconTrash）
+  - IconCircle 根据 isTop 状态切换 stroke 颜色（accent-blue 或 inherit）
+  - IconChevronRight 根据 expanded 状态返回旋转 90° 的向下箭头
+  - renderIcon 函数替代 Lucide Component 引用（contextMenuItems 改用 renderIcon 返回 SVG 字符串）
+  - template 使用 `v-html` 渲染 SVG（`<span class="icon-inline" v-html="renderHome()">`）
+  - 移除 `type Component` import（不再需要 Component 类型）
+  - font-weight 600 + letter-spacing 统一规范
+  - 所有 transition 统一 `var(--ease-spring)`
+  - 边框统一 `--border-light` 规范
+  - CellTree: 401行→280行（减少30%），CSS: 263行→262行（基本不变）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（CellTree 美化后构建正常，Canvas: 184.8KB→54.2KB）
+
+### 下小时计划
+- [ ] v0.3.1: canvas toolbar 美化（Canvas.vue 工具栏按钮替换）
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查）
+
+## 2026-04-21 20:10
+
+### 当前任务
+- [x] v0.3.1: Toolbar.vue 美化（taste-skill-main SVG图标替换）
+
+### 完成内容
+- Toolbar.vue 完全重设计（v0.3.1 第七个组件）：
+  - 移除 lucide-vue-next 全部依赖（22个图标全部替换为内联 SVG）
+  - 定义 28 个内联 SVG 常量（IconSave/IconUpload/IconDownload/IconUndo/IconRedo/IconAlign/IconArray/IconSelect/IconRect/IconPolygon/IconPolyline/IconWaveguide/IconPath/IconEdge/IconLabel/IconRuler/IconZoomIn/IconZoomOut/IconFit/IconMoon/IconSun/IconBool/IconDrillOut/IconDrillIn/IconTop/IconHexagon/IconFileImage）
+  - iconMap 对象统一管理所有图标，renderIcon(name) 函数返回对应 SVG 字符串
+  - toolDefs 数组改为 {id/name/shortcut/icon} 结构，icon 为字符串名称
+  - editOps/fileOps 数组添加 icon 字段
+  - themeIcon 使用 computed 根据 store.theme 返回 moon/sun 图标名
+  - 模板中所有 `<Component :is="...">` 替换为 `<span class="btn-icon-svg" v-html="renderIcon(...)">`
+  - `.btn-icon-svg :deep(svg)` 选择器确保 SVG stroke 使用 currentColor
+  - `.measure-icon-svg` 添加 `display:flex; align-items:center;` 替代原 btn-icon-svg
+  - `.cell-nav-icon` 添加 `display:flex; align-items:center;` 替代原 btn-icon-svg
+  - 所有 CSS transition 统一 `var(--ease-spring)` 规范
+  - npm run build 通过（Toolbar: 18.3KB→3.7KB CSS: 5.1KB→0.9KB）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（Toolbar: 18.3KB→3.7KB + 5.1KB→0.9KB CSS）
+
+### 下小时计划
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
+- [ ] v0.3.1: 其他剩余 UI 组件美化收尾
