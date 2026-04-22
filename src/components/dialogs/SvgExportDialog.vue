@@ -22,8 +22,10 @@ const darkBgColor = computed(() => canvasTheme.colors.value.background)
 
 // Form state
 const padding = ref(5)
+const paddingError = ref('')
 const includeBackground = ref(false)
 const strokeWidth = ref(0.5)
+const strokeError = ref('')
 const darkBackground = ref(false)
 const isExporting = ref(false)
 
@@ -85,18 +87,55 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && hasShapes.value) handleExport()
 }
 
-// Stepper controls
+function validatePadding(): boolean {
+  if (padding.value < 0) {
+    paddingError.value = 'Padding must be ≥ 0'
+    return false
+  }
+  if (padding.value > 100) {
+    paddingError.value = 'Padding must be ≤ 100'
+    return false
+  }
+  paddingError.value = ''
+  return true
+}
+
+function validateStroke(): boolean {
+  if (strokeWidth.value < 0.01) {
+    strokeError.value = 'Stroke must be ≥ 0.01'
+    return false
+  }
+  if (strokeWidth.value > 10) {
+    strokeError.value = 'Stroke must be ≤ 10'
+    return false
+  }
+  strokeError.value = ''
+  return true
+}
+
 function decrementPadding() {
-  if (padding.value > 0) padding.value--
+  if (padding.value > 0) {
+    padding.value = Math.round((padding.value - 1) * 100) / 100
+    validatePadding()
+  }
 }
 function incrementPadding() {
-  if (padding.value < 100) padding.value++
+  if (padding.value < 100) {
+    padding.value = Math.round((padding.value + 1) * 100) / 100
+    validatePadding()
+  }
 }
 function decrementStroke() {
-  if (strokeWidth.value > 0.01) strokeWidth.value = Math.round((strokeWidth.value - 0.1) * 100) / 100
+  if (strokeWidth.value > 0.01) {
+    strokeWidth.value = Math.round((strokeWidth.value - 0.1) * 100) / 100
+    validateStroke()
+  }
 }
 function incrementStroke() {
-  if (strokeWidth.value < 10) strokeWidth.value = Math.round((strokeWidth.value + 0.1) * 100) / 100
+  if (strokeWidth.value < 10) {
+    strokeWidth.value = Math.round((strokeWidth.value + 0.1) * 100) / 100
+    validateStroke()
+  }
 }
 </script>
 
@@ -162,6 +201,7 @@ function incrementStroke() {
                   </div>
                   <span class="option-unit">μm</span>
                 </div>
+                <div v-if="paddingError" class="field-error">{{ paddingError }}</div>
               </div>
 
               <div class="option-row">
@@ -179,6 +219,7 @@ function incrementStroke() {
                   </div>
                   <span class="option-unit">μm</span>
                 </div>
+                <div v-if="strokeError" class="field-error">{{ strokeError }}</div>
               </div>
 
               <div class="option-row">
@@ -403,11 +444,23 @@ function incrementStroke() {
   gap: 14px;
 }
 
+.field-error {
+  position: absolute;
+  bottom: -16px;
+  left: 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #ef4444;
+  white-space: nowrap;
+}
+
 .option-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  position: relative;
+  padding-bottom: 20px;
 }
 
 .option-label {

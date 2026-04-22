@@ -924,3 +924,31 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] T1-T5 队列标记清理（将已完成的 `[ ]` 更新为 `[x]` 并标注测试文件）
 - [ ] v0.3.2: Dialog 表单验证完善（GdsImportDialog/GdsExportDialog 输入校验）
+
+## 2026-04-22 20:10
+
+### 当前任务
+- [x] T6: GdsExportDialog 表单验证 - v0.3.2 T6 Dialog 表单验证第一枪
+
+### 完成内容
+- **GdsExportDialog 完全重设计（v0.3.2 T6 第一个 Dialog）**：
+  - 添加 `fileNameError` ref 和 `validateFileName()` 函数（文件名合法性：空检查/非法字符/长度上限200）
+  - `exportStats` 新增 `isEmpty` 字段（filteredShapes.length === 0）
+  - 文件名输入框添加 `@input="fileNameError = validateFileName(fileName)"` 实时校验
+  - 文件名下方添加 `v-if="fileNameError"` 错误提示（红色，inline SVG 图标）
+  - Stats preview 前添加 empty state hint（当 `exportStats.isEmpty` 时显示警告图标 + "No shapes to export"）
+  - Export 按钮添加 `exportStats.isEmpty` 禁用条件
+  - handleExport() 添加 `fileNameError` 校验提前返回
+  - `.field-hint.error-hint` CSS 样式（红色文字 + flex 对齐）
+  - `npm run build` 通过（30 assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] T6-2: SvgExportDialog padding/stroke width 范围校验（已有 stepper bounds，可添加实时提示）
+- [ ] T6-3: ArrayCopyDialog count/distance 范围校验（已有 validation，可添加 UI 错误提示）
+- [ ] T6-4: GdsImportDialog 输入校验增强（文件大小/格式/空状态）
