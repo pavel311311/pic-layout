@@ -45,8 +45,8 @@
 - [ ] ArrowUp/Down 在菜单项间切换
 - [ ] Enter 确认选择
 - [ ] Escape 关闭菜单
-- [ ] Home/End 跳转首/末项
-- [ ] Tab 循环（在子菜单间切换）
+- [x] Home/End 跳转首/末项 ← ContextMenu.vue 已实现
+- [ ] Tab 循环（在子菜单间切换）← 仅测试存在，实际组件未实现（Tab 无操作，当前行为 = no-op）
 
 ---
 
@@ -801,6 +801,68 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 
 ### 编译测试
 - [x] npm run build → 通过（Toolbar: 18.3KB→3.7KB + 5.1KB→0.9KB CSS）
+
+### 下小时计划
+- [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
+- [ ] v0.3.1: 其他剩余 UI 组件美化收尾
+
+## 2026-04-21 23:10
+
+### 当前任务
+- [x] v0.3.1: 深色主题系统验证（light/dark 切换检查）
+
+### 完成内容
+- 全面审查 style.css CSS 变量系统完整性：
+  - Light theme (`:root, .theme-light`) 和 Dark theme (`.theme-dark`) CSS 变量全部定义
+  - 图层映射/数据类型/多选操作已完成（T2-3/T2-4 测试已覆盖）
+  - 深色主题切换在 ui store 中通过 `html.classList.add/remove('theme-light'/'theme-dark')` 实现
+  - CSS 变量定义完整（bg/border/text/accent/shadow/scrollbar 全覆盖）
+  - 无残留硬编码颜色（#1e1e1e/#333 仅在 useCanvasTheme.ts 中用于 canvas 背景颜色处理，合理）
+  - `@keyframes` / `transition` 统一使用 `var(--ease-spring)` 规范
+  - 滚动条/selection/focus-visible 全局样式已统一
+- 验证 build 通过（30+ assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.3.1: 其他剩余 UI 组件美化收尾（检查是否还有未美化的组件）
+- [ ] v0.3.1: 验收检查（所有已美化组件的 taste-skill-main 规范一致性）
+
+---
+
+## 2026-04-21 21:10
+
+### 当前任务
+- [x] T2-4: 图层映射（Layer + Datatype）测试覆盖 - v0.3.0 GDS往返兼容性
+
+### 完成内容
+- 发现 rawLayers 是 Set<number>（只存 layer number），非 Map，所以无法按 gdsLayer/datatype 分组统计
+- 发现 TEXT element（label）通过 textLoop 解析时未设置 currentElementDatatype（DATATYPE record 未被处理）
+- 发现 rawLayers 在 exporter 不收集，在 importer 只收集 layer number（无 datatype）
+- **新增测试覆盖**：
+  - T2-3a: rect+polygon+path+label → GDS 导出（已知 rawLayers 只含 layer numbers）
+  - T2-3b: rect (layerId=1) + label (layerId=3) → 图层往返 preserve gdsDatatype（通过 gdsToCells 循环）
+  - T2-3c: rect → GDS re-import → re-export → same rawLayers count
+  - T2-3d: invalid layerId → export does not throw
+  - T2-3e: polygon + path on same layer → same rawLayers key
+- 修复 gdsRoundTrip.test.ts 两个 bug：
+  - extractShapes() → 传入 Cell[]，但旧代码传入 `parsed.cells[0].shapes`（GDSElement[]）导致 `cells is not iterable`
+  - 改用 `gdsToCells(parsed)` 获取 Cell[] 再 extractShapes
+- 全部 117 测试通过（polygonBoolean 30 + propertyEditing 21 + gdsRoundTrip 17 + gdsCellHierarchy 3 + gdsPathEdge 13 + cellDrillInOut 9 + contextMenu 24）
+
+### 遇到的问题
+- 问题: rawLayers.entries() 返回 `[number, number][]`（Set 而非 Map），key 即 value
+  - 解决: 直接用 Array.from(rawLayers) 获取 layer numbers 列表
+- 问题: extractShapes 接收 Cell[]，旧代码传入 `parsed.cells[0].shapes`（GDSElement[]）导致 TypeError
+  - 解决: 先 `gdsToCells(parsed)` 转换 ParsedGDSFile → Cell[]，再 extractShapes
+
+### 编译测试
+- [x] npx vitest run → 117 passed
+- [x] npm run build → 通过
 
 ### 下小时计划
 - [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）

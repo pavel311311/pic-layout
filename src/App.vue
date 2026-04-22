@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { NConfigProvider } from './plugins/naive'
+import { darkTheme, lightTheme } from 'naive-ui'
 import { useEditorStore } from './stores/editor'
 
 // Lazy-loaded panels to reduce initial bundle size
@@ -117,17 +118,21 @@ onUnmounted(() => {
 
 const themeOverrides = {
   common: {
-    primaryColor: '#4FC3F7',
-    primaryColorHover: '#81D4FA',
-    primaryColorPressed: '#29B6F6',
-    borderRadius: '2px',
-    borderRadiusSmall: '2px',
+    // Match --accent-blue from style.css (light: #3b82f6, dark: #60a5fa)
+    primaryColor: '#3b82f6',
+    primaryColorHover: '#60a5fa',
+    primaryColorPressed: '#2563eb',
+    borderRadius: '6px',
+    borderRadiusSmall: '5px',
   },
 }
+
+// Naive UI theme — synced with store.theme
+const naiveTheme = computed(() => store.theme === 'dark' ? darkTheme : lightTheme)
 </script>
 
 <template>
-  <NConfigProvider :theme-overrides="themeOverrides">
+  <NConfigProvider :theme="naiveTheme" :theme-overrides="themeOverrides">
     <NMessageProvider>
     <div class="app-container">
       <!-- 顶部工具栏 - 固定 -->

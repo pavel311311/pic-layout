@@ -11,16 +11,8 @@
  * - Show shape count per cell
  * - Search cells by name
  */
-import { ref, computed, watch, nextTick, type Component } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useCellsStore } from '../../stores/cells'
-import {
-  Home,
-  Search,
-  X,
-  Plus,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-vue-next'
 
 // SVG icons (taste-skill-main, no emoji/Lucide)
 const IconHome = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
@@ -596,7 +588,7 @@ watch(flatTree, () => {
 
     <!-- No search results empty state (v0.2.7 search UX) -->
     <div v-if="noSearchResults" class="cell-search-no-results" role="status" aria-live="polite">
-      <Search :size="12" aria-hidden="true" />
+      <span class="icon-inline" v-html="renderSearch()" aria-hidden="true" />
       <span>No cells matching "{{ searchQuery }}"</span>
     </div>
 

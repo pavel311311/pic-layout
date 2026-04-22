@@ -161,6 +161,22 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     return
   }
+
+  // Home → jump to first item
+  if (e.key === 'Home') {
+    e.preventDefault()
+    focusedIndex.value = 0
+    return
+  }
+
+  // End → jump to last item
+  if (e.key === 'End') {
+    e.preventDefault()
+    focusedIndex.value = items.length - 1
+    return
+  }
+
+  // Tab → no-op (keep current focus)
 }
 
 function handleOutsideClick(e: MouseEvent) {
