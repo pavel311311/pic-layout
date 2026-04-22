@@ -867,3 +867,25 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.3.1: 深色主题系统验证（light/dark 切换检查，CSS 变量完整性）
 - [ ] v0.3.1: 其他剩余 UI 组件美化收尾
+
+## 2026-04-22 10:10
+
+### 当前任务
+- [x] v0.3.1: CellTree 最后一处 lucide-vue-next 移除 - v0.3.1 UI 美化收尾
+
+### 完成内容
+- 发现 CellTree.vue 已声明 lucide-vue-next 的 `Home/Search/X/Plus/ArrowRight/ArrowLeft` 导入，但在 noSearchResults 空状态中残留一处 `<Search :size="12">` 组件引用
+- 移除 import 语句中未使用的 `Home/Search/X/Plus/ArrowRight/ArrowLeft` 导入
+- 移除 `type Component` 导入（不再需要）
+- 将 `<Search :size="12" aria-hidden="true" />` 替换为 `<span class="icon-inline" v-html="renderSearch()" aria-hidden="true" />`
+- npm run build 通过（CellTree 构建正常，无 lucide-vue-next 残留）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.3.1: 验收检查（所有已美化组件的 taste-skill-main 规范一致性）
+- [ ] v0.3.2: 表单验证 + 错误处理完善
