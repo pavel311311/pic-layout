@@ -1,10 +1,9 @@
 <script setup lang="ts">
 /**
  * SvgExportDialog.vue - SVG Export Dialog for PicLayout
- * v0.3.1 - taste-skill-main redesign
+ * v0.3.1 - taste-skill-main redesign (pure CSS, no Naive UI components)
  */
 import { ref, computed, watch, nextTick } from 'vue'
-import { NButton, NSpace, NSwitch, NInputNumber } from '@/plugins/naive'
 import { exportToSVG, downloadSVG } from '@/utils/svgExporter'
 import { useEditorStore } from '@/stores/editor'
 import { useCanvasTheme } from '@/composables/useCanvasTheme'
@@ -85,6 +84,20 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') close()
   if (e.key === 'Enter' && hasShapes.value) handleExport()
 }
+
+// Stepper controls
+function decrementPadding() {
+  if (padding.value > 0) padding.value--
+}
+function incrementPadding() {
+  if (padding.value < 100) padding.value++
+}
+function decrementStroke() {
+  if (strokeWidth.value > 0.01) strokeWidth.value = Math.round((strokeWidth.value - 0.1) * 100) / 100
+}
+function incrementStroke() {
+  if (strokeWidth.value < 10) strokeWidth.value = Math.round((strokeWidth.value + 0.1) * 100) / 100
+}
 </script>
 
 <template>
@@ -95,7 +108,6 @@ function handleKeydown(e: KeyboardEvent) {
           <!-- Header -->
           <div class="dialog-header">
             <div class="dialog-title-group">
-              <!-- SVG icon -->
               <svg class="dialog-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l-4.5-4.5m0 0l4.5-4.5m-4.5 4.5h9.75" />
               </svg>
@@ -143,7 +155,11 @@ function handleKeydown(e: KeyboardEvent) {
                   Padding
                 </label>
                 <div class="option-control">
-                  <NInputNumber v-model:value="padding" :min="0" :max="100" :step="1" size="small" />
+                  <div class="stepper">
+                    <button class="stepper-btn" @click="decrementPadding" :disabled="padding <= 0" aria-label="Decrease padding">−</button>
+                    <span class="stepper-value">{{ padding }}</span>
+                    <button class="stepper-btn" @click="incrementPadding" :disabled="padding >= 100" aria-label="Increase padding">+</button>
+                  </div>
                   <span class="option-unit">μm</span>
                 </div>
               </div>
@@ -156,7 +172,11 @@ function handleKeydown(e: KeyboardEvent) {
                   Stroke Width
                 </label>
                 <div class="option-control">
-                  <NInputNumber v-model:value="strokeWidth" :min="0.01" :max="10" :step="0.1" size="small" />
+                  <div class="stepper">
+                    <button class="stepper-btn" @click="decrementStroke" :disabled="strokeWidth <= 0.01" aria-label="Decrease stroke">−</button>
+                    <span class="stepper-value">{{ strokeWidth }}</span>
+                    <button class="stepper-btn" @click="incrementStroke" :disabled="strokeWidth >= 10" aria-label="Increase stroke">+</button>
+                  </div>
                   <span class="option-unit">μm</span>
                 </div>
               </div>
@@ -169,7 +189,16 @@ function handleKeydown(e: KeyboardEvent) {
                   Background
                 </label>
                 <div class="option-control option-control--toggle">
-                  <NSwitch v-model:value="includeBackground" size="small" />
+                  <button
+                    class="toggle-switch"
+                    :class="{ active: includeBackground }"
+                    @click="includeBackground = !includeBackground"
+                    role="switch"
+                    :aria-checked="includeBackground"
+                    aria-label="Toggle background"
+                  >
+                    <span class="toggle-thumb" />
+                  </button>
                   <template v-if="includeBackground">
                     <button
                       class="color-swatch"
@@ -212,22 +241,17 @@ function handleKeydown(e: KeyboardEvent) {
 
           <!-- Footer -->
           <div class="dialog-footer">
-            <NButton @click="close" :disabled="isExporting">
-              Cancel
-            </NButton>
-            <NButton
-              type="primary"
+            <button class="btn-secondary" @click="close" :disabled="isExporting">Cancel</button>
+            <button
+              class="btn-primary"
               :disabled="!hasShapes || isExporting"
-              :loading="isExporting"
               @click="handleExport"
             >
-              <template #icon>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l-4.5-4.5m0 0l4.5-4.5m-4.5 4.5h9.75" />
-                </svg>
-              </template>
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 12.75l-4.5-4.5m0 0l4.5-4.5m-4.5 4.5h9.75" />
+              </svg>
               Download SVG
-            </NButton>
+            </button>
           </div>
         </div>
       </div>
@@ -513,6 +537,165 @@ function handleKeydown(e: KeyboardEvent) {
   gap: 10px;
   padding: 16px 24px 20px;
   border-top: 1px solid var(--border-light);
+}
+
+/* === Buttons === */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: var(--accent-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-blue) 85%, white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+/* === Stepper === */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: var(--bg-secondary);
+  border: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  line-height: 1;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.stepper-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  min-width: 36px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-light);
+  padding: 0 4px;
+  letter-spacing: -0.02em;
+}
+
+/* === Toggle Switch === */
+.toggle-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-spring), border-color 0.2s;
+}
+
+.toggle-switch.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s var(--ease-spring);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(16px);
 }
 
 /* === Transitions === */

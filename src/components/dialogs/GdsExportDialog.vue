@@ -23,9 +23,18 @@ const cellsStore = useCellsStore()
 // State
 const isExporting = ref(false)
 const exportError = ref('')
+const fileNameError = ref('')
 
 // Form state
 const fileName = ref(editorStore.project.name || 'PIC_LAYOUT')
+const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/
+
+function validateFileName(name: string): string {
+  if (!name.trim()) return 'File name is required'
+  if (INVALID_FILENAME_CHARS.test(name)) return 'File name cannot contain \ / : * ? " < > |'
+  if (name.trim().length > 200) return 'File name too long (max 200 chars)'
+  return ''
+}
 const dbPerUm = ref(1000)
 const exportScope = ref<'all' | 'active-cell' | 'top-cell'>('all')
 const selectedLayers = ref<number[]>([])
@@ -69,6 +78,7 @@ const exportStats = computed(() => {
     layerCount: selectedLayers.value.length > 0 ? selectedLayers.value.length : layers.length,
     cellCount: exportScope.value === 'all' ? 1 : cellsStore.cells.length,
     precision: `${dbPerUm.value} db/μm`,
+    isEmpty: filteredShapes.length === 0,
   }
 })
 
@@ -99,8 +109,11 @@ async function handleExport() {
     exportError.value = 'Please enter a file name'
     return
   }
+  fileNameError.value = validateFileName(fileName.value)
+  if (fileNameError.value) return
   isExporting.value = true
   exportError.value = ''
+  fileNameError.value = ''
   try {
     let shapesToExport = editorStore.project.shapes
     if (selectedLayers.value.length > 0) {
@@ -188,10 +201,12 @@ const scopeHints: Record<string, string> = {
                   v-model="fileName"
                   placeholder="PIC_LAYOUT"
                   :disabled="isExporting"
+                  @input="fileNameError = validateFileName(fileName)"
                   @keydown.enter="handleExport"
                 />
                 <span class="input-suffix">.gds</span>
               </div>
+              <span v-if="fileNameError" class="field-hint error-hint">{{ fileNameError }}</span>
             </div>
 
             <!-- Precision -->
@@ -275,6 +290,16 @@ const scopeHints: Record<string, string> = {
               </div>
             </div>
 
+            <!-- Empty state hint -->
+            <div v-if="exportStats.isEmpty" class="field-hint error-hint">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              No shapes to export. Draw some shapes first.
+            </div>
+
             <!-- Stats preview -->
             <div class="stats-section">
               <div class="stats-header">
@@ -309,7 +334,7 @@ const scopeHints: Record<string, string> = {
           <!-- Footer -->
           <div class="dialog-footer">
             <button class="action-btn secondary" @click="close" :disabled="isExporting">Cancel</button>
-            <button class="action-btn primary" @click="handleExport" :disabled="isExporting || !fileName.trim()">
+            <button class="action-btn primary" @click="handleExport" :disabled="isExporting || !fileName.trim() || exportStats.isEmpty">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -460,6 +485,18 @@ const scopeHints: Record<string, string> = {
   color: var(--text-muted);
   letter-spacing: 0.01em;
   line-height: 1.4;
+}
+
+.field-hint.error-hint {
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.field-hint.error-hint svg {
+  flex-shrink: 0;
 }
 
 /* === Text input === */

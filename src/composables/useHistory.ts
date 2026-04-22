@@ -44,12 +44,20 @@ export function useHistory(
   }
 
   function undo() {
+    // Use in-place mutation (splice + push) instead of reassignment
+    // to ensure Vue/Pinia reactivity properly detects the change.
+    // Reassignment (shapesRef.value = newArray) can create a new array
+    // that doesn't properly update the store's exposed state.
     if (!canUndo.value) return
 
     historyIndex.value--
     const snap = history.value[historyIndex.value]
-    shapesRef.value = JSON.parse(JSON.stringify(snap.shapes))
-    selectedIdsRef.value = [...snap.selectedIds]
+
+    // Mutate in-place: clear then refill
+    shapesRef.value.length = 0
+    shapesRef.value.push(...snap.shapes)
+    selectedIdsRef.value.length = 0
+    selectedIdsRef.value.push(...snap.selectedIds)
   }
 
   function redo() {
@@ -57,11 +65,17 @@ export function useHistory(
 
     historyIndex.value++
     const snap = history.value[historyIndex.value]
-    shapesRef.value = JSON.parse(JSON.stringify(snap.shapes))
-    selectedIdsRef.value = [...snap.selectedIds]
+
+    // Mutate in-place: clear then refill
+    shapesRef.value.length = 0
+    shapesRef.value.push(...snap.shapes)
+    selectedIdsRef.value.length = 0
+    selectedIdsRef.value.push(...snap.selectedIds)
   }
 
   // === Computed ===
+  // canUndo: true when historyIndex > 0 (points past initial state at index 0)
+  // Initial state at index 0 is NOT undoable (can't undo "nothing")
   const canUndo = computed(() => historyIndex.value > 0)
   const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 
@@ -69,7 +83,12 @@ export function useHistory(
   function init() {
     history.value = []
     historyIndex.value = -1
-    pushHistory()
+    // Create the initial snapshot at index 0; historyIndex=-1 means "no actions taken yet"
+    // After init, canUndo=false (correct: nothing to undo from initial state)
+    // After first pushHistory, index advances to 0 (first action taken)
+    // Subsequent pushHistory appends, never overwrites the initial state at index 0
+    history.value.push(getSnapshot())
+    historyIndex.value = 0
   }
 
   return {

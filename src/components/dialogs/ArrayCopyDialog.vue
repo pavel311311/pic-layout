@@ -17,14 +17,66 @@ const emit = defineEmits<{
 
 const rows = ref(2)
 const cols = ref(2)
+const rowsError = ref('')
+const colsError = ref('')
 
 function close() {
   emit('update:show', false)
+  rowsError.value = ''
+  colsError.value = ''
+}
+
+function clamp(val: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, val))
+}
+
+function parseAndValidate(val: string, field: 'rows' | 'cols'): number {
+  const n = Number(val)
+  if (isNaN(n)) {
+    if (field === 'rows') rowsError.value = 'Must be a number'
+    else colsError.value = 'Must be a number'
+    return NaN
+  }
+  if (n < 1) {
+    if (field === 'rows') rowsError.value = 'Minimum 1 row'
+    else colsError.value = 'Minimum 1 column'
+    return NaN
+  }
+  if (n > 100) {
+    if (field === 'rows') rowsError.value = 'Maximum 100 rows'
+    else colsError.value = 'Maximum 100 columns'
+    return NaN
+  }
+  if (field === 'rows') rowsError.value = ''
+  else colsError.value = ''
+  return Math.floor(n)
+}
+
+function handleRowsInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value
+  const parsed = parseAndValidate(raw, 'rows')
+  if (!isNaN(parsed)) {
+    rows.value = parsed
+  }
+}
+
+function handleColsInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value
+  const parsed = parseAndValidate(raw, 'cols')
+  if (!isNaN(parsed)) {
+    cols.value = parsed
+  }
 }
 
 function handleConfirm() {
+  // Final validation on submit (catches edge cases like empty field)
+  const r = parseAndValidate(String(rows.value), 'rows')
+  const c = parseAndValidate(String(cols.value), 'cols')
+  if (isNaN(r) || isNaN(c)) return
   emit('confirm', rows.value, cols.value)
   emit('update:show', false)
+  rowsError.value = ''
+  colsError.value = ''
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -44,9 +96,6 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
-function clamp(val: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, val))
-}
 </script>
 
 <template>
@@ -92,11 +141,10 @@ function clamp(val: number, min: number, max: number) {
                 <input
                   id="array-rows"
                   class="number-input"
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
                   :value="rows"
-                  min="1"
-                  max="100"
-                  @input="rows = clamp(Number(($event.target as HTMLInputElement).value) || 1, 1, 100)"
+                  @input="handleRowsInput"
                 />
                 <button
                   class="stepper-btn"
@@ -129,11 +177,10 @@ function clamp(val: number, min: number, max: number) {
                 <input
                   id="array-cols"
                   class="number-input"
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
                   :value="cols"
-                  min="1"
-                  max="100"
-                  @input="cols = clamp(Number(($event.target as HTMLInputElement).value) || 1, 1, 100)"
+                  @input="handleColsInput"
                 />
                 <button
                   class="stepper-btn"
@@ -147,6 +194,16 @@ function clamp(val: number, min: number, max: number) {
                   </svg>
                 </button>
               </div>
+            </div>
+
+            <!-- Error messages -->
+            <div v-if="rowsError || colsError" class="error-box">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ rowsError || colsError }}</span>
             </div>
 
             <!-- Preview -->
@@ -266,6 +323,29 @@ function clamp(val: number, min: number, max: number) {
 }
 
 /* === Content === */
+/* === Error box === */
+.error-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 12px;
+  animation: error-appear 150ms var(--ease-spring);
+}
+
+.error-box svg {
+  flex-shrink: 0;
+}
+
+@keyframes error-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .dialog-content {
   padding: 18px;
   display: flex;
