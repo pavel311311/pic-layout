@@ -320,6 +320,9 @@ export const useCellsStore = defineStore('cells', () => {
         if (instBounds) {
           bounds = bounds ? mergeBounds(bounds, instBounds) : instBounds
         }
+      } else if (child.type === 'pcell-instance') {
+        // PCellInstanceMarker - bounds computed via pcellsStore (no direct bounds)
+        // Skip for now - PCellInstanceMarker bounds come from generated shapes
       } else {
         // It's a BaseShape
         const shapeBounds = getShapeBounds(child)

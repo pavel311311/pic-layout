@@ -43,8 +43,9 @@ export interface Cell {
  * CellChild - union type for anything inside a cell
  * - BaseShape: actual geometry (polygon, path, label, etc.)
  * - CellInstance: reference to another cell with transformation
+ * - PCellInstanceMarker: reference to a PCell with parameter values
  */
-export type CellChild = BaseShape | CellInstance
+export type CellChild = BaseShape | CellInstance | PCellInstanceMarker
 
 /**
  * CellInstance - an instantiation of another cell within a parent cell
@@ -241,4 +242,46 @@ export function getInstanceCount(inst: CellInstance): number {
     return (inst.rows || 1) * (inst.cols || 1)
   }
   return 1
+}
+
+/**
+ * PCellInstanceMarker - a marker in a Cell's children array representing a placed PCell instance.
+ * Unlike CellInstance which references another Cell, a PCellInstanceMarker references
+ * a PCell definition and generates geometry from parameters.
+ *
+ * The marker is placed in the active cell. When expandedVisibleShapes computes shapes,
+ * it expands these markers using the PCell generator and applies the instance transform.
+ */
+export interface PCellInstanceMarker {
+  /** Unique instance identifier */
+  id: string
+  /** Type discriminator */
+  type: 'pcell-instance'
+  /** Reference to PCell definition ID */
+  pcellId: string
+  /** Position */
+  x: number
+  y: number
+  /** Rotation in degrees */
+  rotation?: number
+  /** Mirror before rotation */
+  mirrorX?: boolean
+}
+
+/**
+ * Get the transformation matrix for a PCell instance marker.
+ * Uses same affine matrix format as CellInstance.
+ */
+export function getPCellInstanceTransform(
+  x: number,
+  y: number,
+  rotation?: number,
+  mirrorX?: boolean
+): [number, number, number, number, number, number] {
+  const rad = ((rotation || 0) * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const my = mirrorX ? -1 : 1
+  const [a, b, c, d] = [cos * my, sin * my, -sin, cos]
+  return [a, b, c, d, x, y]
 }

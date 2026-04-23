@@ -1084,3 +1084,41 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] T8-1: PCell 参数编辑 UI（PCell 编辑对话框）
 - [ ] T8-2: PCell 实例渲染集成（canvas 渲染 PCell shapes）
 - [ ] T8-3: PCell picker UI（从工具栏选择 PCell 放置）
+
+## 2026-04-23 11:10
+
+### 当前任务
+- [x] T8-1: PCell 参数编辑 UI（PCell Picker + Params 对话框）- v0.4.0 PCell 参数化单元
+
+### 完成内容
+- 创建 PCellPickerDialog.vue（17KB）：分类侧边栏 + 搜索 + PCell 列表 + 预览面板
+  - 内联 SVG 图标（无外部依赖），taste-skill-main 规范（Geist/Satoshi/Zinc）
+  - 弹簧动画 + diffusion shadow + backdrop blur
+  - 支持按分类过滤（Waveguides/Couplers/All）和关键词搜索
+  - 双击或 Confirm 按钮触发参数配置流程
+- 创建 PCellParamsDialog.vue（21KB）：参数配置表单
+  - 分组参数表单（Geometry/Ports/Waveguides 等）
+  - 数值步进器（increment/decrement）+ 范围验证
+  - 字符串选择器（choices 枚举）、布尔开关、图层选择器
+  - 预估尺寸显示（estimatedSize computed）
+  - 每个参数有 description hint 和错误提示
+- Canvas.vue 集成：
+  - 导入 PCellPickerDialog + PCellParamsDialog（异步组件）
+  - 添加 showPCellPickerDialog + showPCellParamsDialog + pendingPCellId 状态
+  - handlePCellParamsConfirm 处理：placement → pcellsStore.placePCell() → pushHistory
+- Toolbar.vue 添加 PCell 工具按钮（快捷键 G）和 IconPCell SVG 图标
+- useCanvasToolHandlers.ts：PCell tool handler（打开 Picker）+ G 键快捷键
+- useContextMenu.ts：showPCellPickerDialog 参数（可选）
+
+### 遇到的问题
+- 问题: PCellParamsDialog 中 useShapesStore 不存在（shapes store 无 layers 属性）
+  - 解决: 改用 useEditorStore.project.layers 获取图层列表
+- 问题: showPCellPickerDialog 未在 useCanvasToolHandlers.ts 解构赋值
+  - 解决: 在参数传递处和 options 接口处同时添加 showPCellPickerDialog
+
+### 编译测试
+- [x] npm run build → 通过（33 assets + brotli，PCellPickerDialog 6.4KB JS + 6.8KB CSS，PCellParamsDialog 7.4KB JS + 7.0KB CSS）
+
+### 下小时计划
+- [ ] T8-2: PCell 实例渲染集成（canvas 渲染 PCell shapes）
+- [ ] T8-3: PCell picker UI（从工具栏选择 PCell 放置）

@@ -121,7 +121,7 @@ function getPreviewShapes(): BaseShape[] {
   const shapes: BaseShape[] = []
   for (const cell of previewData.value.cells) {
     for (const child of cell.children) {
-      if ((child as any).type !== 'cell-instance' && isLayerSelected(child)) {
+      if ('layerId' in child && (child as any).type !== 'pcell-instance' && isLayerSelected(child as BaseShape)) {
         shapes.push(child as BaseShape)
       }
     }

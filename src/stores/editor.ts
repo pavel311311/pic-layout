@@ -10,10 +10,13 @@ import { useUiStore } from './ui'
 import { useLayersStore } from './layers'
 import { useShapesStore } from './shapes'
 import { useCellsStore } from './cells'
+import { usePCellsStore } from './pcells'
 import { DEFAULT_LAYERS } from './layers.default'
 import { generateId } from '../utils/shapeId'
 import { expandInstance } from '../utils/cellInstanceRenderer'
-import type { CellChild, CellInstance } from '../types/cell'
+import type { CellChild, CellInstance, PCellInstanceMarker } from '../types/cell'
+import type { PCellInstance } from '../types/pcell'
+import { getPCellInstanceTransform } from '../types/cell'
 import { polygonBoolean, validateBooleanShapes, type BooleanOp } from '../utils/polygonBoolean'
 import { getShapeBounds } from '../utils/transforms'
 
@@ -109,11 +112,14 @@ export const useEditorStore = defineStore('editor', () => {
 
     // Separate base shapes and instances
     const baseShapes: BaseShape[] = []
-    const instances: CellChild[] = []
+    const cellInstances: CellChild[] = []
+    const pcellMarkers: PCellInstanceMarker[] = []
 
     for (const child of children) {
       if (child.type === 'cell-instance') {
-        instances.push(child)
+        cellInstances.push(child)
+      } else if (child.type === 'pcell-instance') {
+        pcellMarkers.push(child as PCellInstanceMarker)
       } else {
         // It's a BaseShape - filter by layer visibility
         const layer = layers.getLayer(child.layerId)
@@ -130,7 +136,9 @@ export const useEditorStore = defineStore('editor', () => {
     }
 
     const expandedShapes: BaseShape[] = []
-    for (const inst of instances) {
+
+    // v0.4.0: Expand CellInstances (SREF/AREF)
+    for (const inst of cellInstances) {
       if (inst.type === 'cell-instance') {
         const expanded = expandInstance(
           inst,
@@ -148,6 +156,87 @@ export const useEditorStore = defineStore('editor', () => {
               s.sourceInstanceId = (inst as CellInstance).id
             }
             expandedShapes.push(s)
+          }
+        }
+      }
+    }
+
+    // v0.4.0: Expand PCellInstanceMarkers using the PCell generator
+    if (pcellMarkers.length > 0) {
+      const pcellsStore = usePCellsStore()
+
+      for (const marker of pcellMarkers) {
+        const inst = pcellsStore.instances.find((i: PCellInstance) => i.id === marker.id)
+        if (!inst) continue
+
+        const def = pcellsStore.getDefinition(marker.pcellId)
+        if (!def) continue
+
+        // Generate shapes from the PCell generator
+        let shapes = inst.cachedShapes
+        if (!shapes) {
+          shapes = def.generator(inst.paramValues).shapes
+        }
+        if (!shapes || shapes.length === 0) continue
+
+        // Get instance transform
+        const m = getPCellInstanceTransform(marker.x, marker.y, marker.rotation, marker.mirrorX)
+
+        // Transform and add each generated shape
+        for (const shape of shapes) {
+          // Transform shape by instance matrix
+          const [a, b, c, d, e, f] = m
+          let transformed: BaseShape
+
+          if (shape.type === 'polygon' && 'points' in shape && shape.points) {
+            const pts = shape.points as {x:number,y:number}[]
+            transformed = {
+              ...shape,
+              points: pts.map(pt => ({
+                x: a * pt.x + c * pt.y + e,
+                y: b * pt.x + d * pt.y + f,
+              })),
+              x: a * (shape.x ?? 0) + c * (shape.y ?? 0) + e,
+              y: b * (shape.x ?? 0) + d * (shape.y ?? 0) + f,
+            } as BaseShape
+          } else if (shape.type === 'path' && 'points' in shape && shape.points) {
+            const scale = (Math.sqrt(a * a + b * b) + Math.sqrt(c * c + d * d)) / 2
+            const pts = shape.points as {x:number,y:number}[]
+            transformed = {
+              ...shape,
+              points: pts.map(pt => ({
+                x: a * pt.x + c * pt.y + e,
+                y: b * pt.x + d * pt.y + f,
+              })),
+              x: a * (shape.x ?? 0) + c * (shape.y ?? 0) + e,
+              y: b * (shape.x ?? 0) + d * (shape.y ?? 0) + f,
+              width: (shape as any).width * scale,
+            } as BaseShape
+          } else if (('x1' in shape) && ('x2' in shape) && ('y1' in shape) && ('y2' in shape)) {
+            const p1x = (shape as any).x1 ?? 0, p1y = (shape as any).y1 ?? 0
+            const p2x = (shape as any).x2 ?? 0, p2y = (shape as any).y2 ?? 0
+            const p1 = { x: p1x, y: p1y }
+            const p2 = { x: p2x, y: p2y }
+            const tp1 = { x: a * p1.x + c * p1.y + e, y: b * p1.x + d * p1.y + f }
+            const tp2 = { x: a * p2.x + c * p2.y + e, y: b * p2.x + d * p2.y + f }
+            transformed = { ...shape, x: tp1.x, y: tp1.y, x1: tp1.x, y1: tp1.y, x2: tp2.x, y2: tp2.y, width: (shape as any).width } as unknown as BaseShape
+          } else {
+            transformed = {
+              ...shape,
+              x: a * (shape.x ?? 0) + c * (shape.y ?? 0) + e,
+              y: b * (shape.x ?? 0) + d * (shape.y ?? 0) + f,
+            } as BaseShape
+          }
+
+          // Tag with source instance ID for selection/drill-in
+          if (!transformed.sourceInstanceId) {
+            transformed.sourceInstanceId = marker.id
+          }
+
+          // Filter by layer visibility
+          const layer = layers.getLayer(transformed.layerId)
+          if (layer?.visible) {
+            expandedShapes.push(transformed)
           }
         }
       }

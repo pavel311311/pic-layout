@@ -170,13 +170,23 @@ function handlePCellParamsConfirm(pcellId: string, paramValues: Record<string, n
   const centerY = rect.height / 2
   const worldPt = screenToDesign(centerX, centerY)
   
-  // Place the PCell
+  // Place the PCell (creates PCellInstance in pcells store)
   const instance = pcellsStore.placePCell({
     pcellId,
     cellId: activeCellId,
     x: worldPt.x,
     y: worldPt.y,
     paramValues,
+  })
+  
+  // Add a marker to the active cell's children so it's part of the cell hierarchy
+  // This marker will be expanded by expandedVisibleShapes to render PCell geometry
+  cellsStore.addShapeToCell(activeCellId, {
+    id: instance.id,
+    type: 'pcell-instance',
+    pcellId,
+    x: worldPt.x,
+    y: worldPt.y,
   })
   
   // Mark canvas dirty and announce
