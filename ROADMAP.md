@@ -57,28 +57,28 @@ PicLayout 是一款基于浏览器的硅光芯片（PIC - Photonic Integrated Ci
 #### v0.3.0 - 功能测试与 Bug 修复
 **目标**: 让已有功能经得起真实使用
 
-- [ ] Boolean 运算边界测试（空结果、自交图形、共边多边形）
-- [ ] GDS ↔ KLayout 往返兼容性测试（导出→导入→导出，验证数据一致）
-- [ ] Cell 钻入钻出真实场景测试
-- [ ] 属性面板完整编辑流程（Shape Style / Path / Points）
-- [ ] 右键菜单键盘导航（Enter/Escape/Home/End）
+- [x] Boolean 运算边界测试（空结果、自交图形、共边多边形）
+- [x] GDS ↔ KLayout 往返兼容性测试（导出→导入→导出，验证数据一致）
+- [x] Cell 钻入钻出真实场景测试
+- [x] 属性面板完整编辑流程（Shape Style / Path / Points）
+- [x] 右键菜单键盘导航（Enter/Escape/Home/End）
 
 #### v0.3.1 - UI 美化（第一轮）
 **目标**: 用 taste-skill-main 统一视觉语言
 
-- [ ] Toolbar 重设计（图标、布局、tooltip 详情）
-- [ ] 所有 Dialog 重设计（BooleanOperationsDialog / GdsImportDialog / GdsExportDialog / AlignDialog / ArrayCopyDialog / ShortcutsDialog）
-- [ ] 状态栏 StatusBar 美化（坐标/缩放/图层/选中/网格）
-- [ ] Navigator 交互完善（视口拖拽）
-- [ ] 深色主题系统（CSS 变量完整定义）
+- [x] Toolbar 重设计（图标、布局、tooltip 详情）
+- [x] 所有 Dialog 重设计（BooleanOperationsDialog / GdsImportDialog / GdsExportDialog / AlignDialog / ArrayCopyDialog / ShortcutsDialog）
+- [x] 状态栏 StatusBar 美化（坐标/缩放/图层/选中/网格）
+- [x] Navigator 交互完善（视口拖拽）
+- [x] 深色主题系统（CSS 变量完整定义）
 
 #### v0.3.2 - 稳定性收尾
 **目标**: 错误处理 + 快捷键全覆盖
 
-- [ ] 所有 Dialog 表单验证（空数据/异常输入/边界值）
-- [ ] 错误处理完善（try-catch + 用户友好提示）
-- [ ] 撤销/重做边界情况（空撤销栈/redo 栈清理）
-- [ ] Ctrl+Z/Y 全局快捷键（确保所有面板都生效）
+- [x] 所有 Dialog 表单验证（空数据/异常输入/边界值）
+- [x] 错误处理完善（try-catch + 用户友好提示）
+- [x] 撤销/重做边界情况（空撤销栈/redo 栈清理）
+- [x] Ctrl+Z/Y 全局快捷键（确保所有面板都生效）
 
 ---
 

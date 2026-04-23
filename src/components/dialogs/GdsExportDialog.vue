@@ -334,7 +334,7 @@ const scopeHints: Record<string, string> = {
           <!-- Footer -->
           <div class="dialog-footer">
             <button class="action-btn secondary" @click="close" :disabled="isExporting">Cancel</button>
-            <button class="action-btn primary" @click="handleExport" :disabled="isExporting || !fileName.trim() || exportStats.isEmpty">
+            <button class="action-btn primary" @click="handleExport" :disabled="isExporting || !fileName.trim() || exportStats.isEmpty || !!fileNameError">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>

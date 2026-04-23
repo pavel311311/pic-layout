@@ -39,6 +39,16 @@ const previewData = ref<{
   }
 } | null>(null)
 
+const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/
+
+function validateFileName(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'File name is required'
+  if (INVALID_FILENAME_CHARS.test(trimmed)) return 'File name cannot contain characters: \_/:*?"<>|>'
+  if (trimmed.length > 200) return 'File name too long (max 200 chars)'
+  return ''
+}
+
 // Selective cell import
 const selectedCellIds = ref<Set<string>>(new Set())
 const selectedCount = computed(() => selectedCellIds.value.size)
@@ -259,23 +269,48 @@ function close() {
   emit('update:show', false)
   isLoading.value = false
   errorMessage.value = ''
+
   previewData.value = null
 }
 
 async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (file) await loadGdsFile(file)
+  if (!file) return
+  const fileNameVal = file.name.trim()
+  if (fileNameVal.length > 200) {
+    errorMessage.value = 'File name too long (max 200 chars)'
+    return
+  }
+  if (INVALID_FILENAME_CHARS.test(fileNameVal)) {
+    errorMessage.value = 'File name cannot contain characters: \\\/_:*?"<>|>'
+    return
+  }
+  if (!file.name.endsWith('.gds') && !file.name.endsWith('.gdsii')) {
+    errorMessage.value = 'Invalid file type. Please select a GDSII file (.gds or .gdsii)'
+    return
+  }
+  await loadGdsFile(file)
 }
 
 async function handleDrop(event: DragEvent) {
   event.preventDefault()
   const file = event.dataTransfer?.files?.[0]
-  if (file && (file.name.endsWith('.gds') || file.name.endsWith('.gdsii'))) {
-    await loadGdsFile(file)
-  } else {
-    errorMessage.value = 'Please select a GDSII file (.gds or .gdsii)'
+  if (!file) return
+  const fileNameVal = file.name.trim()
+  if (fileNameVal.length > 200) {
+    errorMessage.value = 'File name too long (max 200 chars)'
+    return
   }
+  if (INVALID_FILENAME_CHARS.test(fileNameVal)) {
+    errorMessage.value = 'File name cannot contain characters: \\\/_:*?"<>|>'
+    return
+  }
+  if (!file.name.endsWith('.gds') && !file.name.endsWith('.gdsii')) {
+    errorMessage.value = 'Invalid file type. Please drop a GDSII file (.gds or .gdsii)'
+    return
+  }
+  await loadGdsFile(file)
 }
 
 function handleDragOver(event: DragEvent) {
@@ -283,13 +318,63 @@ function handleDragOver(event: DragEvent) {
 }
 
 async function loadGdsFile(file: File) {
+  // Validate file size (max 200MB)
+  const MAX_SIZE = 200 * 1024 * 1024
+  if (file.size > MAX_SIZE) {
+    errorMessage.value = `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB (max 200 MB)`
+    isLoading.value = false
+    previewData.value = null
+    return
+  }
+  // Validate minimum file size (a real GDS needs at least HEADER + BGNLIB + LIBNAME + UNITS records)
+  const MIN_SIZE = 64
+  if (file.size < MIN_SIZE) {
+    errorMessage.value = `File too small (${file.size} B). Minimum valid GDS size is ${MIN_SIZE} bytes.`
+    isLoading.value = false
+    previewData.value = null
+    return
+  }
+  // Validate GDS header structure: first 4 bytes = [0x00, 0x00, rec_len_low, rec_len_high]
+  // HEADER record is always the first record with length = 2 (version field only)
+  const header = await file.slice(0, 4).arrayBuffer()
+  const view = new DataView(header)
+  const b0 = view.getUint8(0), b1 = view.getUint8(1), b2 = view.getUint8(2), b3 = view.getUint8(3)
+  if (b0 !== 0x00 || b1 !== 0x00) {
+    errorMessage.value = 'Invalid GDSII file: bad header (missing GDS magic bytes)'
+    isLoading.value = false
+    previewData.value = null
+    return
+  }
+  const recLen = (b3 << 8) | b2
+  // HEADER record must have length 2 (version = 2 bytes); reject obviously wrong lengths
+  if (recLen !== 2) {
+    errorMessage.value = 'Invalid GDSII file: bad first record length (file may be corrupt or not a GDS file)'
+    isLoading.value = false
+    previewData.value = null
+    return
+  }
   isLoading.value = true
   errorMessage.value = ''
   try {
     const result = await importGDS(file)
+    // Validate: reject GDS files that parsed successfully but contain no cells
+    if (!result.cells || result.cells.length === 0) {
+      errorMessage.value = 'This GDS file contains no cells and cannot be imported.'
+      previewData.value = null
+      isLoading.value = false
+      return
+    }
     previewData.value = result
   } catch (err) {
-    errorMessage.value = `Import failed: ${(err as Error).message}`
+    const msg = (err as Error).message
+    // Provide user-friendly messages for common failure modes
+    if (msg.includes('offset') && msg.includes('range')) {
+      errorMessage.value = 'Invalid GDSII file: file appears truncated or corrupt (offset out of range)'
+    } else if (msg.includes('ArrayBuffer') || msg.includes('buffer')) {
+      errorMessage.value = 'Invalid GDSII file: cannot read file data'
+    } else {
+      errorMessage.value = `Import failed: ${msg}`
+    }
     previewData.value = null
   } finally {
     isLoading.value = false

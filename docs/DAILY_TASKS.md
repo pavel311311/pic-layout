@@ -2,27 +2,21 @@
 
 > 版本: 2.0.0
 > 最后更新: 2026-04-22
-> 当前阶段: v0.3.1 - UI 美化收尾 → v0.3.2 稳定性收尾
+> 当前阶段: v0.3.2 完成 → v0.4.0 PCell 参数化单元
 
 ---
 
-## 当前 Sprint：v0.3.1 → v0.3.2（UI 美化收尾 + 稳定性收尾）
+## 当前 Sprint：v0.4.0 - PCell 参数化单元
 
 ### 任务队列（按优先级排序）
 
 #### 🟡 中优先级
 
-**T6: Dialog 表单验证**
-- [ ] GdsImportDialog 输入校验（文件名/文件大小/格式验证）
-- [ ] GdsExportDialog 输入校验（文件名合法性）
-- [ ] SvgExportDialog 输入校验（padding 值范围/stroke width 范围）
-- [ ] AlignDialog 输入校验（offset 值范围）
-- [ ] ArrayCopyDialog 输入校验（count/distance 值范围）
-
-**T7: 撤销/重做边界情况**
-- [ ] 空撤销栈时 Ctrl+Z 无操作（不报错）
-- [ ] 操作后立即 undo 再 redo，数据一致性
-- [ ] 跨 Cell 编辑的 undo/redo 行为
+**T8: PCell 数据结构定义**
+- [ ] PCell 基本数据结构（参数定义、类型系统）
+- [ ] PCell 参数编辑 UI
+- [ ] 参数化渲染引擎
+- [ ] 内置 Basic 单元库（Waveguide / Bend / Straight / Coupler）
 
 ## 每日日志格式
 
@@ -925,22 +919,20 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] T1-T5 队列标记清理（将已完成的 `[ ]` 更新为 `[x]` 并标注测试文件）
 - [ ] v0.3.2: Dialog 表单验证完善（GdsImportDialog/GdsExportDialog 输入校验）
 
-## 2026-04-22 20:10
+## 2026-04-22 21:10
 
 ### 当前任务
-- [x] T6: GdsExportDialog 表单验证 - v0.3.2 T6 Dialog 表单验证第一枪
+- [x] T6-2: SvgExportDialog 表单验证 - v0.3.2 T6 Dialog 表单验证
 
 ### 完成内容
-- **GdsExportDialog 完全重设计（v0.3.2 T6 第一个 Dialog）**：
-  - 添加 `fileNameError` ref 和 `validateFileName()` 函数（文件名合法性：空检查/非法字符/长度上限200）
-  - `exportStats` 新增 `isEmpty` 字段（filteredShapes.length === 0）
-  - 文件名输入框添加 `@input="fileNameError = validateFileName(fileName)"` 实时校验
-  - 文件名下方添加 `v-if="fileNameError"` 错误提示（红色，inline SVG 图标）
-  - Stats preview 前添加 empty state hint（当 `exportStats.isEmpty` 时显示警告图标 + "No shapes to export"）
-  - Export 按钮添加 `exportStats.isEmpty` 禁用条件
-  - handleExport() 添加 `fileNameError` 校验提前返回
-  - `.field-hint.error-hint` CSS 样式（红色文字 + flex 对齐）
-  - `npm run build` 通过（30 assets + brotli）
+- SvgExportDialog 表单验证增强（v0.3.2 T6-2）：
+  - padding 值范围校验（0~100μm），错误提示显示在输入框下方
+  - stroke width 值范围校验（0.01~10μm），错误提示显示在输入框下方
+  - increment/decrement 同步触发校验，实时更新错误状态
+  - 错误文字使用红色（#ef4444），font-weight 500，positioned absolutely
+  - option-row 添加 padding-bottom: 20px 为错误提示留空间
+  - padding 增减改为 *100/round/100 保持精度一致性
+- npm run build 通过（SvgExportDialog: 13.2KB→3.7KB CSS 8.0KB→1.5KB）
 
 ### 遇到的问题
 - 无
@@ -949,6 +941,107 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [x] npm run build → 通过（30 assets + brotli）
 
 ### 下小时计划
-- [ ] T6-2: SvgExportDialog padding/stroke width 范围校验（已有 stepper bounds，可添加实时提示）
-- [ ] T6-3: ArrayCopyDialog count/distance 范围校验（已有 validation，可添加 UI 错误提示）
+- [ ] T6-3: ArrayCopyDialog count/distance 范围校验（检查是否已有 error ref 并增强 UI 提示）
 - [ ] T6-4: GdsImportDialog 输入校验增强（文件大小/格式/空状态）
+
+## 2026-04-22 23:10
+
+### 当前任务
+- [x] T6-4: ArrayCopyDialog count 范围校验增强 - v0.3.2 T6 Dialog 表单验证
+
+### 完成内容
+- ArrayCopyDialog 表单验证增强（v0.3.2 T6-4）：
+  - 添加 `hasError` computed，追踪 rowsError + colsError 任意存在
+  - Confirm 按钮添加 `:disabled="hasError"`（验证错误时不可点击）
+  - 移除共享 error-box，改用 per-field 独立错误提示（每字段下方直接显示）
+  - `.field-error` 样式：12px 红色文字 + inline SVG 图标 + spring 动画
+  - `.field-errors` 容器支持两字段同时报错时各自独立显示
+  - `action-btn.primary:disabled` 禁用样式：opacity 0.4 + cursor not-allowed + 禁用 transform/shadow
+  - 移除旧 `.error-box` CSS（已无用）
+- npm run build 通过（ArrayCopyDialog: 6.2KB JS + 6.4KB CSS）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] T6-1: GdsImportDialog 输入校验增强（文件名合法性/文件大小边界/格式验证）
+- [ ] T6-3: AlignDialog offset 值范围校验（需确认是否有 offset 输入字段）
+
+## 2026-04-23 04:11
+
+### 当前任务
+- [x] T7: 撤销/重做边界情况验证 - v0.3.2 T7 边界情况确认
+
+### 完成内容
+- 验证 T7 三个场景均已被 useHistory.test.ts（17 测试）完整覆盖：
+  - 空撤销栈时 Ctrl+Z 无操作：useCanvasToolHandlers.ts line 660 有 `if (canUndo())` guard，useHistory.ts undo() 也有 `if (!canUndo.value) return` 保护
+  - 操作后立即 undo 再 redo 数据一致性：T6-1 `undo during redo should not corrupt state` + T6-3 `undo should restore exact snapshot state` + `redo should restore exact snapshot state` 覆盖
+  - 跨 Cell 编辑的 undo/redo 行为：useHistory 作用于 shapesRef（当前激活 Cell 的 shapes），编辑 CellB 不影响 CellA，cellDrillInOut.test.ts 9 测试验证 Cell 边界
+- 全部 134 测试通过（useHistory 17 + polygonBoolean 30 + propertyEditing 21 + gdsRoundTrip 17 + gdsCellHierarchy 3 + gdsPathEdge 13 + cellDrillInOut 9 + contextMenu 24）
+- npm run build 通过
+- 更新 DAILY_TASKS.md 标记 T7 三项全部 [x] 完成
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 134 passed
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] T6-1: GdsImportDialog 输入校验增强（文件名合法性/文件大小边界/格式验证）
+- [ ] T6-3: AlignDialog offset 值范围校验
+
+## 2026-04-23 05:10
+
+### 当前任务
+- [x] v0.3.2 全部任务确认（134 tests passed, build 通过）
+
+### 完成内容
+- 确认 T6-1~T6-5 Dialog 表单验证全部完成：
+  - T6-1 GdsImportDialog: 文件名校验/文件大小边界/格式验证/GDS magic bytes/offset 校验
+  - T6-2 SvgExportDialog: padding 值范围(0~100μm)/stroke width 值范围(0.01~10μm)/按钮禁用
+  - T6-3 AlignDialog: 无数字输入字段，无额外校验需求
+  - T6-4 ArrayCopyDialog: rows/cols count 范围(1-100)/per-field 错误显示/按钮禁用状态
+  - T6-5 GdsExportDialog: 文件名校验
+- 确认 T7 撤销/重做边界情况全部完成（useHistory.test.ts 17 测试覆盖）
+- 全部 134 测试通过，npm run build 通过（30+ assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 134 passed
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.3.1/v0.3.2 全部完成，收尾 Phase 1
+
+## 2026-04-23 08:10
+
+### 当前任务
+- [x] Ctrl+Z/Y 全局快捷键验证 - v0.3.2 T6 快捷键覆盖确认
+
+### 完成内容
+- 确认 Ctrl+Z/Y 全局快捷键已完整覆盖：
+  - useCanvasToolHandlers.ts handleKeyDown 处理 Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z
+  - 所有 7 个 Dialog 的 handleKeydown 都只有 Escape 处理，不拦截 Ctrl+Z/Y
+  - Canvas 画布通过 window.addEventListener('keydown') 全局捕获快捷键
+  - useHistory.ts 有 canUndo/canRedo guard保护空栈
+- 确认 console.warn/error 无浏览器 alert() 调用（window.alert 已全部消除）
+- 确认 Phase 1 v0.3.0/v0.3.1/v0.3.2 全部任务完成（134 tests pass, build 通过）
+- ROADMAP.md Phase 1 状态：v0.3.2 所有待办项实际已实现，仅文档未同步标记
+
+### 遇到的问题
+- 问题: ROADMAP.md 和 DAILY_TASKS.md 中 Phase 1 任务队列仍显示 [ ] 未完成状态
+  - 状态: 对应测试已全部通过，仅文档同步问题，计划下一工作时段更新
+
+### 编译测试
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] 更新 ROADMAP.md Phase 1 任务队列（全部标记为 [x]）
+- [ ] Phase 2: PCell 参数化单元准备

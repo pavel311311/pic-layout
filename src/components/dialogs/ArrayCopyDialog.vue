@@ -4,7 +4,7 @@
  * v0.3.1 - Array Copy dialog with taste-skill-main aesthetic
  * Redesigned: Teleport + spring animations, Zinc palette, Geist/Satoshi fonts, inline SVG icons
  */
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps<{
   show: boolean
@@ -19,6 +19,7 @@ const rows = ref(2)
 const cols = ref(2)
 const rowsError = ref('')
 const colsError = ref('')
+const hasError = computed(() => !!(rowsError.value || colsError.value))
 
 function close() {
   emit('update:show', false)
@@ -196,14 +197,26 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Error messages -->
-            <div v-if="rowsError || colsError" class="error-box">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <span>{{ rowsError || colsError }}</span>
+
+
+            <!-- Per-field error messages -->
+            <div class="field-errors">
+              <span v-if="rowsError" class="field-error" role="alert">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {{ rowsError }}
+              </span>
+              <span v-if="colsError" class="field-error" role="alert">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {{ colsError }}
+              </span>
             </div>
 
             <!-- Preview -->
@@ -220,7 +233,7 @@ onUnmounted(() => {
           <!-- Footer actions -->
           <div class="dialog-footer">
             <button class="action-btn secondary" @click="close">Cancel</button>
-            <button class="action-btn primary" @click="handleConfirm">
+            <button class="action-btn primary" @click="handleConfirm" :disabled="hasError">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -323,26 +336,31 @@ onUnmounted(() => {
 }
 
 /* === Content === */
-/* === Error box === */
-.error-box {
+/* === Per-field errors === */
+.field-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.field-error {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
   color: #ef4444;
-  font-size: 12px;
   animation: error-appear 150ms var(--ease-spring);
 }
 
-.error-box svg {
+.field-error svg {
   flex-shrink: 0;
+  color: #ef4444;
 }
 
 @keyframes error-appear {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(-3px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -537,9 +555,17 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.3);
 }
 
-.action-btn.primary:active {
+.action-btn.primary:active:not(:disabled) {
   transform: translateY(0) scale(0.97);
   box-shadow: none;
+}
+
+.action-btn:disabled,
+.action-btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* === Transitions === */
