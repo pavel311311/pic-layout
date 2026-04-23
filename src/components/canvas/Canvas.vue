@@ -2,6 +2,7 @@
 import { ref, onUnmounted, computed, defineAsyncComponent, watch } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { useCellsStore } from '../../stores/cells'
+import { usePCellsStore } from '../../stores/pcells'
 import { useCanvasCoordinates } from '../../composables/useCanvasCoordinates'
 import { useCanvasVirtualization } from '../../composables/useCanvasVirtualization'
 import type { DirtyRect } from '../../composables/useCanvasVirtualization'
@@ -21,6 +22,7 @@ import ContextMenu from '../contextmenu/ContextMenu.vue'
 
 const store = useEditorStore()
 const cellsStore = useCellsStore()
+const pcellsStore = usePCellsStore()
 
 // Dialogs: lazy-loaded to reduce initial bundle
 const ArrayCopyDialog = defineAsyncComponent(() => import('../dialogs/ArrayCopyDialog.vue'))
@@ -30,6 +32,8 @@ const GdsImportDialog = defineAsyncComponent(() => import('../dialogs/GdsImportD
 const GdsExportDialog = defineAsyncComponent(() => import('../dialogs/GdsExportDialog.vue'))
 const BooleanOperationsDialog = defineAsyncComponent(() => import('../dialogs/BooleanOperationsDialog.vue'))
 const SvgExportDialog = defineAsyncComponent(() => import('../dialogs/SvgExportDialog.vue'))
+const PCellPickerDialog = defineAsyncComponent(() => import('../dialogs/PCellPickerDialog.vue'))
+const PCellParamsDialog = defineAsyncComponent(() => import('../dialogs/PCellParamsDialog.vue'))
 
 // Canvas coordinate system
 const { screenToDesign, designToScreen, getSnappedPoint } = useCanvasCoordinates({
@@ -108,6 +112,9 @@ const showGdsImportDialog = ref(false)
 const showGdsExportDialog = ref(false)
 const showBooleanDialog = ref(false)
 const showSvgExportDialog = ref(false)
+const showPCellPickerDialog = ref(false)
+const showPCellParamsDialog = ref(false)
+const pendingPCellId = ref<string | null>(null)
 
 // === Context Menu composable ===
 const ctxMenu = useContextMenu(store)
@@ -144,9 +151,43 @@ function onContextMenuSelect(id: string) {
     showGdsImportDialog,
     showGdsExportDialog,
     showSvgExportDialog,
+    showPCellPickerDialog,
     markDirty: () => virtualization.markDirty(),
     announce: announceCanvasChange,
   })
+}
+
+// === PCell placement handler ===
+function handlePCellParamsConfirm(pcellId: string, paramValues: Record<string, number | string | boolean>) {
+  const activeCellId = cellsStore.activeCellId
+  if (!activeCellId) return
+  
+  // Get the center of the viewport as the placement point
+  const container = containerRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  const centerX = rect.width / 2
+  const centerY = rect.height / 2
+  const worldPt = screenToDesign(centerX, centerY)
+  
+  // Place the PCell
+  const instance = pcellsStore.placePCell({
+    pcellId,
+    cellId: activeCellId,
+    x: worldPt.x,
+    y: worldPt.y,
+    paramValues,
+  })
+  
+  // Mark canvas dirty and announce
+  virtualization.markDirty()
+  announceCanvasChange(`已放置 PCell: ${pcellsStore.getDefinition(pcellId)?.name ?? pcellId}`)
+  
+  // Reset pending state
+  pendingPCellId.value = null
+  
+  // Push history
+  store.pushHistory()
 }
 
 // === Tool Handlers Composable (v0.2.5: extracted from Canvas.vue) ===
@@ -200,6 +241,7 @@ const toolHandlers = useCanvasToolHandlers({
   showAlignDialog,
   showGdsExportDialog,
   showBooleanDialog,
+  showPCellPickerDialog,
   canvasRef,
   announce: announceCanvasChange,
   drillOut: store.drillOut,
@@ -584,6 +626,16 @@ defineExpose({
     />
     <SvgExportDialog
       v-model:show="showSvgExportDialog"
+    />
+    <PCellPickerDialog
+      v-model:show="showPCellPickerDialog"
+      @confirm="(pcellId) => { pendingPCellId = pcellId; showPCellParamsDialog = true }"
+    />
+    <PCellParamsDialog
+      v-if="pendingPCellId"
+      v-model:show="showPCellParamsDialog"
+      :pcell-id="pendingPCellId"
+      @confirm="handlePCellParamsConfirm"
     />
     <div v-if="hasError" class="error-overlay">
       <div class="error-content">

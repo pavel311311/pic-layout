@@ -74,6 +74,7 @@ export interface ToolHandlersOptions {
   showAlignDialog: Ref<boolean>
   showBooleanDialog: Ref<boolean>
   showGdsExportDialog: Ref<boolean>
+  showPCellPickerDialog: Ref<boolean>
 
   // Canvas ref
   canvasRef: Ref<HTMLCanvasElement | null>
@@ -97,7 +98,7 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
     alignSelectedShapes, distributeSelectedShapes, pushHistory, setTool, setZoom, setPan, zoomToFit,
     canUndo, canRedo, undo, redo, getShapeAtPoint,
     drawing, interaction, virtualization, geometry,
-    getSnappedPoint, showArrayCopyDialog, showShortcutsDialog, showAlignDialog, showBooleanDialog, showGdsExportDialog,
+    getSnappedPoint, showArrayCopyDialog, showShortcutsDialog, showAlignDialog, showBooleanDialog, showGdsExportDialog, showPCellPickerDialog,
     canvasRef, announce,
     drillOut, goToTop,
   } = options
@@ -287,6 +288,11 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         rulerPoint1.value = null
         rulerPoint2.value = null
       }
+      virtualization.markDirty()
+    }
+    // PCell tool - opens picker dialog
+    else if (tool === 'pcell') {
+      showPCellPickerDialog.value = true
       virtualization.markDirty()
     }
   }
@@ -568,6 +574,7 @@ export function useCanvasToolHandlers(options: ToolHandlersOptions) {
         case 'j': setTool('edge'); announce('选择工具: Edge'); virtualization.markDirty(); return
         case 't': setTool('label'); announce('选择工具: 标签'); virtualization.markDirty(); return
         case 'u': setTool('ruler'); announce('选择工具: 标尺'); virtualization.markDirty(); return
+        case 'g': showPCellPickerDialog.value = true; announce('打开 PCell 库'); virtualization.markDirty(); return
         case 'm':
           if (getSelectedShapeIds().length > 0) { moveSelectedShapes(getGridSize(), 0); announce('移动选中图形'); virtualization.markDirty() }
           return

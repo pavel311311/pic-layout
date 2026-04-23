@@ -175,6 +175,7 @@ export function useContextMenu(store: ContextMenuStore) {
       showGdsImportDialog: Ref<boolean>
       showGdsExportDialog: Ref<boolean>
       showSvgExportDialog: Ref<boolean>
+      showPCellPickerDialog?: Ref<boolean>
       markDirty: () => void
       announce?: (msg: string) => void
     }

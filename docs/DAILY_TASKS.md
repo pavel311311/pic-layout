@@ -1045,3 +1045,42 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] 更新 ROADMAP.md Phase 1 任务队列（全部标记为 [x]）
 - [ ] Phase 2: PCell 参数化单元准备
+
+## 2026-04-23 10:10
+
+### 当前任务
+- [x] T8: PCell 基本数据结构定义 - v0.4.0 PCell 参数化单元
+
+### 完成内容
+- **src/types/pcell.ts**：完整 PCell 类型系统定义（从 pcellLibrary.ts 独立出来）
+  - PCellParamDef / PCellParamValues / PCellParamGroup
+  - PCellGenerator / PCellDefinition / PCellInstance / PCellRegistry
+  - generatePCellShapes 工具函数
+- **src/services/pcellLibrary.ts**：内置 PCell 库（4 个单元）
+  - Waveguide_Straight：直波导（length/width/layer）
+  - Waveguide_Bend_90：90° 弯曲波导（radius/width/layer/direction）
+  - Coupler_Directional：定向耦合器（couplingLength/gap/width/layer/straightLength/inputSeparation）
+  - Grating_Coupler：光纤光栅耦合器（numGratings/pitch/fillFactor/apertureWidth/layer）
+- **src/stores/pcells.ts**：PCell Pinia store
+  - registry 管理（getDefinition/getByCategory/categories）
+  - 实例管理（placePCell/updateParams/updateTransform/deleteInstance）
+  - 形状缓存（getGeneratedShapes/invalidateCache）
+  - 参数验证（validateParams）
+  - 注册管理（registerPCell/unregisterPCell）
+- 修复 TypeScript 类型问题（PCellParamValues undefined 赋值）
+- npm run build 通过（134 tests pass）
+
+### 遇到的问题
+- 问题: TypeScript PCellParamValues 类型不兼容（index signature 含 undefined）
+  - 解决: 使用 `as PCellParamValues` 类型断言 + filter undefined 值
+- 问题: generatePCellShapes 需要完整 registry 对象
+  - 解决: 临时构建 `{ byId: registry, byCategory: new Map(), categories: [] }`
+
+### 编译测试
+- [x] npx vitest run → 134 passed
+- [x] npm run build → 通过（30 assets + brotli）
+
+### 下小时计划
+- [ ] T8-1: PCell 参数编辑 UI（PCell 编辑对话框）
+- [ ] T8-2: PCell 实例渲染集成（canvas 渲染 PCell shapes）
+- [ ] T8-3: PCell picker UI（从工具栏选择 PCell 放置）
