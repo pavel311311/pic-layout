@@ -12,7 +12,8 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { usePCellsStore } from '@/stores/pcells'
 import { useEditorStore } from '@/stores/editor'
-import type { PCellDefinition, PCellParamGroup } from '@/types/pcell'
+import type { PCellDefinition, PCellParamGroup, PCellShape } from '@/types/pcell'
+import { generatePCellShapes } from '@/types/pcell'
 
 const props = defineProps<{
   show: boolean
@@ -114,31 +115,152 @@ function decrementParam(paramId: string) {
   handleParamInput(paramId, paramValues.value[paramId])
 }
 
-// Estimated dimensions based on params (for preview)
-const estimatedSize = computed(() => {
-  if (!pcellDef.value) return null
-  const id = pcellDef.value.id
-  
-  if (id === 'Waveguide_Straight') {
-    const length = (paramValues.value['length'] as number) ?? 100
-    const width = (paramValues.value['width'] as number) ?? 0.5
-    return `${length} × ${width} μm`
+// Preview canvas ref
+const canvasPreview = ref<HTMLCanvasElement | null>(null)
+
+// Generate shapes from current param values (no caching - live preview)
+const previewShapes = computed<PCellShape[]>(() => {
+  if (!pcellDef.value) return []
+  const mockInstance = {
+    id: 'preview',
+    pcellId: pcellDef.value.id,
+    cellId: 'preview',
+    x: 0,
+    y: 0,
+    paramValues: paramValues.value as any,
+    cachedShapes: undefined,
+    createdAt: '',
   }
-  if (id === 'Waveguide_Bend_90') {
-    const radius = (paramValues.value['radius'] as number) ?? 5
-    return `Ø ${radius * 2} μm`
-  }
-  if (id === 'Coupler_Directional') {
-    const cl = (paramValues.value['couplingLength'] as number) ?? 50
-    const sep = (paramValues.value['inputSeparation'] as number) ?? 5
-    return `${cl} μm coupler, ${sep} μm sep`
-  }
-  if (id === 'Grating_Coupler') {
-    const num = (paramValues.value['numGratings'] as number) ?? 20
-    return `${num} gratings`
-  }
-  return null
+  const output = generatePCellShapes(
+    { byId: pcellsStore.registry, byCategory: new Map(), categories: [] },
+    mockInstance as any
+  )
+  return output.shapes
 })
+
+// Render preview shapes onto canvas
+function renderPreview() {
+  const canvas = canvasPreview.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const shapes = previewShapes.value
+  if (shapes.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    return
+  }
+
+  // Compute bounding box of all shapes
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const shape of shapes) {
+    if (shape.type === 'rectangle' && shape.x != null && shape.y != null && shape.width && shape.height) {
+      minX = Math.min(minX, shape.x)
+      minY = Math.min(minY, shape.y)
+      maxX = Math.max(maxX, shape.x + shape.width)
+      maxY = Math.max(maxY, shape.y + shape.height)
+    } else if (shape.type === 'polygon' && shape.points) {
+      for (const p of shape.points) {
+        minX = Math.min(minX, p.x)
+        minY = Math.min(minY, p.y)
+        maxX = Math.max(maxX, p.x)
+        maxY = Math.max(maxY, p.y)
+      }
+    } else if (shape.type === 'path' && shape.pathPoints) {
+      for (const p of shape.pathPoints) {
+        minX = Math.min(minX, p.x)
+        minY = Math.min(minY, p.y)
+        maxX = Math.max(maxX, p.x)
+        maxY = Math.max(maxY, p.y)
+      }
+    } else if (shape.type === 'label' && shape.textX != null && shape.textY != null) {
+      minX = Math.min(minX, shape.textX)
+      minY = Math.min(minY, shape.textY)
+      maxX = Math.max(maxX, shape.textX + 60)
+      maxY = Math.max(maxY, shape.textY + 12)
+    }
+  }
+
+  if (minX === Infinity) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    return
+  }
+
+  const bw = maxX - minX
+  const bh = maxY - minY
+  const pad = Math.max(bw, bh) * 0.15 + 4
+  const contentW = bw + pad * 2
+  const contentH = bh + pad * 2
+  const scale = Math.min(180 / contentW, 120 / contentH, 1)
+  const cw = Math.round(contentW * scale)
+  const ch = Math.round(contentH * scale)
+
+  canvas.width = cw
+  canvas.height = ch
+  ctx.clearRect(0, 0, cw, ch)
+
+  ctx.save()
+  ctx.translate((cw - bw * scale) / 2 - minX * scale, (ch - bh * scale) / 2 - minY * scale)
+  ctx.scale(scale, scale)
+
+  // Use layer colors from editor store
+  const layers = editorStore.project.layers
+  const getLayerColor = (layerId: number): string => {
+    const layer = layers.find(l => l.id === layerId)
+    return layer?.color || '#3b82f6'
+  }
+
+  ctx.strokeStyle = '#3b82f6'
+  ctx.lineWidth = 1 / scale
+
+  for (const shape of shapes) {
+    const color = getLayerColor(shape.layerId)
+    ctx.fillStyle = color + '40'
+    ctx.strokeStyle = color
+
+    if (shape.type === 'rectangle' && shape.x != null && shape.y != null && shape.width && shape.height) {
+      ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
+      ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+    } else if (shape.type === 'polygon' && shape.points && shape.points.length >= 3) {
+      ctx.beginPath()
+      ctx.moveTo(shape.points[0].x, shape.points[0].y)
+      for (let i = 1; i < shape.points.length; i++) {
+        ctx.lineTo(shape.points[i].x, shape.points[i].y)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    } else if (shape.type === 'path' && shape.pathPoints && shape.pathPoints.length >= 2) {
+      const halfW = (shape.pathWidth || 1) / 2
+      ctx.lineWidth = halfW * 2
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.moveTo(shape.pathPoints[0].x, shape.pathPoints[0].y)
+      for (let i = 1; i < shape.pathPoints.length; i++) {
+        ctx.lineTo(shape.pathPoints[i].x, shape.pathPoints[i].y)
+      }
+      ctx.stroke()
+      ctx.lineWidth = 1 / scale
+      ctx.lineCap = 'butt'
+      ctx.lineJoin = 'miter'
+    } else if (shape.type === 'label' && shape.text && shape.textX != null && shape.textY != null) {
+      ctx.font = '10px monospace'
+      ctx.fillStyle = color
+      ctx.textBaseline = 'top'
+      ctx.fillText(shape.text, shape.textX, shape.textY)
+    }
+  }
+
+  ctx.restore()
+}
+
+// Watch param changes to re-render preview
+watch([paramValues, () => props.show], ([, show]) => {
+  if (show) {
+    nextTick(() => renderPreview())
+  }
+}, { deep: true })
 
 // Layer options from editor store
 const editorStore = useEditorStore()
@@ -194,10 +316,19 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
           <!-- Description -->
           <div class="pcell-desc-bar">
             <span>{{ pcellDef.description }}</span>
-            <span v-if="estimatedSize" class="size-estimate">
-              <span v-html="IconInfo" />
-              {{ estimatedSize }}
-            </span>
+          </div>
+
+          <!-- Live Preview Canvas -->
+          <div class="preview-section">
+            <div class="preview-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+              </svg>
+              Preview
+            </div>
+            <div class="preview-canvas-wrap">
+              <canvas ref="canvasPreview" class="preview-canvas" />
+            </div>
           </div>
 
           <!-- Parameter form -->
@@ -426,13 +557,40 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   flex-shrink: 0;
 }
 
-.size-estimate {
+/* === Preview === */
+.preview-section {
+  margin-bottom: 16px;
+  padding: 0 18px;
+  flex-shrink: 0;
+}
+
+.preview-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: var(--accent-blue);
-  font-family: var(--font-mono);
+  gap: 6px;
+  font-size: 10px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.preview-canvas-wrap {
+  background: repeating-conic-gradient(#27272a 0% 25%, #1c1c1e 0% 50%) 50% / 8px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  overflow: hidden;
+}
+
+.preview-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
 }
 
 /* === Content === */

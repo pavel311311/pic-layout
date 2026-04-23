@@ -726,7 +726,7 @@ watch(flatTree, () => {
   padding: 6px 10px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   letter-spacing: 0.02em;
 }
 
@@ -737,9 +737,9 @@ watch(flatTree, () => {
   padding: 3px 7px;
   background: transparent;
   border: 1px solid var(--border-light);
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
   cursor: pointer;
   max-width: 72px;
@@ -765,8 +765,8 @@ watch(flatTree, () => {
 
 .breadcrumb-sep {
   color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 400;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
 }
 
 /* Cell Search */
@@ -791,8 +791,8 @@ watch(flatTree, () => {
   height: 24px;
   padding: 0 8px;
   border: 1px solid var(--border-light);
-  border-radius: 5px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
   font-family: inherit;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -809,7 +809,7 @@ watch(flatTree, () => {
 
 .cell-search-input::placeholder {
   color: var(--text-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 /* Search match count badge */
@@ -819,10 +819,10 @@ watch(flatTree, () => {
   padding: 0 4px;
   background: var(--accent-blue);
   color: #fff;
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 700;
-  font-family: 'Geist Mono', 'Satoshi', monospace;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-mono);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -841,7 +841,7 @@ watch(flatTree, () => {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-spring),
               background var(--duration-fast) var(--ease-spring);
 }
@@ -858,7 +858,7 @@ watch(flatTree, () => {
   gap: 8px;
   padding: 14px 10px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-base);
   text-align: center;
   justify-content: center;
   letter-spacing: 0.01em;
@@ -883,7 +883,7 @@ watch(flatTree, () => {
 
 .cell-list::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .cell-item {
@@ -893,7 +893,7 @@ watch(flatTree, () => {
   height: 26px;
   padding-right: 10px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-base);
   color: var(--text-primary);
   border-left: 2px solid transparent;
   transition: background var(--duration-fast) var(--ease-spring),
@@ -916,7 +916,7 @@ watch(flatTree, () => {
   background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
   border-left-color: var(--accent-blue);
   color: var(--accent-blue);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Keyboard focus ring */
@@ -941,7 +941,7 @@ watch(flatTree, () => {
 
 .cell-item.search-match .cell-name {
   color: var(--accent-green);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .cell-item.is-current-match {
@@ -951,11 +951,11 @@ watch(flatTree, () => {
 
 .cell-item.is-current-match .cell-name {
   color: var(--accent-blue);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cell-item.is-top .cell-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .expand-btn {
@@ -970,7 +970,7 @@ watch(flatTree, () => {
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-spring),
               background var(--duration-fast) var(--ease-spring),
               transform var(--duration-fast) var(--ease-spring);
@@ -1006,17 +1006,17 @@ watch(flatTree, () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .cell-count {
-  font-size: 9px;
-  font-weight: 600;
-  font-family: 'Geist Mono', 'Satoshi', monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-mono);
   color: var(--text-muted);
   background: var(--bg-secondary);
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   min-width: 22px;
   text-align: center;
   letter-spacing: 0.02em;
@@ -1035,7 +1035,7 @@ watch(flatTree, () => {
   justify-content: center;
   padding: 20px;
   gap: 10px;
-  font-size: 11px;
+  font-size: var(--font-size-base);
   color: var(--text-muted);
   letter-spacing: 0.01em;
 }
@@ -1043,10 +1043,10 @@ watch(flatTree, () => {
 .add-cell-btn {
   padding: 5px 14px;
   border: 1px dashed var(--border-color);
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background: transparent;
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
   color: var(--text-secondary);
   cursor: pointer;
@@ -1069,15 +1069,15 @@ watch(flatTree, () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .cell-name-input {
   height: 26px;
   padding: 0 8px;
   border: 1px solid var(--border-light);
-  border-radius: 5px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
   font-family: inherit;
   background: var(--bg-panel);
   color: var(--text-primary);
@@ -1101,9 +1101,9 @@ watch(flatTree, () => {
 .btn-cancel,
 .btn-add {
   padding: 4px 12px;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-spring),
@@ -1156,8 +1156,8 @@ watch(flatTree, () => {
   border: 1px solid var(--border-light);
   border-radius: 6px;
   background: var(--bg-panel);
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
   color: var(--text-primary);
   cursor: pointer;
@@ -1212,11 +1212,11 @@ watch(flatTree, () => {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 400;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
   color: var(--text-primary);
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   letter-spacing: 0.01em;
   transition: background var(--duration-fast) var(--ease-spring),
               color var(--duration-fast) var(--ease-spring),

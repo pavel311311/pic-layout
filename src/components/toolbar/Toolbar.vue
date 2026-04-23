@@ -465,10 +465,10 @@ onUnmounted(() => {
   height: 52px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
   background: var(--bg-toolbar);
   border-bottom: 1px solid var(--border-light);
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .tool-group {
@@ -484,10 +484,10 @@ onUnmounted(() => {
   justify-content: center;
   width: 48px;
   height: 44px;
-  padding: 3px;
+  padding: var(--space-1);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   color: var(--text-secondary);
   transition: all var(--duration-fast) var(--ease-spring);
@@ -522,7 +522,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-0-5);
 }
 
 .btn-icon-svg :deep(svg) {
@@ -531,9 +531,9 @@ onUnmounted(() => {
 }
 
 .btn-label {
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wide);
   text-align: center;
   line-height: 1.1;
   color: inherit;
@@ -543,7 +543,7 @@ onUnmounted(() => {
   width: 1px;
   height: 36px;
   background: var(--border-light);
-  margin: 0 6px;
+  margin: 0 var(--space-1-5);
   flex-shrink: 0;
 }
 
@@ -551,11 +551,11 @@ onUnmounted(() => {
 .measurement-display {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-3);
   background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-panel));
   border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, var(--border-light));
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .measure-icon-svg {
@@ -565,39 +565,39 @@ onUnmounted(() => {
 }
 
 .measure-value {
-  font-size: 12px;
-  font-family: 'Geist Mono', 'SF Mono', monospace;
-  font-weight: 500;
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
 
 .spacer {
   flex: 1;
-  min-width: 8px;
+  min-width: var(--space-2);
 }
 
 /* Layer indicator */
 .layer-indicator {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .layer-color-box {
   width: 14px;
   height: 14px;
   border: 1px solid var(--border-dark);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
 .layer-name {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
 }
 
@@ -605,26 +605,26 @@ onUnmounted(() => {
 .grid-settings {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .grid-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--text-muted);
 }
 
 .grid-select {
   height: 22px;
-  padding: 0 6px;
+  padding: 0 var(--space-1-5);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
-  font-size: 11px;
-  font-family: 'Geist Mono', 'SF Mono', monospace;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-family: var(--font-mono);
   background: var(--bg-panel);
   color: var(--text-primary);
   cursor: pointer;
@@ -638,9 +638,9 @@ onUnmounted(() => {
 .snap-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 500;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
@@ -652,15 +652,15 @@ onUnmounted(() => {
 }
 
 .project-info {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .project-name {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--text-muted);
 }
 
@@ -669,10 +669,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 3px 6px;
+  padding: var(--space-1) var(--space-1-5);
   background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-blue) 25%, var(--border-light));
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .cell-nav-btn {
@@ -682,10 +682,10 @@ onUnmounted(() => {
   justify-content: center;
   width: 42px;
   height: 40px;
-  padding: 3px;
+  padding: var(--space-1);
   background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-secondary));
   border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, var(--border-light));
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   color: var(--accent-blue);
   transition: all var(--duration-fast) var(--ease-spring);
@@ -704,11 +704,11 @@ onUnmounted(() => {
 .cell-nav-indicator {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-secondary));
   border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, var(--border-light));
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   min-width: 80px;
 }
 
@@ -720,22 +720,22 @@ onUnmounted(() => {
 }
 
 .cell-nav-name {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--accent-blue);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 56px;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .cell-nav-depth {
-  font-size: 9px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: color-mix(in srgb, var(--accent-blue) 70%, var(--text-muted));
   background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
-  padding: 0 3px;
-  border-radius: 3px;
+  padding: 0 var(--space-0-5);
+  border-radius: var(--radius-sm);
 }
 </style>

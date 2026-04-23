@@ -342,10 +342,10 @@ const libIcons: Record<string, string> = {
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 8px;
-  font-size: 10px;
-  font-weight: 600;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -368,12 +368,12 @@ const libIcons: Record<string, string> = {
   height: 78px;
   background: var(--bg-canvas);
   border: 1px solid var(--border-light);
-  margin: 4px;
-  border-radius: 4px;
+  margin: var(--space-1);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   transition:
-    border-color 0.2s var(--ease-spring),
-    box-shadow 0.2s var(--ease-spring);
+    border-color var(--duration-normal) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-spring);
 }
 
 .nav-viewport-wrap:hover {
@@ -399,8 +399,8 @@ const libIcons: Record<string, string> = {
 .lib-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
-  padding: 4px;
+  gap: var(--space-0-5);
+  padding: var(--space-1);
 }
 
 .lib-item {
@@ -408,15 +408,15 @@ const libIcons: Record<string, string> = {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 5px 2px 3px;
+  padding: var(--space-1) var(--space-0-5) var(--space-0-5);
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    background var(--duration-normal) var(--ease-spring),
+    border-color var(--duration-normal) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 .lib-item:hover {
@@ -433,8 +433,8 @@ const libIcons: Record<string, string> = {
   display: flex;
   align-items: center;
   color: var(--text-secondary);
-  margin-bottom: 2px;
-  transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: var(--space-0-5);
+  transition: color var(--duration-normal) var(--ease-spring);
 }
 
 .lib-item:hover .lib-icon {
@@ -442,8 +442,8 @@ const libIcons: Record<string, string> = {
 }
 
 .lib-name {
-  font-size: 8px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   text-align: center;
@@ -465,16 +465,16 @@ const libIcons: Record<string, string> = {
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition:
-    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    color var(--duration-fast) var(--ease-spring);
 }
 
 .add-btn:hover {
@@ -485,24 +485,24 @@ const libIcons: Record<string, string> = {
 }
 
 .add-layer-form {
-  padding: 8px;
+  padding: var(--space-2);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .form-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .form-row label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wider);
   color: var(--text-secondary);
   width: 42px;
   flex-shrink: 0;
@@ -511,13 +511,13 @@ const libIcons: Record<string, string> = {
 .layer-input {
   flex: 1;
   height: 24px;
-  padding: 0 6px;
+  padding: 0 var(--space-1-5);
   border: 1px solid var(--border-light);
-  border-radius: 5px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
   background: var(--bg-panel);
   color: var(--text-primary);
-  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .layer-input:focus {
@@ -534,21 +534,21 @@ const libIcons: Record<string, string> = {
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
-  margin-top: 2px;
+  gap: var(--space-1-5);
+  margin-top: var(--space-0-5);
 }
 
 .btn-cancel, .btn-add {
-  padding: 4px 12px;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wider);
   cursor: pointer;
   transition:
-    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 .btn-cancel {
@@ -587,22 +587,22 @@ const libIcons: Record<string, string> = {
 .swatch-btn {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition:
-    transform 0.15s var(--ease-spring),
-    border-color 0.15s var(--ease-spring),
-    box-shadow 0.15s var(--ease-spring);
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-spring);
   flex-shrink: 0;
 }
 
 .swatch-btn:hover {
   transform: scale(1.12);
-  box-shadow: 0 2px 8px -2px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-md);
 }
 
 .swatch-btn:active {
@@ -628,15 +628,15 @@ const libIcons: Record<string, string> = {
 .layer-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 6px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1-5);
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background 0.15s var(--ease-spring),
-    border-color 0.15s var(--ease-spring),
-    transform 0.15s var(--ease-spring);
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 .layer-item:hover {
@@ -662,11 +662,11 @@ const libIcons: Record<string, string> = {
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color var(--duration-fast) var(--ease-spring), background var(--duration-fast) var(--ease-spring);
 }
 
 .layer-vis-btn:hover {
@@ -679,7 +679,7 @@ const libIcons: Record<string, string> = {
   width: 22px;
   height: 15px;
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
   position: relative;
@@ -702,8 +702,8 @@ const libIcons: Record<string, string> = {
 }
 
 .layer-name {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -717,19 +717,19 @@ const libIcons: Record<string, string> = {
 }
 
 .layer-gds {
-  font-size: 9px;
-  font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
   color: var(--text-muted);
 }
 
 .layer-count {
-  font-size: 9px;
-  font-family: 'Geist Mono', 'JetBrains Mono', monospace;
-  font-weight: 700;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-bold);
   color: var(--accent-blue);
   background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
-  padding: 0 4px;
-  border-radius: 3px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
 }
 
 /* Action buttons */
@@ -737,7 +737,7 @@ const libIcons: Record<string, string> = {
   display: flex;
   gap: 2px;
   opacity: 0;
-  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--duration-fast) var(--ease-spring);
 }
 
 .layer-item:hover .layer-actions,
@@ -753,13 +753,13 @@ const libIcons: Record<string, string> = {
   justify-content: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    color var(--duration-fast) var(--ease-spring),
+    background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring);
 }
 
 .act-btn:hover {
@@ -787,12 +787,12 @@ const libIcons: Record<string, string> = {
 .layer-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-light);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.03em;
   color: var(--text-secondary);
   margin-top: auto;
@@ -800,15 +800,15 @@ const libIcons: Record<string, string> = {
 
 .footer-divider {
   color: var(--border-color);
-  font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ── Transition ──────────────────────────────────────────────────────────────── */
 .slide-down-enter-active,
 .slide-down-leave-active {
   transition:
-    max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height var(--duration-normal) var(--ease-spring),
+    opacity var(--duration-fast) var(--ease-spring);
   overflow: hidden;
 }
 
@@ -826,7 +826,7 @@ const libIcons: Record<string, string> = {
 
 /* ── Scrollbar ──────────────────────────────────────────────────────────────── */
 .layer-panel::-webkit-scrollbar {
-  width: 6px;
+  width: var(--space-1-5);
 }
 
 .layer-panel::-webkit-scrollbar-track {
@@ -835,7 +835,7 @@ const libIcons: Record<string, string> = {
 
 .layer-panel::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .layer-panel::-webkit-scrollbar-thumb:hover {

@@ -7,9 +7,11 @@
  * - Category-based PCell browser
  * - Inline SVG icons (no external library)
  * - Search functionality
- * - Preview of selected PCell parameters
+ * - Mini canvas preview of selected PCell geometry
+ * - Keyboard navigation (Arrow Up/Down/Enter/Escape)
+ * - Category count badges
  */
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { usePCellsStore } from '@/stores/pcells'
 
 const props = defineProps<{
@@ -24,12 +26,24 @@ const emit = defineEmits<{
 const pcellsStore = usePCellsStore()
 
 // State
+const LAST_PCELL_KEY = 'piclayout:lastPcell'
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const selectedPcellId = ref<string | null>(null)
+const previewCanvasRef = ref<HTMLCanvasElement | null>(null)
 
-// Categories
+// Categories with count
 const categories = computed(() => ['All', ...pcellsStore.categories])
+
+const categoryCounts = computed(() => {
+  const counts: Record<string, number> = {}
+  const allDef = Array.from(pcellsStore.registry.values())
+  counts['All'] = allDef.length
+  for (const def of allDef) {
+    counts[def.category] = (counts[def.category] ?? 0) + 1
+  }
+  return counts
+})
 
 // Filtered PCell definitions
 const filteredPCells = computed(() => {
@@ -58,31 +72,103 @@ const selectedDef = computed(() => {
   return pcellsStore.getDefinition(selectedPcellId.value) ?? null
 })
 
-// Parameter count
-const paramCount = computed(() => {
-  if (!selectedDef.value) return 0
-  return selectedDef.value.groups.reduce((acc, g) => acc + g.params.length, 0)
-})
-
 // Reset state when dialog opens
 watch(() => props.show, (newVal) => {
   if (newVal) {
     searchQuery.value = ''
     selectedCategory.value = 'All'
-    selectedPcellId.value = null
+    // Restore last selected PCell, but only if it matches current filter
+    const lastId = localStorage.getItem(LAST_PCELL_KEY)
+    if (lastId) {
+      const def = pcellsStore.getDefinition(lastId)
+      if (def) {
+        selectedPcellId.value = lastId
+        focusedIndex = filteredPCells.value.findIndex(d => d.id === lastId)
+      } else {
+        selectedPcellId.value = null
+        focusedIndex = -1
+      }
+    } else {
+      selectedPcellId.value = null
+      focusedIndex = -1
+    }
     document.addEventListener('keydown', handleKeydown)
   } else {
     document.removeEventListener('keydown', handleKeydown)
   }
 })
 
+// Draw preview canvas when selected PCell changes
+watch(selectedDef, async () => {
+  await nextTick()
+  drawPreview()
+})
+
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
+// Keyboard navigation within list
+let focusedIndex = -1
+
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') close()
-  if (e.key === 'Enter' && selectedPcellId.value) handleConfirm()
+  if (e.key === 'Escape') { close(); return }
+  if (e.key === 'Enter' && selectedPcellId.value) { handleConfirm(); return }
+
+  // Category navigation with Left/Right arrows
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const cats = categories.value
+    if (cats.length < 2) return
+    const curIdx = cats.indexOf(selectedCategory.value ?? 'All')
+    const delta = e.key === 'ArrowRight' ? 1 : -1
+    const newIdx = ((curIdx + delta) % cats.length + cats.length) % cats.length
+    selectedCategory.value = cats[newIdx]
+    e.preventDefault()
+    return
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    navigateList(1)
+    return
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    navigateList(-1)
+    return
+  }
+  if (e.key === 'Home') {
+    e.preventDefault()
+    focusedIndex = 0
+    if (filteredPCells.value.length > 0) {
+      selectedPcellId.value = filteredPCells.value[0].id
+      scrollToSelected()
+    }
+    return
+  }
+  if (e.key === 'End') {
+    e.preventDefault()
+    focusedIndex = filteredPCells.value.length - 1
+    if (filteredPCells.value.length > 0) {
+      selectedPcellId.value = filteredPCells.value[focusedIndex].id
+      scrollToSelected()
+    }
+    return
+  }
+}
+
+function navigateList(delta: number) {
+  if (filteredPCells.value.length === 0) return
+  focusedIndex = Math.max(0, Math.min(filteredPCells.value.length - 1, focusedIndex + delta))
+  selectedPcellId.value = filteredPCells.value[focusedIndex].id
+  scrollToSelected()
+}
+
+function scrollToSelected() {
+  nextTick(() => {
+    const el = document.querySelector('.pcell-item.selected')
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
 }
 
 function close() {
@@ -93,14 +179,184 @@ function close() {
 
 function handleConfirm() {
   if (!selectedPcellId.value) return
+  // Persist last selected PCell
+  localStorage.setItem(LAST_PCELL_KEY, selectedPcellId.value)
   emit('confirm', selectedPcellId.value)
   emit('update:show', false)
   searchQuery.value = ''
-  selectedPcellId.value = null
 }
 
 function selectPcell(pcellId: string) {
   selectedPcellId.value = pcellId
+  focusedIndex = filteredPCells.value.findIndex(d => d.id === pcellId)
+}
+
+// Draw mini canvas preview of selected PCell
+function drawPreview() {
+  const canvas = previewCanvasRef.value
+  if (!canvas || !selectedDef.value) return
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const def = selectedDef.value
+  const W = canvas.width
+  const H = canvas.height
+  const dpr = window.devicePixelRatio || 1
+
+  // Scale for DPR
+  canvas.width = W * dpr
+  canvas.height = H * dpr
+  ctx.scale(dpr, dpr)
+
+  // Clear with checkerboard (transparency bg)
+  const size = 8
+  const bgLight = '#2a2a2a'
+  const bgDark = '#1e1e1e'
+  for (let y = 0; y < H; y += size) {
+    for (let x = 0; x < W; x += size) {
+      ctx.fillStyle = ((x / size + y / size) % 2 === 0) ? bgLight : bgDark
+      ctx.fillRect(x, y, size, size)
+    }
+  }
+
+  // Generate shapes with default params
+  const registry = { byId: pcellsStore.registry, byCategory: new Map(), categories: [] }
+  const instance = {
+    pcellId: def.id,
+    paramValues: Object.fromEntries(
+      def.groups.flatMap(g => g.params).map(p => [p.id, p.default])
+    ),
+    x: 0, y: 0,
+  } as any
+
+  let shapes: any[] = []
+  try {
+    const output = def.generator(instance.paramValues)
+    shapes = output.shapes ?? []
+  } catch {
+    shapes = []
+  }
+
+  if (shapes.length === 0) {
+    // Draw placeholder text
+    ctx.fillStyle = '#52525b'
+    ctx.font = '11px system-ui'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('No preview', W / 2, H / 2)
+    return
+  }
+
+  // Compute bounds of all shapes
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const shape of shapes) {
+    if (shape.type === 'rectangle') {
+      minX = Math.min(minX, shape.x ?? 0)
+      minY = Math.min(minY, shape.y ?? 0)
+      maxX = Math.max(maxX, (shape.x ?? 0) + (shape.width ?? 0))
+      maxY = Math.max(maxY, (shape.y ?? 0) + (shape.height ?? 0))
+    } else if (shape.type === 'polygon' && shape.points) {
+      for (const pt of shape.points) {
+        minX = Math.min(minX, pt.x); minY = Math.min(minY, pt.y)
+        maxX = Math.max(maxX, pt.x); maxY = Math.max(maxY, pt.y)
+      }
+    } else if (shape.type === 'path' && shape.pathPoints) {
+      for (const pt of shape.pathPoints) {
+        minX = Math.min(minX, pt.x - (shape.pathWidth ?? 0) / 2)
+        minY = Math.min(minY, pt.y - (shape.pathWidth ?? 0) / 2)
+        maxX = Math.max(maxX, pt.x + (shape.pathWidth ?? 0) / 2)
+        maxY = Math.max(maxY, pt.y + (shape.pathWidth ?? 0) / 2)
+      }
+    } else if (shape.type === 'ellipse') {
+      const cx = shape.x ?? 0; const cy = shape.y ?? 0
+      const rx = (shape.width ?? 0) / 2; const ry = (shape.height ?? 0) / 2
+      minX = Math.min(minX, cx - rx); minY = Math.min(minY, cy - ry)
+      maxX = Math.max(maxX, cx + rx); maxY = Math.max(maxY, cy + ry)
+    }
+  }
+
+  const bw = maxX - minX || 1
+  const bh = maxY - minY || 1
+  const pad = 14
+  const availableW = W - pad * 2
+  const availableH = H - pad * 2 - 16  // leave room for dimension label
+  const scale = Math.min(availableW / bw, availableH / bh)
+
+  // Center the drawing
+  const offsetX = pad + (availableW - bw * scale) / 2 - minX * scale
+  const offsetY = pad + ((availableH - bh * scale) / 2 - minY * scale) + 2
+
+  ctx.save()
+  ctx.translate(offsetX, offsetY)
+  ctx.scale(scale, scale)
+
+  // Draw each shape
+  for (const shape of shapes) {
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.7)'
+    ctx.strokeStyle = '#3b82f6'
+    ctx.lineWidth = 0.3 / scale
+
+    if (shape.type === 'rectangle') {
+      ctx.beginPath()
+      ctx.rect(shape.x ?? 0, shape.y ?? 0, shape.width ?? 0, shape.height ?? 0)
+      ctx.fill()
+      ctx.stroke()
+    } else if (shape.type === 'polygon' && shape.points) {
+      if (shape.points.length < 2) continue
+      ctx.beginPath()
+      ctx.moveTo(shape.points[0].x, shape.points[0].y)
+      for (let i = 1; i < shape.points.length; i++) {
+        ctx.lineTo(shape.points[i].x, shape.points[i].y)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    } else if (shape.type === 'path' && shape.pathPoints) {
+      const pw = shape.pathWidth ?? 0.5
+      ctx.beginPath()
+      ctx.moveTo(shape.pathPoints[0].x, shape.pathPoints[0].y)
+      for (let i = 1; i < shape.pathPoints.length; i++) {
+        ctx.lineTo(shape.pathPoints[i].x, shape.pathPoints[i].y)
+      }
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)'
+      ctx.lineWidth = pw
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    } else if (shape.type === 'ellipse') {
+      const cx = shape.x ?? 0; const cy = shape.y ?? 0
+      const rx = (shape.width ?? 0) / 2; const ry = (shape.height ?? 0) / 2
+      ctx.beginPath()
+      ctx.ellipse(cx, cy, Math.max(rx, 0.1), Math.max(ry, 0.1), 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    }
+    }
+
+  ctx.restore()
+
+  // Draw bounding box (dashed) + dimensions
+  const bx0 = pad + (availableW - bw * scale) / 2
+  const by0 = pad + 2 + (availableH - bh * scale) / 2
+  const bx1 = bx0 + bw * scale
+  const by1 = by0 + bh * scale
+
+  ctx.save()
+  ctx.setLineDash([3, 2])
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)'
+  ctx.lineWidth = 0.8
+  ctx.strokeRect(bx0, by0, bw * scale, bh * scale)
+  ctx.setLineDash([])
+
+  // Dimension label below bounding box
+  ctx.fillStyle = 'rgba(161, 168, 178, 0.9)'
+  ctx.font = '9px system-ui'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  const dimText = `${bw.toFixed(1)} × ${bh.toFixed(1)} μm`
+  ctx.fillText(dimText, (bx0 + bx1) / 2, by1 + 3)
+  ctx.restore()
 }
 
 // SVG Icons
@@ -110,12 +366,17 @@ const IconGrid = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" st
 
 const IconX = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
 
+const IconEye = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+
 function getCategoryIcon(cat: string): string {
   if (cat === 'Waveguides') {
     return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>`
   }
   if (cat === 'Couplers') {
     return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h20"/><path d="M2 16h20"/><path d="M6 8v8"/><path d="M18 8v8"/></svg>`
+  }
+  if (cat === 'Resonators') {
+    return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2"/><path d="M12 18v2"/><path d="M4 12h2"/><path d="M18 12h2"/></svg>`
   }
   return IconGrid
 }
@@ -175,6 +436,7 @@ function getCategoryIcon(cat: string): string {
               >
                 <span v-html="getCategoryIcon(cat)" class="cat-icon" />
                 <span class="cat-label">{{ cat }}</span>
+                <span class="cat-count">{{ categoryCounts[cat] ?? 0 }}</span>
               </button>
             </div>
 
@@ -187,7 +449,7 @@ function getCategoryIcon(cat: string): string {
                 </svg>
                 <p>No PCells found</p>
               </div>
-              
+
               <div
                 v-for="def in filteredPCells"
                 :key="def.id"
@@ -208,12 +470,23 @@ function getCategoryIcon(cat: string): string {
                   <span class="pcell-params">{{ def.groups.reduce((a,g) => a + g.params.length, 0) }} params</span>
                 </div>
               </div>
+
+              <!-- Navigation hint -->
+              <div v-if="filteredPCells.length > 0" class="list-hint">
+                <kbd>↑↓</kbd> navigate &nbsp;·&nbsp; <kbd>←→</kbd> categories &nbsp;·&nbsp; <kbd>Enter</kbd> / dbl-click configure
+              </div>
             </div>
           </div>
 
-          <!-- Preview panel -->
+          <!-- Preview panel with mini canvas -->
           <div v-if="selectedDef" class="preview-panel">
-            <div class="preview-label">Parameters</div>
+            <div class="preview-label">
+              <span v-html="IconEye" />
+              Preview
+            </div>
+            <div class="preview-canvas-wrap">
+              <canvas ref="previewCanvasRef" class="preview-canvas" width="160" height="120" />
+            </div>
             <div class="param-summary">
               <span v-for="(group, gi) in selectedDef.groups" :key="group.id" class="param-group">
                 <span class="group-name">{{ group.label }}</span>
@@ -429,6 +702,22 @@ function getCategoryIcon(cat: string): string {
   color: white;
 }
 
+.cat-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  opacity: 0.7;
+  background: rgba(255,255,255,0.15);
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.category-btn.active .cat-count {
+  background: rgba(255,255,255,0.2);
+}
+
 .cat-icon {
   display: flex;
   flex-shrink: 0;
@@ -462,6 +751,30 @@ function getCategoryIcon(cat: string): string {
   font-size: 13px;
 }
 
+/* === List Hint === */
+.list-hint {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  border-top: 1px solid var(--border-light);
+  margin-top: 4px;
+  letter-spacing: 0.01em;
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  color: var(--text-secondary);
+}
+
 .pcell-item {
   padding: 10px 12px;
   border-radius: 8px;
@@ -469,6 +782,7 @@ function getCategoryIcon(cat: string): string {
   transition: all var(--ease-spring);
   border: 1px solid transparent;
   margin-bottom: 4px;
+  outline: none;
 }
 
 .pcell-item:hover {
@@ -476,9 +790,17 @@ function getCategoryIcon(cat: string): string {
   transform: translateY(-1px);
 }
 
+.pcell-item:focus-visible {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+}
+
 .pcell-item.selected {
   background: rgba(59, 130, 246, 0.08);
   border-color: rgba(59, 130, 246, 0.3);
+}
+
+.pcell-item:focus-visible.selected {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
 }
 
 .pcell-item-header {
@@ -535,9 +857,9 @@ function getCategoryIcon(cat: string): string {
 /* === Preview Panel === */
 .preview-panel {
   border-top: 1px solid var(--border-light);
-  padding: 12px 18px;
+  padding: 10px 14px;
   flex-shrink: 0;
-  max-height: 120px;
+  max-height: 160px;
   overflow-y: auto;
 }
 
@@ -548,6 +870,27 @@ function getCategoryIcon(cat: string): string {
   letter-spacing: 0.06em;
   color: var(--text-secondary);
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.preview-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.preview-canvas {
+  display: block;
+  width: 160px;
+  height: 120px;
+  image-rendering: crisp-edges;
 }
 
 .param-summary {

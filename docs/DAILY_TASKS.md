@@ -1,8 +1,8 @@
 # PicLayout 每日开发任务
 
 > 版本: 2.0.0
-> 最后更新: 2026-04-22
-> 当前阶段: v0.3.2 完成 → v0.4.0 PCell 参数化单元
+> 最后更新: 2026-04-23
+> 当前阶段: v0.4.0 完成 → v0.4.1 Design System
 
 ---
 
@@ -12,11 +12,12 @@
 
 #### 🟡 中优先级
 
-**T8: PCell 数据结构定义**
-- [ ] PCell 基本数据结构（参数定义、类型系统）
-- [ ] PCell 参数编辑 UI
-- [ ] 参数化渲染引擎
-- [ ] 内置 Basic 单元库（Waveguide / Bend / Straight / Coupler）
+**T8: PCell 数据结构定义 (✅ 完成)**
+- [x] PCell 基本数据结构（参数定义、类型系统）
+- [x] PCell 参数编辑 UI
+- [x] 参数化渲染引擎
+- [x] 内置 Basic 单元库（Waveguide / Bend / Straight / Coupler）
+- [x] PCell 渲染引擎增强（live preview canvas）
 
 ## 每日日志格式
 
@@ -1122,3 +1123,165 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] T8-2: PCell 实例渲染集成（canvas 渲染 PCell shapes）
 - [ ] T8-3: PCell picker UI（从工具栏选择 PCell 放置）
+
+## 2026-04-23 13:10
+
+### 当前任务
+- [x] T8-2: PCell 实例渲染集成 - v0.4.0 PCell 参数化单元
+
+### 完成内容
+- 创建 `src/services/pcellRendering.test.ts`：7 个测试覆盖 T8-2 全部场景
+  - T8-2a: PCell shapes 出现在 expandedVisibleShapes 中
+  - T8-2a: 实例 transform（x/y 偏移）应用到 PCell 生成的 shapes
+  - T8-2b: 图层可见性过滤（隐藏图层时 PCell shapes 被过滤）
+  - T8-2c: 同一 cell 中多个 PCell 实例各自独立渲染
+  - T8-2d: 旋转 transform 正确应用到 PCell shapes
+  - T8-2e: PCell 缓存 shapes 性能（缓存命中/失效后重新生成）
+- 确认 editor.ts expandedVisibleShapes 已有完整的 PCellInstanceMarker 展开逻辑：
+  - PCellInstanceMarker → pcellsStore.getGeneratedShapes → 实例矩阵变换 → tagged shapes
+- 确认 useCanvasRenderer.ts renderShape 支持所有 PCellShape types（rectangle/polygon/path/label/ellipse）
+- 确认 cellsStore.getCellBounds 跳过 PCellInstanceMarker（bounds 由 pcellsStore 缓存管理）
+- 全部 154 个测试通过（polygonBoolean 30 + propertyEditing 21 + gdsRoundTrip 17 + gdsCellHierarchy 3 + gdsPathEdge 13 + cellDrillInOut 9 + contextMenu 24 + useHistory 17 + pcellLibrary 13 + pcellRendering 7）
+- `npm run build` 通过（34 assets + brotli）
+
+### 遇到的问题
+- 问题: `cells.setActiveCell()` 不存在（应使用 `cells.activeCellId = topId`）
+  - 解决: 改用直接赋值 `cells.activeCellId = topId`
+- 问题: `pcells.getInstanceBounds()` 不存在（store 未导出此方法）
+  - 解决: 移除 boundsBefore/boundsAfter 比较，改用 shapesAfter 存在性验证
+- 问题: Cell 嵌套测试复杂（SREF 展开 PCell 涉及多 cell 递归展开）
+  - 解决: 简化为同一 cell 内多实例测试（T8-2c）
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（34 assets + brotli）
+
+### 下小时计划
+- [ ] T8-3: PCell picker UI 美化/增强（当前已实现基础 picker，可继续完善）
+- [ ] T8-4: PCell 内置单元库完善（当前 4 个，可继续添加 Ring Resonator / MMI 等）
+
+## 2026-04-23 14:10
+
+### 当前任务
+- [x] T8-4: PCell 内置单元库扩展 - v0.4.0 PCell 参数化单元
+
+### 完成内容
+- 在 `src/services/pcellLibrary.ts` 中新增 2 个常用 PCell：
+  - **Ring_Resonator**（Resonators 类）：add-drop 环形谐振器，含参数 ringRadius/ringWidth/gap/busLength/busWidth
+  - **MMI_1x2**（Couplers 类）：1×2 多模干涉耦合器，含参数 mmiLength/mmiWidth/inputWidth/outputWidth/inputTaperLength/outputTaperLength
+- 更新 `BUILTIN_PCELLS` 数组：4 → 6 个 PCell
+- 更新文件头部注释列表（新增 Ring_Resonator 和 MMI_1x2）
+- 修复测试 `pcellLibrary.test.ts`：`registry.size` 从 4 更新为 6
+- 全部 154 个测试通过，npm run build 通过
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（34 assets + brotli）
+
+### 下小时计划
+- [ ] T8-3: PCell picker UI 美化/增强（当前已有基础 picker，可继续完善）
+- [ ] T8-5: PCell 参数化渲染引擎增强（缓存优化/动态预览）
+
+## 2026-04-23 16:10
+
+### 当前任务
+- [x] T8-5: PCell 参数化渲染引擎增强 - v0.4.0 PCell 参数化单元
+
+### 完成内容
+- **T8-5a: 通用 estimatedSize 替换为 live canvas 预览**
+  - 移除 PCellParamsDialog 中 4 个硬编码 PCell 类型的 estimatedSize 逻辑
+  - 新增 `previewShapes` computed：调用 `generatePCellShapes` 直接生成 shapes（无需 mock instance cache）
+  - 新增 `renderPreview()` 函数：在 canvas 上渲染生成的 shapes，动态计算包围盒并自动缩放居中
+  - 支持 rectangle/polygon/path/label 四种 shape 类型，使用项目图层颜色渲染
+  - `watch([paramValues, () => props.show])` 监听参数变化，触发实时重渲染
+  - checkerboard 背景（类似 GdsImportDialog preview），120px 高度自适应缩放
+
+- **预览功能特性**：
+  - bounding box 自动计算 + padding 扩展 + scale-to-fit 自适应缩放
+  - 使用项目实际图层颜色（从 editorStore.project.layers 获取）
+  - 透明 checkerboard 背景增强几何可读性
+  - 动态 canvas 尺寸（根据形状包围盒自适应）
+
+### 遇到的问题
+- 问题: 旧 estimatedSize 只支持 4 种硬编码 PCell，新增 PCell（Ring_Resonator/MMI_1x2）无预览
+  - 解决: 通用 generatePCellShapes 直接调用，所有 PCell 自动获得 live 预览
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（PCellParamsDialog: 9.5KB→3.0KB + 7.4KB→1.5KB CSS）
+
+### 下小时计划
+- [ ] T8-5: 继续 PCell 渲染引擎增强（PCell 实例选中高亮/参数化边界框渲染）
+- [ ] T8-3: PCell picker UI 美化/增强
+
+## 2026-04-23 19:10
+
+### 当前任务
+- [x] v0.4.1: Design Token System 建立（style.css Design Token 重构）- v0.4.1 Design System
+
+### 完成内容
+- **Design Token System v0.4.1 完全重构**（style.css 完全重写，206行→280行）：
+  - **Typography tokens**: --font-family, --font-mono, --font-size-xs/sm/base/md/lg/xl/2xl, --font-weight-*, --line-height-*, --letter-spacing-*
+  - **Spacing tokens**: --space-px/0-5/1/1-5/2/2-5/3/4/5/6/8/10/12（4px进制+2px辅助）
+  - **Border radius tokens**: --radius-sm/md/lg/xl/2xl/full（3/5/8/12/16/9999）
+  - **Z-index tokens**: --z-base/dropdown/sticky/overlay/modal/popover/tooltip/toast
+  - **Motion tokens**: --ease-spring/out-expo/in-out/out/in, --duration-instant/fast/normal/slow/slower
+  - **Shadow tokens**: --shadow-sm/md/lg/xl/2xl/inner（扩散阴影体系）
+  - **Semantic color tokens**: --color-success/warning/danger/info + 对应 -bg/-border
+  - **Focus ring tokens**: --focus-ring, --focus-ring-inset
+  - **Component tokens**: --component-btn-height-sm/md/lg, --component-input-height, --component-panel-padding/gap
+
+- **Typography helpers**: .text-xs/sm/base/md/lg/xl, .font-normal/medium/semibold/bold, .font-mono, .tracking-tight/wide/wider
+- **Spacing helpers**: .p-0/1/2/3/4/5/6, .gap-1/2/3/4
+- **Border radius helpers**: .rounded-sm/md/lg/xl/2xl/full
+- **Shadow helpers**: .shadow-sm/md/lg/xl/2xl
+- **Transition helpers**: .transition-fast/normal/slow
+
+- **修复**: 删除重复的 `:root { font-family: ... }` 声明，合并到单一声明
+- **taste-skill-main 规范一致性**: Geist/Satoshi字体（无Inter/Roboto），Zinc调色板，spring动画，无AI紫蓝
+
+### 遇到的问题
+- 问题: style.css 有两处重复的 `:root { font-family: ... }` 声明（light theme 后和 dark theme 后的 :root 块）
+  - 解决: 合并到单一声明，删除重复
+
+### 编译测试
+- [x] npm run build → 通过（33 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.1: PropertiesPanel/CellTree Design Token 应用
+- [ ] v0.4.1: LEF/DEF layer mapping 系统准备
+
+## 2026-04-23 21:10
+
+### 当前任务
+- [x] v0.4.1: 组件 Design Token 应用（Toolbar/LayerPanel CSS token 化）
+
+### 完成内容
+- Toolbar.vue CSS 全面采用 Design Token 变量（14 个 CSS 规则块更新）：
+  - border-radius: 8px→var(--radius-lg)，6px→var(--radius-md)，4px→var(--radius-sm)
+  - font-size: 9/10/11/12px → var(--font-size-xs/sm/base/md)
+  - font-weight: 500/600 → var(--font-weight-medium/semibold)
+  - font-family: 'Geist Mono'... → var(--font-mono)
+  - letter-spacing: 0.02em→var(--letter-spacing-wide)，0.01em→var(--letter-spacing-normal)
+  - padding/gap → var(--space-*) token
+  - transition: 0.15s/0.2s cubic-bezier → var(--duration-fast/normal) var(--ease-spring)
+
+- LayerPanel.vue CSS 全面采用 Design Token 变量（24 个 CSS 规则块更新）：
+  - 所有 border-radius → var(--radius-md/sm)
+  - 所有 font-size/weight/family → token 变量
+  - 所有 padding/gap/margin → token spacing 变量
+  - 所有 transition → var(--duration-*) var(--ease-spring)
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（Toolbar CSS 5.9KB→1.0KB，LayerPanel CSS 20.2KB→2.7KB）
+
+### 下小时计划
+- [ ] v0.4.1: PropertiesPanel/CellTree Design Token 应用
+- [ ] v0.4.1: LEF/DEF layer mapping 系统准备

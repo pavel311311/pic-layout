@@ -84,16 +84,17 @@ PicLayout 是一款基于浏览器的硅光芯片（PIC - Photonic Integrated Ci
 
 ### 🥈 Phase 2：PCell + DRC + Design System（2-4周）
 
-#### v0.4.0 - PCell 参数化单元
-- [ ] PCell 数据结构定义
-- [ ] PCell 参数编辑 UI
-- [ ] 参数化渲染引擎
-- [ ] 内置 Basic 单元库（Waveguide / Bend / Straight / Coupler）
+#### v0.4.0 - PCell 参数化单元 (✅ 完成)
+- [x] PCell 数据结构定义
+- [x] PCell 参数编辑 UI
+- [x] 参数化渲染引擎
+- [x] 内置 Basic 单元库（Waveguide / Bend / Straight / Coupler）
 
-#### v0.4.1 - Design System 建设
-- [ ] 图层定义系统增强（LEF/DEF/GDS layer mapping）
-- [ ] 统一 Design Token（颜色/字体/间距/阴影/动画）
+#### v0.4.1 - Design System 建设 (进行中)
+- [x] 统一 Design Token（颜色/字体/间距/阴影/动画）- style.css Design Token System 完成
+- [ ] 组件 Design Token 应用（Toolbar/LayerPanel/CellTree/PropertiesPanel 采用 token 变量）
 - [ ] 组件库文档（Storybook 或内联文档）
+- [ ] LEF/DEF layer mapping 系统准备
 
 #### v0.4.2 - DRC 设计规则检查
 - [ ] DRC 规则 DSL（min_width / spacing / area / enclosure）
@@ -180,7 +181,7 @@ src/
 | **v0.3.0** | **2026-05-07** | **功能测试 + Bug 修复** | **进行中** |
 | v0.3.1 | 2026-05-14 | UI 美化（taste-skill） | 规划 |
 | v0.3.2 | 2026-05-21 | 稳定性收尾 | 规划 |
-| v0.4.0 | 2026-06-04 | PCell 参数化 | 规划 |
+| v0.4.0 | 2026-04-23 | PCell 参数化 | ✅ 完成 |
 | v0.4.1 | 2026-06-18 | Design System | 规划 |
 | v0.4.2 | 2026-07-02 | DRC 规则检查 | 规划 |
 | v0.5.0 | 2026-07-16 | UI 收尾（soft-skill） | 规划 |
