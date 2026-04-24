@@ -61,6 +61,8 @@ export interface DRCRule {
   angles?: AngleConstraint[]
   // For enclosure rules
   enclosureLayers?: [number, number][]  // [[outerLayerId, innerLayerId], ...]
+  // For extension rules: reference layer
+  layer2Id?: number                 // Reference layer for min_extension rules
   // Severity
   severity: 'error' | 'warning' | 'info'
   // Filter
@@ -277,29 +279,38 @@ export function shapeMinSpacing(shape1: BaseShape, shape2: BaseShape): number {
   const b1 = polygonBounds(pts1)
   const b2 = polygonBounds(pts2)
 
-  // Quick bounding box check
+  // Compute gap in each dimension (positive = separated, negative = overlapping)
+  const gapX = b2.minX - b1.maxX  // positive = shape1 is left of shape2 with gap
+  const gapX2 = b1.minX - b2.maxX  // positive = shape2 is left of shape1 with gap
+  const gapY = b2.minY - b1.maxY  // positive = shape1 is below shape2 with gap
+  const gapY2 = b1.minY - b2.maxY  // positive = shape2 is below shape1 with gap
+
+  // Case 1: shape1 is strictly left of shape2 (b1.maxX < b2.minX)
   if (b1.maxX < b2.minX) {
-    const dx = b2.minX - b1.maxX
-    const dy = Math.max(b2.minY - b1.maxY, b1.minY - b2.maxY)
+    const dx = gapX  // positive by condition
+    const dy = Math.max(0, Math.max(gapY, gapY2))  // 0 if y-ranges overlap
     return Math.sqrt(dx * dx + dy * dy)
   }
+  // Case 2: shape2 is strictly left of shape1 (b2.maxX < b1.minX)
   if (b2.maxX < b1.minX) {
-    const dx = b1.minX - b2.maxX
-    const dy = Math.max(b1.minY - b2.maxY, b2.minY - b1.maxY)
+    const dx = gapX2  // positive by condition
+    const dy = Math.max(0, Math.max(gapY, gapY2))  // 0 if y-ranges overlap
     return Math.sqrt(dx * dx + dy * dy)
   }
+  // Case 3: shape1 is strictly below shape2 (b1.maxY < b2.minY)
   if (b1.maxY < b2.minY) {
-    const dy = b2.minY - b1.maxY
-    const dx = Math.max(b2.minX - b1.maxX, b1.minX - b2.maxX)
+    const dy = gapY  // positive by condition
+    const dx = Math.max(0, Math.max(gapX, gapX2))  // 0 if x-ranges overlap
     return Math.sqrt(dx * dx + dy * dy)
   }
+  // Case 4: shape2 is strictly below shape1 (b2.maxY < b1.minY)
   if (b2.maxY < b1.minY) {
-    const dy = b1.minY - b2.maxY
-    const dx = Math.max(b1.minX - b2.maxX, b2.minX - b1.maxX)
+    const dy = gapY2  // positive by condition
+    const dx = Math.max(0, Math.max(gapX, gapX2))  // 0 if x-ranges overlap
     return Math.sqrt(dx * dx + dy * dy)
   }
 
-  // Bounding boxes overlap - compute edge-to-edge minimum distance
+  // Bounding boxes overlap in both dimensions - compute edge-to-edge minimum distance
   let minDist = Infinity
   for (const p1 of pts1) {
     for (const p2 of pts2) {

@@ -1543,3 +1543,155 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 - [ ] v0.4.2: DRC 规则 DSL 设计（min_width / spacing / area / enclosure）
 - [ ] v0.4.2: DRC 规则编辑器 UI（新增/编辑/删除自定义规则）
 
+
+## 2026-04-24 15:22
+
+### 当前任务
+- [x] v0.4.2: DRC 规则编辑器 UI（新增/编辑/删除自定义规则）
+
+### 完成内容
+- DRCDialog.vue 完全增强（v0.4.2 规则编辑器）：
+  - 新增 Add Rule 按钮（rules toolbar），打开内联表单
+  - 新增编辑按钮（每个 rule-item 右侧），点击打开预填充表单
+  - ruleForm 状态管理（name/type/value/layerId/severity/description）
+  - openAddRule / openEditRule / cancelRuleEdit / submitRule / deleteRule 函数
+  - DRCRuleType 导入用于表单类型推断
+  - 新增图标：plus / pencil / trash SVG 内联图标
+  - 新增 .rule-edit-btn / .rule-form CSS 样式（form-row/label/input/select）
+  - danger 按钮样式（红色背景 + hover）
+  - 154 tests pass, npm run build 通过
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.4.2: DRC 规则 DSL 设计（min_width / spacing / area / enclosure）收尾
+- [ ] v0.4.2: DRC 标准预设管理（save/load custom presets as JSON）
+
+## 2026-04-24 17:10
+
+### 当前任务
+- [x] v0.4.2: DRC 规则引擎增强（min_enclosure + min_extension 实现）
+
+### 完成内容
+- **min_enclosure 规则完整实现**：
+  - `isShapeInsideOuter()`: 检查 inner shape 是否被 outer shape 完全包围（支持 rectangle/waveguide/polygon）
+  - `computeEnclosureGap()`: 计算 inner shape 到 outer shape 边界最小距离
+  - `checkMinEnclosure()`: 对每个 [outerLayerId, innerLayerId] pair，验证 inner shape 完全被 outer shape 包围且 gap >= ruleValue
+  - 从 `src/utils/pointTesting.ts` 导入 `pointInPolygon()` 用于射线投射算法
+- **min_extension 规则完整实现**：
+  - `checkMinExtension()`: 检查 shape 是否超出 reference layer shapes 至少 ruleValue
+  - `computeExtension()`: 计算 shape 相对于 ref shape 的最小 protrusion（四方向）
+  - 使用 `rule.layer2Id` 作为 reference layer（需在 DRCRule 类型中添加 layer2Id 字段）
+- **DRCRule 类型更新**：添加 `layer2Id?: number` 字段（用于 enclosure/extension 规则的 reference layer）
+- drcEngine.ts 从 478 行增至 ~550 行，新增 4 个辅助函数 + 2 个规则 checker
+- npm run build 通过（35 assets + brotli）
+
+### 遇到的问题
+- 问题: `rule.layer2Id` 在 DRCRule 类型中不存在
+  - 解决: 在 src/types/drc.ts 的 DRCRule 接口中添加 `layer2Id?: number` 字段
+
+### 编译测试
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC 标准预设管理（save/load custom presets as JSON）
+- [ ] v0.4.2: DRC violations 与 PropertiesPanel 联动（点击 violation 跳转属性面板）
+
+
+## 2026-04-24 19:12
+
+### 当前任务
+- [x] v0.4.2: DRC 规则 DSL 设计完善（min_step 实现 + DSL builders + validation）
+
+### 完成内容
+- **min_step 规则完整实现**：
+  - `checkMinStep()` 函数：检测多边形中的步进结构（垂直边→水平边的凸出）
+  - 识别四种步进模式：右凸/上凸/左凸/下凸
+  - cross > 0 判断凸性顶点，过滤掉内凹的缺口（notch）
+  - `case 'min_step':` 添加到 runDRC switch 语句
+- **DRC 规则 DSL 验证系统**：
+  - `validateDRCRule()` 函数：返回 `{ errors, warnings }`，检查每个规则类型的必填字段
+  - 数值规则（min_width/spacing/area 等）验证 value 或 values 必填
+  - angle 规则验证 angles 数组必填
+  - min_enclosure 验证 enclosureLayers 或 layerId+layer2Id
+  - aspect_ratio 规则验证 value 必填
+- **DRC 规则 DSL Builder 工具函数**：
+  - `createMinWidthRule(name, value, layerId?, opts?)`
+  - `createMinSpacingRule(name, value, layerId?, opts?)`
+  - `createMinAreaRule(name, value, layerId?, opts?)`
+  - `createMinEnclosureRule(name, value, outerLayerId, innerLayerId, opts?)`
+  - `createMinExtensionRule(name, value, layerId, refLayerId, opts?)`
+  - `createMinNotchRule(name, value, opts?)`
+  - `createMinStepRule(name, value, opts?)`
+  - `createAngleRule(name, angles, layerId?, opts?)`
+  - `createAspectRatioRule(name, maxRatio, layerId?, opts?)`
+- 全部 178 测试通过（新增 drcPreset 24 测试），npm run build 通过
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 178 passed
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC presets 自定义保存/加载（save/load custom presets as JSON）
+
+## 2026-04-24 21:10
+
+### 当前任务
+- [x] v0.4.2: DRC 规则编辑器完善（min_step/min_enclosure/min_extension 表单选项补全）
+
+### 完成内容
+- 确认 v0.4.2 所有功能已实现：
+  - DRC 规则 DSL：min_width/spacing/area/notch/step/enclosure/extension/aspect_ratio/angle 全部实现
+  - 规则引擎：drcEngine.ts ~1066 行，所有规则类型完整实现
+  - DRC violations 可视化：canvas 标记 + 列表联动 + PropertiesPanel 联动
+  - 规则编辑器 UI：DRCDialog.vue 1270 行，Add/Edit/Delete 完整
+  - Presets 管理：save/export/import/delete preset 功能完整（drcStore）
+- 发现 DRCDialog.vue ruleForm select 缺少 min_step/min_extension 选项，补全
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 178 passed
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC 标准规则集验证（实际 geometry 测试）
+- [ ] Phase 1 v0.3.x 收尾（更新 ROADMAP.md Phase 1/2 状态标记）
+
+## 2026-04-25 00:10
+
+### 当前任务
+- [x] v0.4.2: DRC 标准规则集验证（实际 geometry 测试） - v0.4.2 DRC 设计规则检查收尾
+
+### 完成内容
+- 创建 `src/services/drcGeometry.test.ts`：27 个测试覆盖真实 SiPh layout 场景
+  - G1: Waveguide 90° Bend（波导弯曲宽度检查）
+  - G2: Directional Coupler（耦合器间距检查，gap 1.0μm 违反 min_spacing 1.5μm）
+  - G3: Grating Coupler Array（光栅阵列齿距/宽度检查）
+  - G4: Rib Waveguide Crossing（交叉波导宽度/间距检查）
+  - G5: STANDARD_SIPH_RULES Preset 验证（5 个真实布局场景）
+  - G6: Multi-Rule Combined Scenarios（宽度+间距同时违反）
+  - G7: Path Shape DRC（路径形状 DRC 检查）
+  - G8: DRC Metadata & Performance（shapesChecked/rulesChecked/duration 验证）
+- 全部 242 测试通过（polygonBoolean 30 + propertyEditing 21 + gdsRoundTrip 17 + gdsCellHierarchy 3 + gdsPathEdge 13 + cellDrillInOut 9 + contextMenu 24 + useHistory 17 + pcellLibrary 13 + pcellRendering 7 + drcEngine 64 + drcPreset 24 + drcGeometry 27）
+- `npm run build` 通过（35 assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 242 passed
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: 完成标记（DRC 设计规则检查全部完成）
+- [ ] Phase 2 收尾：更新 ROADMAP.md v0.4.1/v0.4.2 状态标记

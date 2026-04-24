@@ -17,6 +17,21 @@ import { STANDARD_SIPH_RULES } from '../types/drc'
 import { runDRC, buildRulesFromPreset, createDRCRule } from '../services/drcEngine'
 import type { BaseShape } from '../types/shapes'
 
+const STORAGE_KEY = 'picl-drc-presets'
+
+function loadSavedPresets(): DRCPreset[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveSavedPresets(presets: DRCPreset[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(presets))
+}
+
 export const useDRCStore = defineStore('drc', () => {
   // === State ===
   const rules = ref<DRCRule[]>(buildRulesFromPreset(STANDARD_SIPH_RULES))
@@ -24,6 +39,8 @@ export const useDRCStore = defineStore('drc', () => {
   const isRunning = ref(false)
   const activePresetId = ref<string>(STANDARD_SIPH_RULES.id)
   const highlightedViolationShapeIds = ref<Set<string>>(new Set())
+
+  const savedPresets = ref<DRCPreset[]>(loadSavedPresets())
 
   // === Computed ===
   const enabledRules = computed(() => rules.value.filter(r => r.enabled))
@@ -101,6 +118,61 @@ export const useDRCStore = defineStore('drc', () => {
     highlightedViolationShapeIds.value = new Set()
   }
 
+  function savePreset(name: string): DRCPreset {
+    const preset: DRCPreset = {
+      id: `custom-${Date.now()}`,
+      name,
+      description: 'Custom preset saved from current rules',
+      rules: rules.value.map(r => ({
+        name: r.name,
+        description: r.description,
+        type: r.type,
+        enabled: r.enabled,
+        value: r.value,
+        values: r.values,
+        areaThreshold: r.areaThreshold,
+        angles: r.angles,
+        enclosureLayers: r.enclosureLayers,
+        severity: r.severity,
+        layerId: r.layerId,
+      })),
+    }
+    savedPresets.value.push(preset)
+    saveSavedPresets(savedPresets.value)
+    return preset
+  }
+
+  function deletePreset(presetId: string) {
+    const idx = savedPresets.value.findIndex(p => p.id === presetId)
+    if (idx !== -1) {
+      savedPresets.value.splice(idx, 1)
+      saveSavedPresets(savedPresets.value)
+    }
+    // If the deleted preset was active, switch back to standard
+    if (activePresetId.value === presetId) {
+      resetToPreset(STANDARD_SIPH_RULES)
+    }
+  }
+
+  function exportPreset(presetId: string): string {
+    const allPresets = [STANDARD_SIPH_RULES, ...savedPresets.value]
+    const preset = allPresets.find(p => p.id === presetId)
+    if (!preset) throw new Error(`Preset not found: ${presetId}`)
+    return JSON.stringify(preset, null, 2)
+  }
+
+  function importPreset(json: string): DRCPreset {
+    const preset = JSON.parse(json) as DRCPreset
+    if (!preset.id || !preset.name || !Array.isArray(preset.rules)) {
+      throw new Error('Invalid preset format')
+    }
+    // Assign new id to avoid collision
+    preset.id = `imported-${Date.now()}`
+    savedPresets.value.push(preset)
+    saveSavedPresets(savedPresets.value)
+    return preset
+  }
+
   return {
     // State
     rules,
@@ -108,6 +180,7 @@ export const useDRCStore = defineStore('drc', () => {
     isRunning,
     activePresetId,
     highlightedViolationShapeIds,
+    savedPresets,
     // Computed
     enabledRules,
     errorCount,
@@ -127,5 +200,9 @@ export const useDRCStore = defineStore('drc', () => {
     getViolationsByRule,
     highlightViolationShapeIds,
     clearHighlightedViolationShapeIds,
+    savePreset,
+    deletePreset,
+    exportPreset,
+    importPreset,
   }
 })

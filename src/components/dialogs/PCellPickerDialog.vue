@@ -767,11 +767,11 @@ kbd {
   align-items: center;
   justify-content: center;
   padding: 1px 4px;
-  font-size: 9px;
+  font-size: var(--font-size-xs, 10px);
   font-family: var(--font-mono);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
 }
 
@@ -925,7 +925,7 @@ kbd {
 }
 
 .param-type {
-  font-size: 9px;
+  font-size: var(--font-size-xs, 10px);
   color: var(--text-secondary);
   font-family: var(--font-mono);
 }
@@ -989,11 +989,11 @@ kbd {
 
 /* === Transitions === */
 .pcell-fade-enter-active {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--duration-normal, 250ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .pcell-fade-leave-active {
-  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+  transition: all var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0, 0, 0.2, 1));
 }
 
 .pcell-fade-enter-from {

@@ -103,15 +103,141 @@
             <!-- Rules Tab -->
             <div v-if="activeTab === 'rules'" class="tab-panel">
               <div class="rules-toolbar">
-                <select v-model="selectedPreset" class="preset-select" @change="onPresetChange">
+                <select v-model="selectedPreset" class="preset-select" @change="onPresetSelectChange">
                   <option value="siph-standard">Silicon Photonics Standard</option>
-                  <option value="custom">Custom</option>
+                  <optgroup v-if="drcStore.savedPresets.length > 0" label="Custom Presets">
+                    <option v-for="p in drcStore.savedPresets" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  </optgroup>
                 </select>
                 <button class="drc-btn secondary" @click="runCheck">
                   <span v-html="renderIcon('play')"></span>
                   Run Check
                 </button>
+                <button class="drc-btn secondary" @click="openSavePreset">
+                  <span v-html="renderIcon('save')"></span>
+                  Save
+                </button>
+                <button class="drc-btn secondary" @click="exportCurrentPreset">
+                  <span v-html="renderIcon('download')"></span>
+                  Export
+                </button>
+                <button class="drc-btn secondary" @click="triggerImport">
+                  <span v-html="renderIcon('upload')"></span>
+                  Import
+                </button>
+                <button class="drc-btn secondary" @click="openAddRule">
+                  <span v-html="renderIcon('plus')"></span>
+                  Add Rule
+                </button>
               </div>
+
+              <!-- Import error -->
+              <div v-if="importError" class="import-error">{{ importError }}</div>
+
+              <!-- Hidden file input for import -->
+              <input ref="fileInputRef" type="file" accept=".json" style="display:none" @change="onFileChange" />
+
+              <!-- Save Preset Form -->
+              <div v-if="showSavePreset" class="preset-save-form">
+                <div class="preset-save-header">
+                  <span>Save as Preset</span>
+                  <button class="drc-btn-icon" @click="cancelSavePreset" aria-label="Cancel">
+                    <span v-html="renderIcon('x')"></span>
+                  </button>
+                </div>
+                <div class="preset-save-body">
+                  <div class="form-row">
+                    <label>Preset Name</label>
+                    <input v-model="presetName" type="text" placeholder="e.g. My Custom Rules" @keyup.enter="confirmSavePreset" />
+                  </div>
+                </div>
+                <div class="preset-save-footer">
+                  <button class="drc-btn secondary" @click="cancelSavePreset">Cancel</button>
+                  <button class="drc-btn primary" @click="confirmSavePreset" :disabled="!presetName.trim()">Save</button>
+                </div>
+              </div>
+
+              <!-- Custom Presets List -->
+              <div v-if="drcStore.savedPresets.length > 0" class="presets-list-section">
+                <div class="presets-list-header">
+                  <span class="section-label">Saved Presets</span>
+                </div>
+                <div
+                  v-for="preset in drcStore.savedPresets"
+                  :key="preset.id"
+                  class="preset-item"
+                  :class="{ active: selectedPreset === preset.id }"
+                >
+                  <div class="preset-info" @click="drcStore.resetToPreset(preset); selectedPreset = preset.id">
+                    <span class="preset-name">{{ preset.name }}</span>
+                    <span class="preset-meta">{{ preset.rules.length }} rules · {{ preset.description || 'Custom preset' }}</span>
+                  </div>
+                  <button class="drc-btn-icon danger-icon" @click.stop="deletePresetById(preset.id)" aria-label="Delete preset">
+                    <span v-html="renderIcon('trash')"></span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Add/Edit Rule Form -->
+              <div v-if="showAddRule" class="rule-form">
+                <div class="rule-form-header">
+                  <span>{{ editingRuleId ? 'Edit Rule' : 'Add New Rule' }}</span>
+                  <button class="drc-btn-icon" @click="cancelRuleEdit" aria-label="Cancel">
+                    <span v-html="renderIcon('x')"></span>
+                  </button>
+                </div>
+                <div class="rule-form-body">
+                  <div class="form-row">
+                    <label>Name</label>
+                    <input v-model="ruleForm.name" type="text" placeholder="e.g. Waveguide Min Width" />
+                  </div>
+                  <div class="form-row">
+                    <label>Type</label>
+                    <select v-model="ruleForm.type">
+                      <option value="min_width">min_width</option>
+                      <option value="max_width">max_width</option>
+                      <option value="min_spacing">min_spacing</option>
+                      <option value="min_area">min_area</option>
+                      <option value="min_notch">min_notch</option>
+                      <option value="min_step">min_step</option>
+                      <option value="min_enclosure">min_enclosure</option>
+                      <option value="min_extension">min_extension</option>
+                      <option value="angle">angle</option>
+                    </select>
+                  </div>
+                  <div class="form-row" v-if="ruleForm.type !== 'angle'">
+                    <label>Value (μm)</label>
+                    <input v-model="ruleForm.value" type="number" step="0.01" placeholder="0.5" />
+                  </div>
+                  <div class="form-row">
+                    <label>Layer ID</label>
+                    <input v-model="ruleForm.layerId" type="number" step="1" placeholder="optional" />
+                  </div>
+                  <div class="form-row">
+                    <label>Severity</label>
+                    <select v-model="ruleForm.severity">
+                      <option value="error">error</option>
+                      <option value="warning">warning</option>
+                      <option value="info">info</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label>Description</label>
+                    <input v-model="ruleForm.description" type="text" placeholder="optional" />
+                  </div>
+                </div>
+                <div class="rule-form-footer">
+                  <button v-if="editingRuleId" class="drc-btn danger" @click="deleteRule(editingRuleId); cancelRuleEdit()">
+                    <span v-html="renderIcon('trash')"></span>
+                    Delete
+                  </button>
+                  <div class="form-actions">
+                    <button class="drc-btn secondary" @click="cancelRuleEdit">Cancel</button>
+                    <button class="drc-btn primary" @click="submitRule">Confirm</button>
+                  </div>
+                </div>
+              </div>
+
               <div class="rules-list">
                 <div
                   v-for="rule in rules"
@@ -136,6 +262,9 @@
                     </div>
                   </div>
                   <span class="rule-severity" :class="`severity-${rule.severity}`">{{ rule.severity }}</span>
+                  <button class="rule-edit-btn" @click.stop="openEditRule(rule.id)" :aria-label="'Edit rule'">
+                    <span v-html="renderIcon('pencil')"></span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -170,7 +299,8 @@ import { ref, computed, watch } from 'vue'
 import { useDRCStore } from '../../stores/drc'
 import { useEditorStore } from '../../stores/editor'
 import { useShapesStore } from '../../stores/shapes'
-import type { DRCViolation } from '../../types/drc'
+import type { DRCViolation, DRCRuleType } from '../../types/drc'
+import { STANDARD_SIPH_RULES } from '../../types/drc'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps<{ show: boolean }>()
@@ -184,6 +314,25 @@ const { rules, lastResult, errorCount, warningCount, infoCount } = storeToRefs(d
 const activeTab = ref<'violations' | 'rules'>('violations')
 const checkSelectedOnly = ref(false)
 const selectedPreset = ref('siph-standard')
+
+// Preset management
+const showSavePreset = ref(false)
+const showPresetList = ref(false)
+const presetName = ref('')
+const importError = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Add/Edit rule state
+const showAddRule = ref(false)
+const editingRuleId = ref<string | null>(null)
+const ruleForm = ref({
+  name: '',
+  type: 'min_width' as DRCRuleType,
+  value: '',
+  layerId: '',
+  severity: 'error' as 'error' | 'warning' | 'info',
+  description: '',
+})
 
 const tabs = [
   { id: 'violations' as const, label: 'Violations' },
@@ -202,6 +351,141 @@ function runCheck() {
 
 function onPresetChange() {
   // Future: load different presets
+}
+
+function onPresetSelectChange(e: Event) {
+  const val = (e.target as HTMLSelectElement).value
+  if (val.startsWith('custom-') || val.startsWith('imported-')) {
+    const allPresets = [STANDARD_SIPH_RULES, ...drcStore.savedPresets]
+    const preset = allPresets.find(p => p.id === val)
+    if (preset) {
+      drcStore.resetToPreset(preset)
+      selectedPreset.value = val
+    }
+  } else if (val === 'siph-standard') {
+    drcStore.resetToPreset(STANDARD_SIPH_RULES)
+    selectedPreset.value = 'siph-standard'
+  } else {
+    selectedPreset.value = val
+  }
+}
+
+function openSavePreset() {
+  presetName.value = ''
+  importError.value = ''
+  showSavePreset.value = true
+}
+
+function confirmSavePreset() {
+  if (!presetName.value.trim()) return
+  const preset = drcStore.savePreset(presetName.value.trim())
+  selectedPreset.value = preset.id
+  showSavePreset.value = false
+}
+
+function cancelSavePreset() {
+  showSavePreset.value = false
+}
+
+function exportCurrentPreset() {
+  const json = drcStore.exportPreset(selectedPreset.value || 'siph-standard')
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `drc-preset-${selectedPreset.value || 'siph-standard'}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function triggerImport() {
+  fileInputRef.value?.click()
+}
+
+function onFileChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  importError.value = ''
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    try {
+      const json = ev.target?.result as string
+      const preset = drcStore.importPreset(json)
+      selectedPreset.value = preset.id
+    } catch (err: any) {
+      importError.value = err.message ?? 'Invalid preset file'
+    }
+  }
+  reader.readAsText(file)
+  // Reset input so same file can be re-selected
+  ;(e.target as HTMLInputElement).value = ''
+}
+
+function deletePresetById(id: string) {
+  drcStore.deletePreset(id)
+  if (selectedPreset.value === id) {
+    selectedPreset.value = 'siph-standard'
+    drcStore.resetToPreset(STANDARD_SIPH_RULES)
+  }
+}
+
+function openAddRule() {
+  editingRuleId.value = null
+  ruleForm.value = { name: '', type: 'min_width', value: '', layerId: '', severity: 'error', description: '' }
+  showAddRule.value = true
+}
+
+function openEditRule(ruleId: string) {
+  const rule = drcStore.getRuleById(ruleId)
+  if (!rule) return
+  editingRuleId.value = ruleId
+  ruleForm.value = {
+    name: rule.name,
+    type: rule.type,
+    value: rule.value?.toString() ?? '',
+    layerId: rule.layerId?.toString() ?? '',
+    severity: rule.severity,
+    description: rule.description ?? '',
+  }
+  showAddRule.value = true
+}
+
+function cancelRuleEdit() {
+  showAddRule.value = false
+  editingRuleId.value = null
+}
+
+function submitRule() {
+  const data = ruleForm.value
+  const numericValue = data.value ? parseFloat(data.value) : undefined
+  const layerVal = data.layerId ? parseInt(data.layerId) : undefined
+
+  if (editingRuleId.value) {
+    drcStore.updateRule(editingRuleId.value, {
+      name: data.name,
+      type: data.type,
+      value: numericValue,
+      layerId: layerVal,
+      severity: data.severity,
+      description: data.description || undefined,
+    })
+  } else {
+    drcStore.addRule({
+      name: data.name,
+      type: data.type,
+      enabled: true,
+      value: numericValue,
+      layerId: layerVal,
+      severity: data.severity,
+      description: data.description || undefined,
+    })
+  }
+  showAddRule.value = false
+  editingRuleId.value = null
+}
+
+function deleteRule(ruleId: string) {
+  drcStore.removeRule(ruleId)
 }
 
 function isViolationHighlighted(violation: DRCViolation) {
@@ -248,6 +532,11 @@ function renderIcon(name: string): string {
     play: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
     'check-square': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
     square: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>`,
+    plus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+    pencil: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+    upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+    save: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
+    download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   }
   return icons[name] ?? ''
 }
@@ -666,6 +955,110 @@ function renderIcon(name: string): string {
   border-radius: var(--radius-sm, 4px);
 }
 
+.rule-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #71717a);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  flex-shrink: 0;
+}
+
+.rule-edit-btn:hover {
+  background: var(--bg-hover, #27272a);
+  color: var(--text-primary, #fafafa);
+}
+
+/* Rule Form */
+.rule-form {
+  background: var(--bg-secondary, #09090b);
+  border: 1px solid var(--border-light, #3f3f46);
+  border-radius: var(--radius-lg, 8px);
+  margin-bottom: var(--space-3, 12px);
+  overflow: hidden;
+}
+
+.rule-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--border-light, #3f3f46);
+  font-size: var(--font-size-sm, 12px);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-primary, #fafafa);
+}
+
+.rule-form-body {
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.form-row label {
+  font-size: var(--font-size-xs, 10px);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-muted, #71717a);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-row input,
+.form-row select {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--bg-elevated, #18181b);
+  border: 1px solid var(--border-light, #3f3f46);
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--font-size-sm, 12px);
+  font-family: inherit;
+  color: var(--text-primary, #fafafa);
+  transition: border-color var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.form-row input:focus,
+.form-row select:focus {
+  outline: none;
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.rule-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--border-light, #3f3f46);
+  background: var(--bg-secondary, #09090b);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.drc-btn.danger {
+  background: rgba(239,68,68,0.1);
+  border-color: rgba(239,68,68,0.3);
+  color: #ef4444;
+}
+
+.drc-btn.danger:hover {
+  background: rgba(239,68,68,0.2);
+  transform: translateY(-1px);
+}
+
 .severity-error.severity-error { background: rgba(239,68,68,0.15); color: #ef4444; }
 .severity-warning.severity-warning { background: rgba(245,158,11,0.15); color: #f59e0b; }
 .severity-info.severity-info { background: rgba(59,130,246,0.15); color: var(--accent-blue, #3b82f6); }
@@ -732,6 +1125,127 @@ function renderIcon(name: string): string {
 .drc-btn.primary:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+.drc-btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Import Error */
+.import-error {
+  margin: var(--space-2, 8px) 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--font-size-xs, 10px);
+  color: #ef4444;
+}
+
+/* Preset Save Form */
+.preset-save-form {
+  background: var(--bg-secondary, #09090b);
+  border: 1px solid var(--border-light, #3f3f46);
+  border-radius: var(--radius-lg, 8px);
+  margin: var(--space-3, 12px) 0;
+  overflow: hidden;
+}
+
+.preset-save-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--border-light, #3f3f46);
+  font-size: var(--font-size-sm, 12px);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-primary, #fafafa);
+}
+
+.preset-save-body {
+  padding: var(--space-4, 16px);
+}
+
+.preset-save-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--border-light, #3f3f46);
+  background: var(--bg-secondary, #09090b);
+}
+
+/* Presets List */
+.presets-list-section {
+  margin: var(--space-3, 12px) 0;
+}
+
+.presets-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 var(--space-2, 8px) 0;
+}
+
+.section-label {
+  font-size: var(--font-size-xs, 10px);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-muted, #71717a);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--bg-secondary, #09090b);
+  border: 1px solid var(--border-light, #3f3f46);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: var(--space-1, 4px);
+  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.preset-item:hover {
+  background: var(--bg-hover, #27272a);
+  transform: translateY(-1px);
+}
+
+.preset-item.active {
+  border-color: var(--accent-blue, #3b82f6);
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.25);
+}
+
+.preset-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.preset-name {
+  font-size: var(--font-size-sm, 12px);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #fafafa);
+}
+
+.preset-meta {
+  font-size: var(--font-size-xs, 10px);
+  color: var(--text-muted, #71717a);
+}
+
+.danger-icon {
+  color: var(--text-muted, #71717a);
+}
+
+.danger-icon:hover {
+  color: #ef4444 !important;
+  background: rgba(239,68,68,0.1) !important;
 }
 
 /* Modal Transition */

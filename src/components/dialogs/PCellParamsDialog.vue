@@ -876,11 +876,11 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 
 /* === Transitions === */
 .pcell-params-fade-enter-active {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--duration-normal, 250ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .pcell-params-fade-leave-active {
-  transition: all 0.15s cubic-bezier(0.4, 0, 1, 1);
+  transition: all var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0, 0, 0.2, 1));
 }
 
 .pcell-params-fade-enter-from {
