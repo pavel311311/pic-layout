@@ -1695,3 +1695,30 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.4.2: 完成标记（DRC 设计规则检查全部完成）
 - [ ] Phase 2 收尾：更新 ROADMAP.md v0.4.1/v0.4.2 状态标记
+
+## 2026-04-25 01:10
+
+### 当前任务
+- [x] ROADMAP.md Phase 2 全部完成标记（v0.4.1/v0.4.2 状态更新）
+
+### 完成内容
+- 验收确认 v0.4.1/v0.4.2 全部完成（242 tests pass, build 通过）
+- 更新 ROADMAP.md：
+  - v0.4.1: (进行中) → (✅ 完成)，3 个待办项全部标记 [x]
+  - v0.4.2: 4 个待办项全部标记 [x] 完成
+  - "当前执行位置" 更新为 Phase 2 全部完成
+  - 里程碑日期更新为 2026-04-25
+- Phase 2 完成总结：
+  - v0.4.0: PCell 参数化单元（6个内置单元 + 实时预览）
+  - v0.4.1: Design Token System + 全组件 token 化 + LEF/DEF mapping
+  - v0.4.2: DRC 规则引擎（9种规则类型）+ 可视化 + 编辑器 UI
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build 通过（35 assets + brotli）
+- [x] npx vitest run → 242 passed
+
+### 下小时计划
+- [ ] v0.5.0: UI 收尾（soft-skill 风格）- PropertiesPanel / CellTree / LayerPanel 精细打磨
