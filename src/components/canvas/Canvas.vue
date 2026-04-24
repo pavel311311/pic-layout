@@ -3,6 +3,7 @@ import { ref, onUnmounted, computed, defineAsyncComponent, watch } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { useCellsStore } from '../../stores/cells'
 import { usePCellsStore } from '../../stores/pcells'
+import { useDRCStore } from '../../stores/drc'
 import { useCanvasCoordinates } from '../../composables/useCanvasCoordinates'
 import { useCanvasVirtualization } from '../../composables/useCanvasVirtualization'
 import type { DirtyRect } from '../../composables/useCanvasVirtualization'
@@ -23,6 +24,7 @@ import ContextMenu from '../contextmenu/ContextMenu.vue'
 const store = useEditorStore()
 const cellsStore = useCellsStore()
 const pcellsStore = usePCellsStore()
+const drcStore = useDRCStore()
 
 // Dialogs: lazy-loaded to reduce initial bundle
 const ArrayCopyDialog = defineAsyncComponent(() => import('../dialogs/ArrayCopyDialog.vue'))
@@ -309,7 +311,7 @@ function reloadCanvas() {
 }
 
 // === Render utilities ===
-const { renderBatch, drawScaleBar: renderScaleBar } = renderer
+const { renderBatch, drawScaleBar: renderScaleBar, drawViolations: renderViolations } = renderer
 
 function clearRegion(ctx: CanvasRenderingContext2D, rect: DirtyRect) {
   canvasTheme.clearRegionWithTheme(ctx, rect.x, rect.y, rect.width, rect.height)
@@ -473,6 +475,11 @@ function renderOverlay() {
 
   // Scale bar
   renderScaleBar(overlayCtx)
+
+  // DRC violation markers
+  if (drcStore.lastResult && drcStore.lastResult.violations.length > 0) {
+    renderViolations(overlayCtx, drcStore.lastResult.violations, store.expandedVisibleShapes, drcStore.highlightedViolationShapeIds)
+  }
 
   // Crosshair cursor lines
   const curX = interaction.mouseX.value

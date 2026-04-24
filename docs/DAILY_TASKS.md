@@ -1445,3 +1445,101 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.4.2: DRC 设计规则检查（brainstorming 阶段）
 - [ ] Phase 1 v0.3.x 收尾（更新 ROADMAP.md Phase 1 状态标记）
+
+## 2026-04-24 11:10
+
+### 当前任务
+- [x] v0.4.2: DRC 设计规则检查系统 - v0.4.2 DRC Design Rule Check
+
+### 完成内容
+- 创建 `src/types/drc.ts`：完整 DRC 类型系统
+  - DRCRule / DRCViolation / DRCResult 类型定义
+  - STANDARD_SIPH_RULES 预设（SiPh Standard 规则集）
+  - 工具函数：polygonArea/bounds/width/height/minSpacing/shapeToPoints/isManhattan
+  - 规则类型：min_width/max_width/min_spacing/min_area/min_notch/angle/aspect_ratio
+- 创建 `src/services/drcEngine.ts`：DRC 检查引擎
+  - runDRC() 主函数（执行所有启用的规则检查）
+  - 各规则类型独立 checker 函数
+  - createDRCRule/buildRulesFromPreset 工具函数
+- 创建 `src/stores/drc.ts`：DRC Pinia store
+  - rules 管理（toggle/update/add/remove）
+  - runCheck/clearResults 方法
+  - computed: errorCount/warningCount/infoCount/hasViolations
+- 创建 `src/components/dialogs/DRCDialog.vue`：DRC UI 弹窗
+  - Inline SVG 图标（无外部依赖），taste-skill-main 规范
+  - 统计栏（Errors/Warnings/Info/Duration/Shapes）
+  - Violations 列表（severity badge + rule name + message + details）
+  - Rules 列表（toggle enabled/disabled + preset selector）
+  - spring 动画 + diffusion shadow + backdrop blur
+- `src/components/toolbar/Toolbar.vue`：集成 DRC 按钮（IconDRC + DRCDialog）
+- `npm run build` 通过（36 assets + brotli）
+
+### 遇到的问题
+- 问题: TypeScript 错误 "This kind of expression is always truthy" 在 `shapeToPoints` 的 `...(shape as any).points || []`
+  - 解决: 改为 `const pts = (shape as any).points as Point[] | undefined; return pts ? [...pts] : []`
+
+### 编译测试
+- [x] npm run build → 通过（36 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC violations 可视化完成
+- [ ] v0.4.2: DRC 规则 DSL 设计
+### 下小时计划
+- [ ] v0.4.2: DRC violations 可视化完成
+- [ ] v0.4.2: DRC 规则 DSL 设计
+### 下小时计划
+- [ ] v0.4.2: DRC violations 可视化完成
+- [ ] v0.4.2: DRC 规则 DSL 设计
+
+## 2026-04-24 12:15
+
+### 当前任务
+- [x] v0.4.2: DRC violations 可视化（canvas 标记 + 列表联动）
+
+### 完成内容
+- 添加 `drawViolations()` 到 `useCanvasRenderer.ts`：canvas 上渲染违规标记（error=红/橙色虚线框，warning=橙色，info=蓝色）
+- 增强 `drawViolations()` 支持 `highlightedIds` 参数：hover 时线条更粗更实（2.5px/1.0 vs 1.5px/0.75），带额外 glow ring
+- 在 `DRCDialog.vue` 的 violation-item 上添加 hover/click 事件：
+  - `@mouseenter`: `drcStore.highlightViolationShapeIds(violation.shapeIds)` → canvas 联动高亮
+  - `@mouseleave`: `drcStore.clearHighlightedViolationShapeIds()` → 清除高亮
+  - `@click`: `editorStore.setPan()` 导航到违规位置
+- 在 `drcStore` 添加 `highlightedViolationShapeIds` (ref<Set<string>>) 状态管理
+- 在 `Canvas.vue` 集成 DRC 标记渲染（`renderViolations` 传入 highlightedViolationShapeIds）
+- 154 tests pass, npm run build 通过（38 assets + brotli）
+
+### 遇到的问题
+- 问题: TS 报错 `typeof lastResult.value.violations[0]` 对象可能为 null
+  - 解决: 改用 `DRCViolation` 类型导入，直接标注函数参数类型
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（38 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC violations 与 PropertiesPanel 联动（点击 violation 跳转属性面板）
+- [ ] v0.4.2: DRC 规则 DSL 设计（min_width / spacing / area / enclosure）
+
+## 2026-04-24 13:15
+
+### 当前任务
+- [x] v0.4.2: DRC violations 与 PropertiesPanel 联动（点击 violation 跳转属性面板）
+
+### 完成内容
+- 增强 `onViolationClick` 函数：
+  - 点击 violation 时 pan 到违规位置（使用 editorStore.setPan）
+  - 调用 `shapesStore.selectShape(shapeId, true)` 将所有涉及的 shape 加入选中
+  - 使用 `addToSelection=true` 保留现有选中（支持多选多个 violation 的 shapes）
+- 引入 `useShapesStore` 实现 shape 选择功能
+- 修复 canvas 尺寸估算问题（原 800/600 硬编码，改为 400/300 近似中心偏移）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.4.2: DRC 规则 DSL 设计（min_width / spacing / area / enclosure）
+- [ ] v0.4.2: DRC 规则编辑器 UI（新增/编辑/删除自定义规则）
+

@@ -485,6 +485,88 @@ export function useCanvasRenderer(options: CanvasRendererOptions) {
     ctx.setLineDash([])
   }
 
+  /**
+   * Draw DRC violation markers on the canvas.
+   * Draws colored outlines around shapes involved in violations.
+   */
+  function drawViolations(
+    ctx: CanvasRenderingContext2D,
+    violations: Array<{
+      shapeIds: string[]
+      severity: 'error' | 'warning' | 'info'
+      location?: { x: number; y: number }
+    }>,
+    allShapes: BaseShape[],
+    highlightedIds?: Set<string>
+  ) {
+    if (violations.length === 0) return
+
+    const colorMap = {
+      error: '#ef4444',
+      warning: '#f59e0b',
+      info: '#3b82f6',
+    }
+
+    // Draw violation markers for each violation
+    for (const v of violations) {
+      const color = colorMap[v.severity] ?? '#ef4444'
+
+      for (const shapeId of v.shapeIds) {
+        const shape = allShapes.find((s) => s.id === shapeId)
+        if (!shape) continue
+
+        const bounds = options.getShapeBounds(shape)
+        const topLeft = options.designToScreen(bounds.minX, bounds.minY)
+        const bottomRight = options.designToScreen(bounds.maxX, bounds.maxY)
+        const width = bottomRight.x - topLeft.x
+        const height = bottomRight.y - topLeft.y
+
+        const isHighlighted = highlightedIds?.has(shapeId)
+        const dashLen = isHighlighted ? [6, 3] : [4, 4]
+        const lineW = isHighlighted ? 2.5 : 1.5
+        const alpha = isHighlighted ? 1.0 : 0.75
+
+        // Draw dashed border around violating shape
+        ctx.strokeStyle = color
+        ctx.lineWidth = lineW
+        ctx.setLineDash(dashLen)
+        ctx.globalAlpha = alpha
+        ctx.strokeRect(topLeft.x - 2, topLeft.y - 2, width + 4, height + 4)
+
+        // Extra glow ring for highlighted violations
+        if (isHighlighted) {
+          ctx.strokeStyle = color
+          ctx.lineWidth = 1
+          ctx.setLineDash([])
+          ctx.globalAlpha = 0.35
+          ctx.strokeRect(topLeft.x - 5, topLeft.y - 5, width + 10, height + 10)
+        }
+
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+      }
+
+      // Draw a small marker circle at violation location if available
+      if (v.location) {
+        const screenPt = options.designToScreen(v.location.x, v.location.y)
+        const markerSize = 6
+
+        // Fill circle
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.9
+        ctx.beginPath()
+        ctx.arc(screenPt.x, screenPt.y, markerSize, 0, Math.PI * 2)
+        ctx.fill()
+
+        // White border
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+    }
+  }
+
   return {
     renderShape,
     renderBatch,
@@ -495,5 +577,6 @@ export function useCanvasRenderer(options: CanvasRendererOptions) {
     drawCrosshair,
     drawSelection,
     drawScaleBar,
+    drawViolations,
   }
 }
