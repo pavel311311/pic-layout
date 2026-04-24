@@ -1410,3 +1410,38 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.4.1: LayerPanel 集成 LEF/DEF mapping 显示（映射指示器）
 - [ ] v0.4.1: Toolbar 添加 LEF/DEF 快捷入口
+
+## 2026-04-24 10:10
+
+### 当前任务
+- [x] v0.4.1: LEF/DEF Layer Mapping 系统完成 - v0.4.1 Design System 收尾
+
+### 完成内容
+- 验收确认 v0.4.1 Design Token System 全部完成：
+  - Design Token System（style.css）：Typography/Spacing/BorderRadius/Z-index/Motion/Shadow/Semantic Color/Focus Ring tokens
+  - 组件 Design Token 应用：Toolbar/LayerPanel/CellTree/PropertiesPanel/Navigator 全部 token 化
+  - 7 个 Dialog 全部完成 taste-skill-main 重设计（BooleanOperations/Align/ArrayCopy/GdsExport/GdsImport/SvgExport/Shortcuts/PCellPicker/PCellParams/LefDefLayerMapping）
+  - 全部 154 测试通过（polygonBoolean 30 + propertyEditing 21 + gdsRoundTrip 17 + gdsCellHierarchy 3 + gdsPathEdge 13 + cellDrillInOut 9 + contextMenu 24 + useHistory 17 + pcellLibrary 13 + pcellRendering 7）
+  - `npm run build` 通过（35 assets + brotli）
+
+- LEF/DEF Layer Mapping 系统全部完成：
+  - `src/types/lefdef.ts`：完整类型系统 + STANDARD_LEFDEF_PRESETS（SiPh Standard/IMEC SiPh/AIM Photonics）
+  - `src/stores/lefdef.ts`：LEF/DEF mapping store（mappingSets 管理/GDS resolution/CRUD operations）
+  - `src/components/dialogs/LefDefLayerMappingDialog.vue`：LEF/DEF mapping 管理界面
+  - `src/components/layers/LayerPanel.vue`：集成 LEF badge 显示
+  - `src/components/toolbar/Toolbar.vue`：添加 LEF/DEF 快捷入口
+
+- LayerPanel 新增功能：
+  - LEF/DEF mapping badge 显示（每层显示 LEF layer name + purpose color dot）
+  - Libraries section 新增 LEFDEF 入口（点击打开 LefDefLayerMappingDialog）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.2: DRC 设计规则检查（brainstorming 阶段）
+- [ ] Phase 1 v0.3.x 收尾（更新 ROADMAP.md Phase 1 状态标记）
