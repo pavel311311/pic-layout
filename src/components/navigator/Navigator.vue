@@ -283,12 +283,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
+  padding: var(--space-1-5) var(--space-2);
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--letter-spacing-wide);
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-light);
   transition:
@@ -304,7 +304,7 @@ onUnmounted(() => {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-1-5);
 }
 
 .nav-icon {
@@ -314,7 +314,7 @@ onUnmounted(() => {
 
 .nav-title {
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-wider);
 }
 
 .collapse-icon {
@@ -329,17 +329,17 @@ onUnmounted(() => {
 
 /* === Content === */
 .navigator-content {
-  padding: 10px;
+  padding: var(--space-2-5);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* === Viewport wrapper === */
 .nav-viewport-wrap {
   position: relative;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
   transition: box-shadow var(--duration-fast) var(--ease-spring);
@@ -352,7 +352,7 @@ onUnmounted(() => {
 .nav-svg {
   display: block;
   background: var(--bg-canvas);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .nav-bg {
@@ -383,16 +383,16 @@ onUnmounted(() => {
 .nav-fit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2-5);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--letter-spacing-wide);
   cursor: pointer;
   transition:
     background var(--duration-fast) var(--ease-spring),
@@ -418,17 +418,17 @@ onUnmounted(() => {
 .bb-label {
   color: var(--text-muted);
   font-weight: 400;
-  font-family: 'Geist Mono', 'SF Mono', monospace;
-  font-size: 9px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
 }
 
 .nav-zoom-hint {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--text-muted);
-  font-size: 9px;
-  letter-spacing: 0.02em;
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .nav-zoom-hint svg {

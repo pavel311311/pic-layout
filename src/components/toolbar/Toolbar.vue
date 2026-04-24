@@ -13,6 +13,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEditorStore } from '../../stores/editor'
 import { useCellsStore } from '../../stores/cells'
+import LefDefLayerMappingDialog from '../dialogs/LefDefLayerMappingDialog.vue'
 
 // Inline SVG icon constants (replacing lucide-vue-next)
 const IconSave = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>`
@@ -71,6 +72,8 @@ const IconFileImage = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height
 
 const IconPCell = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4"/><path d="M6.5 10v4"/></svg>`
 
+const IconLefDef = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`
+
 // Icon map for rendering tool icons
 const iconMap: Record<string, string> = {
   save: IconSave,
@@ -101,6 +104,7 @@ const iconMap: Record<string, string> = {
   hexagon: IconHexagon,
   fileImage: IconFileImage,
   pcell: IconPCell,
+  lefdef: IconLefDef,
 }
 
 const store = useEditorStore()
@@ -120,6 +124,12 @@ function openGdsImportDialog() {
 
 function openSvgExportDialog() {
   window.dispatchEvent(new CustomEvent('open-svg-export'))
+}
+
+const showLefDefDialog = ref(false)
+
+function openLefDefDialog() {
+  showLefDefDialog.value = true
 }
 
 // Tool definitions with icon names
@@ -267,6 +277,10 @@ onUnmounted(() => {
         <span class="btn-icon-svg" v-html="renderIcon('fileImage')"></span>
         <span class="btn-label">SVG</span>
       </button>
+      <button class="tool-btn" @click="openLefDefDialog" title="LEF/DEF Layer Mapping" aria-label="LEF/DEF Layer Mapping">
+        <span class="btn-icon-svg" v-html="renderIcon('lefdef')"></span>
+        <span class="btn-label">LEF</span>
+      </button>
     </div>
 
     <div class="divider"></div>
@@ -368,6 +382,9 @@ onUnmounted(() => {
     </div>
 
     <div class="divider"></div>
+
+    <!-- LefDefLayerMappingDialog -->
+    <LefDefLayerMappingDialog v-model:show="showLefDefDialog" />
 
     <!-- Measurement Display -->
     <div v-if="isRulerMode && measurementDistance > 0" class="measurement-display">

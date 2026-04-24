@@ -475,13 +475,13 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 /* === Dialog Panel === */
 .params-dialog {
   background: var(--bg-panel);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
   width: 100%;
   max-width: 480px;
@@ -496,7 +496,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
+  padding: var(--space-1-5) var(--space-4);
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -505,24 +505,24 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   color: var(--text-primary);
 }
 
 .header-title h2 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 .header-badge {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-family: var(--font-mono);
   color: var(--text-secondary);
   padding: 2px 6px;
   background: var(--bg-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .close-btn {
@@ -534,7 +534,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--ease-spring);
 }
@@ -549,9 +549,9 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 18px;
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border-light);
-  font-size: 12px;
+  font-size: var(--font-size-base);
   color: var(--text-secondary);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -559,27 +559,27 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 
 /* === Preview === */
 .preview-section {
-  margin-bottom: 16px;
-  padding: 0 18px;
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-4);
   flex-shrink: 0;
 }
 
 .preview-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 600;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .preview-canvas-wrap {
   background: repeating-conic-gradient(#27272a 0% 25%, #1c1c1e 0% 50%) 50% / 8px 8px;
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -597,12 +597,12 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .params-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 18px;
+  padding: var(--space-3) var(--space-4);
 }
 
 /* === Param Group === */
 .param-group-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .param-group-section:last-child {
@@ -610,14 +610,14 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 }
 
 .group-header {
-  margin-bottom: 10px;
-  padding-bottom: 6px;
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--border-light);
 }
 
 .group-label {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
@@ -626,29 +626,29 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .group-params {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 /* === Param Row === */
 .param-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .param-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--text-primary);
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .param-unit {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 /* === Controls === */
@@ -658,12 +658,12 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 
 .param-select {
   width: 100%;
-  padding: 7px 10px;
+  padding: 6px var(--space-2);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-base);
   font-family: var(--font-sans);
   cursor: pointer;
   transition: all var(--ease-spring);
@@ -703,12 +703,12 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 }
 
 .stepper-btn.decrement {
-  border-radius: 6px 0 0 6px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
   border-right: none;
 }
 
 .stepper-btn.increment {
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   border-left: none;
 }
 
@@ -725,11 +725,11 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .param-number {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-light);
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-base);
   font-family: var(--font-mono);
   text-align: center;
   transition: all var(--ease-spring);
@@ -788,8 +788,8 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 }
 
 .toggle-label {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
   min-width: 24px;
 }
@@ -802,17 +802,17 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .param-error {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: #ef4444;
-  font-weight: 500;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
   margin-top: 2px;
 }
 
 /* === Hint === */
 .param-hint {
   margin: 2px 0 0;
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
   line-height: 1.3;
 }
@@ -821,8 +821,8 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border-light);
   flex-shrink: 0;
 }
@@ -830,11 +830,11 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
   font-family: var(--font-sans);
   cursor: pointer;
   transition: all var(--ease-spring);

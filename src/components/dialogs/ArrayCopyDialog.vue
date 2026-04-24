@@ -267,8 +267,7 @@ onUnmounted(() => {
 /* === Dialog Panel === */
 .array-dialog {
   background: var(--bg-panel);
-  border-radius: 12px;
-  box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 340px;
   overflow: hidden;
@@ -281,7 +280,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
+  padding: var(--space-3-5) var(--space-4-5);
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -290,13 +289,13 @@ onUnmounted(() => {
 .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   color: var(--text-primary);
 }
 
 .header-title h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-md);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text-primary);
@@ -311,13 +310,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--component-btn-height-sm);
+  height: var(--component-btn-height-sm);
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   transition:
     background var(--duration-fast) var(--ease-spring),
     color var(--duration-fast) var(--ease-spring),
@@ -340,18 +339,18 @@ onUnmounted(() => {
 .field-errors {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-height: 0;
 }
 
 .field-error {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #ef4444;
-  animation: error-appear 150ms var(--ease-spring);
+  gap: var(--space-1-5);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-danger);
+  animation: error-appear var(--duration-fast) var(--ease-spring);
 }
 
 .field-error svg {
@@ -365,23 +364,23 @@ onUnmounted(() => {
 }
 
 .dialog-content {
-  padding: 18px;
+  padding: var(--space-4-5);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* === Field groups === */
 .field-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .field-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wider);
   color: var(--text-secondary);
   text-transform: uppercase;
 }
@@ -396,13 +395,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--component-btn-height-sm);
+  height: var(--component-btn-height-sm);
   border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition:
     background var(--duration-fast) var(--ease-spring),
     border-color var(--duration-fast) var(--ease-spring),
@@ -430,15 +429,15 @@ onUnmounted(() => {
 
 .number-input {
   flex: 1;
-  height: 36px;
-  padding: 0 12px;
+  height: var(--component-btn-height-sm);
+  padding: 0 var(--space-3);
   border: 1px solid var(--border-light);
   background: var(--bg-primary);
   color: var(--text-primary);
-  border-radius: 8px;
-  font-family: 'Geist Mono', 'SF Mono', 'Cascadia Code', monospace;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   text-align: center;
   outline: none;
   transition:
@@ -463,18 +462,18 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 14px;
+  gap: var(--space-2-5);
+  padding: var(--space-3);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .preview-grid {
   display: grid;
   grid-template-columns: repeat(min(var(--cols), 4), 1fr);
   grid-template-rows: repeat(min(var(--rows), 4), 1fr);
-  gap: 3px;
+  gap: var(--space-1);
   width: 120px;
   height: 120px;
 }
@@ -482,13 +481,13 @@ onUnmounted(() => {
 .preview-cell {
   background: var(--accent-blue);
   opacity: 0.25;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .preview-text {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .preview-text strong {
@@ -500,8 +499,8 @@ onUnmounted(() => {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 18px;
+  gap: var(--space-2);
+  padding: var(--space-3-5) var(--space-4-5);
   border-top: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -510,13 +509,13 @@ onUnmounted(() => {
 .action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-normal);
   cursor: pointer;
   transition:
     background var(--duration-fast) var(--ease-spring),
@@ -552,7 +551,7 @@ onUnmounted(() => {
 .action-btn.primary:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .action-btn.primary:active:not(:disabled) {
@@ -570,10 +569,10 @@ onUnmounted(() => {
 
 /* === Transitions === */
 .array-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity var(--duration-normal) var(--ease-spring), transform var(--duration-normal) var(--ease-spring);
 }
 .array-fade-leave-active {
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 }
 .array-fade-enter-from {
   opacity: 0;
@@ -587,7 +586,7 @@ onUnmounted(() => {
 /* === Responsive === */
 @media (max-width: 380px) {
   .array-overlay {
-    padding: 12px;
+    padding: var(--space-3);
   }
   .array-dialog {
     max-width: 100%;

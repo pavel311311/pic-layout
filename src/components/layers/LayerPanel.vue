@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useEditorStore } from '../../stores/editor'
+import { useLefDefStore } from '../../stores/lefdef'
 import { ref, computed } from 'vue'
 import { useNavigator } from '../../composables/useNavigator'
 import CellTree from './CellTree.vue'
+import LefDefLayerMappingDialog from '../dialogs/LefDefLayerMappingDialog.vue'
 
 // Color swatches for new layer
 const COLOR_SWATCHES = [
@@ -95,8 +97,39 @@ function selectShapesByLayer(layerId: number, addToSelection = false) {
   store.selectShapesByLayer(layerId, addToSelection)
 }
 
+// LEF/DEF layer mapping
+const lefDefStore = useLefDefStore()
+const showLefDefDialog = ref(false)
+
+// Map layerId → LEF mapping (for badge display)
+const lefMappingForLayer = computed(() => {
+  const map: Record<number, ReturnType<typeof lefDefStore.getMappingForLayerId>> = {}
+  for (const layer of store.project.layers) {
+    map[layer.id] = lefDefStore.getMappingForLayerId(layer.id)
+  }
+  return map
+})
+
+function getPurposeColor(purpose: string): string {
+  const colors: Record<string, string> = {
+    drawing: '#3b82f6',
+    pin: '#a855f7',
+    route: '#22c55e',
+    cut: '#f97316',
+    implant: '#ec4899',
+    metal: '#6366f1',
+    text: '#64748b',
+  }
+  return colors[purpose] ?? '#64748b'
+}
+
+function openLefDefDialog() {
+  showLefDefDialog.value = true
+}
+
 // Libraries — inline SVG icons replacing emojis
 const libraries = [
+  { name: 'LEFDEF', description: 'LEF/DEF Layer Mapping' },
   { name: 'ARC', description: 'Arc' },
   { name: 'CIRCLE', description: 'Circle' },
   { name: 'DONUT', description: 'Donut' },
@@ -126,7 +159,10 @@ const iconBox = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" str
 const iconPath = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 Q8 3 12 12 Q16 21 21 7"/></svg>`
 const iconPolygon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>`
 
+const iconLefDef = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><polyline points="9 9 11 9 11 11"/></svg>`
+
 const libIcons: Record<string, string> = {
+  LEFDEF: iconLefDef,
   ARC: iconArc,
   CIRCLE: iconCircle,
   DONUT: iconDonut,
@@ -198,12 +234,16 @@ const libIcons: Record<string, string> = {
         <div
           v-for="lib in libraries" :key="lib.name"
           class="lib-item" :title="lib.description"
+          @click="lib.name === 'LEFDEF' ? openLefDefDialog() : null"
         >
           <span class="lib-icon" v-html="libIcons[lib.name]"></span>
           <span class="lib-name">{{ lib.name }}</span>
         </div>
       </div>
     </div>
+
+    <!-- LEF/DEF Mapping Dialog -->
+    <LefDefLayerMappingDialog v-model:show="showLefDefDialog" />
 
     <!-- ── 4. Layers ────────────────────────────────────────────────────── -->
     <div class="panel-section layers-section">
@@ -282,6 +322,10 @@ const libIcons: Record<string, string> = {
             <!-- Info -->
             <div class="layer-info">
               <span class="layer-name">{{ layer.name }}</span>
+              <span v-if="lefMappingForLayer[layer.id]" class="lef-badge" :title="lefMappingForLayer[layer.id]?.description">
+                <span class="lef-badge-dot" :style="{ backgroundColor: getPurposeColor(lefMappingForLayer[layer.id]?.purpose ?? 'drawing') }"></span>
+                {{ lefMappingForLayer[layer.id]?.lefLayer }}
+              </span>
               <div class="layer-meta">
                 <span class="layer-gds">{{ layer.gdsLayer }}/0</span>
                 <span class="layer-count">{{ shapesPerLayer[layer.id] || 0 }}</span>
@@ -708,6 +752,32 @@ const libIcons: Record<string, string> = {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.lef-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  margin-top: 1px;
+  transition: background var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-spring);
+}
+
+.lef-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .layer-meta {

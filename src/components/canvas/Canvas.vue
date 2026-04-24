@@ -676,12 +676,12 @@ defineExpose({
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 canvas { display: block; }
 .canvas-overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
-.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--loading-bg, rgba(255,255,255,0.8)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-secondary, #606060); }
-.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--error-bg, rgba(255,255,255,0.9)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent-red, #d32f2f); }
-.error-content { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 400px; padding: 24px; background: var(--bg-panel, #fff); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+.loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--loading-bg); display: flex; align-items: center; justify-content: center; font-size: var(--font-size-base); color: var(--text-secondary); }
+.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--error-bg); display: flex; align-items: center; justify-content: center; font-size: var(--font-size-base); color: var(--accent-red); }
+.error-content { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); max-width: 400px; padding: 24px; background: var(--bg-panel); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .error-icon { display: flex; align-items: center; justify-content: center; }
-.error-message { text-align: center; color: var(--text-primary, #333); }
-.error-button { padding: 8px 24px; background: var(--accent-blue, #3b82f6); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-.error-button:hover { background: color-mix(in srgb, var(--accent-blue, #3b82f6) 80%, black); }
-.error-button:focus { outline: 2px solid var(--accent-blue, #3b82f6); outline-offset: 2px; }
+.error-message { text-align: center; color: var(--text-primary); }
+.error-button { padding: 8px 24px; background: var(--accent-blue); color: var(--text-on-accent, white); border: none; border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-base); transition: background var(--duration-fast) var(--ease-spring); }
+.error-button:hover { background: color-mix(in srgb, var(--accent-blue) 80%, black); }
+.error-button:focus { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 </style>

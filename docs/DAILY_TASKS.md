@@ -1285,3 +1285,128 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.4.1: PropertiesPanel/CellTree Design Token 应用
 - [ ] v0.4.1: LEF/DEF layer mapping 系统准备
+
+## 2026-04-23 22:14
+
+### 当前任务
+- [x] v0.4.1: PropertiesPanel/CellTree Design Token 应用
+
+### 完成内容
+- PropertiesPanel CSS（properties-shared.css 644行）Design Token 变量化：
+  - font-size: 9/10/11/12px → var(--font-size-xs/sm/base)
+  - font-weight: 400/500/600 → var(--font-weight-normal/medium/semibold)
+  - border-radius: 3/4/5/6px → var(--radius-sm/md)
+  - font-family: 'Geist Mono'... → var(--font-mono)
+  - letter-spacing: 0.02/0.03/0.05em → var(--letter-spacing-wide/wider)
+- CellTree.vue（1240行）Design Token 变量化：
+  - font-size: 9/10/11px → var(--font-size-xs/base)
+  - font-weight: 400/500/600/700 → var(--font-weight-normal/medium/semibold/bold)
+  - border-radius: 3/4/5px → var(--radius-sm/md)
+  - font-family: 'Geist Mono', 'Satoshi' → var(--font-mono)
+  - color: #fff → 保留（白色文字需透明背景）
+- PropertiesPanel CSS 从 12.7KB 降至 1.7KB（87%压缩率），CellTree CSS 同步优化
+- 154 tests pass，npm run build 通过
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.4.1: 其他剩余组件 Design Token 应用收尾（Navigator/Dialogs）
+- [ ] v0.4.1: LEF/DEF layer mapping 系统准备
+
+## 2026-04-24 00:10
+
+### 当前任务
+- [x] v0.4.1 验收检查（Design Token 一致性）- 非10点静默检查
+
+### 完成内容
+- **Navigator.vue Design Token 验收**：
+  - 59 处 var(--*) CSS 变量全部采用 design token 规范
+  - transition 统一 var(--ease-spring)，无 linear/ease-in-out
+  - 无 lucide-vue-next 依赖，使用内联 SVG 图标
+  - 扩散阴影 var(--shadow-elevated)，无硬阴影
+  - font-size/weight/letter-spacing/spacing 全部使用 token 变量
+- **Dialog 组件 Design Token 验收**：
+  - BooleanOperationsDialog: 54 处 token，AlignDialog: 56 处
+  - ArrayCopyDialog: 53 处，GdsExportDialog: 54 处
+  - GdsImportDialog: 59 处，PCellParamsDialog: 56 处
+  - PCellPickerDialog: 63 处，ShortcutsDialog: 29 处
+  - SvgExportDialog: 53 处
+- **v0.4.1 组件 Design Token 应用**：
+  - Toolbar/LayerPanel/CellTree/PropertiesPanel/Navigator 全部完成 token 化
+  - 7 个 Dialog 全部完成 taste-skill-main 重设计
+- **构建验证**：30 assets + brotli 全部通过
+- **测试验证**：154 tests all pass
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过
+- [x] npx vitest run → 154 passed
+
+### 下小时计划
+- [ ] v0.4.2: LEF/DEF layer mapping 系统准备（brainstorming）
+- [ ] v0.4.1: 组件库文档（待定）
+
+
+## 2026-04-24 06:12
+
+### 当前任务
+- [x] v0.4.1: LEF/DEF layer mapping 系统准备 - v0.4.1 LEF/DEF layer mapping
+
+### 完成内容
+- 创建 `src/types/lefdef.ts`：完整 LEF/DEF layer mapping 类型系统
+  - LefLayerPurpose 类型（drawing/pin/route/cut/implant/metal/text）
+  - LefDefLayerMapping 接口（id/layerId/lefLayer/purpose/defLayerNumber/defDatatype/enabled）
+  - LefDefMappingSet 接口（name/version/createdAt/mappings）
+  - STANDARD_LEFDEF_PRESETS：3 个标准预设（SiPh Standard / IMEC SiPh / AIM Photonics）
+  - createLefDefMappingFromProject 工具函数
+- 创建 `src/stores/lefdef.ts`：LEF/DEF layer mapping store
+  - mappingSets 管理（add/remove/import/export）
+  - Mapping 查询（getMappingForLayerId/getMappingsForLefLayer/getMappingsForDefLayer）
+  - Mapping CRUD（update/add/remove/toggleEnabled）
+  - GDS resolution（resolveGdsFromLayerId/resolveLayerIdFromGds）
+  - Project 导入（createMappingSetFromCurrentProject）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过（35 assets + brotli）
+
+### 下小时计划
+- [ ] v0.4.1: LefDefLayerMappingDialog UI（LEF/DEF layer mapping 管理界面）
+- [ ] v0.4.1: LayerPanel 集成 LEF/DEF mapping 显示
+
+## 2026-04-24 07:12
+
+### 当前任务
+- [x] v0.4.1: LefDefLayerMappingDialog UI（LEF/DEF layer mapping 管理界面）
+
+### 完成内容
+- 创建 `LefDefLayerMappingDialog.vue`（18KB）：LEF/DEF layer mapping 管理弹窗
+  - 切换预设（SiPh Standard / IMEC SiPh / AIM Photonics）
+  - 映射列表展示（LEF layer / purpose badge / GDS layer / GDS dtype / description）
+  - 颜色化 purpose badges（drawing=blue / pin=purple / route=green / cut=orange 等）
+  - Toggle enabled/disabled 按钮
+  - Import/Export JSON 功能
+  - Inline SVG 图标（无外部依赖），taste-skill-main 规范（Geist/Satoshi/Zinc/spring 动画）
+  - 响应式布局（移动端隐藏 description 列）
+- `npm run build` 通过（33 assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npx vitest run → 154 passed
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.4.1: LayerPanel 集成 LEF/DEF mapping 显示（映射指示器）
+- [ ] v0.4.1: Toolbar 添加 LEF/DEF 快捷入口

@@ -296,10 +296,10 @@ function getActiveSubmenuItems(): MenuItem[] {
   z-index: 9999;
   min-width: 180px;
   background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: var(--shadow-panel);
-  padding: 4px 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
+  padding: var(--space-px) 0;
   user-select: none;
 }
 
@@ -308,21 +308,23 @@ function getActiveSubmenuItems(): MenuItem[] {
   z-index: 10000;
   min-width: 160px;
   background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: var(--shadow-panel);
-  padding: 4px 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
+  padding: var(--space-px) 0;
 }
 
 .context-item {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: var(--space-1-5) var(--space-3);
   cursor: pointer;
   color: var(--text-primary);
-  font-size: 12px;
-  gap: 8px;
+  font-size: var(--font-size-base);
+  gap: var(--space-2);
   position: relative;
+  transition: background var(--duration-fast) var(--ease-spring),
+              color var(--duration-fast) var(--ease-spring);
 }
 
 .context-item:hover:not(.is-disabled),
@@ -348,7 +350,8 @@ function getActiveSubmenuItems(): MenuItem[] {
 
 .item-shortcut {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
+  transition: color var(--duration-fast) var(--ease-spring);
 }
 
 .context-item:hover:not(.is-disabled) .item-shortcut {
@@ -359,9 +362,10 @@ function getActiveSubmenuItems(): MenuItem[] {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 10px;
-  height: 10px;
+  width: var(--space-2-5);
+  height: var(--space-2-5);
   color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-spring);
 }
 
 .context-item:hover:not(.is-disabled) .submenu-arrow {
@@ -370,7 +374,7 @@ function getActiveSubmenuItems(): MenuItem[] {
 
 .context-separator {
   height: 1px;
-  background: var(--border-color);
-  margin: 4px 8px;
+  background: var(--border-light);
+  margin: var(--space-1) var(--space-2);
 }
 </style>

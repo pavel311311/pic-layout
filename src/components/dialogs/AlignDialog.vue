@@ -137,13 +137,13 @@ const alignGroups = [
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 /* === Dialog Panel === */
 .align-dialog {
   background: var(--bg-panel);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
   width: 100%;
   max-width: 340px;
@@ -157,7 +157,7 @@ const alignGroups = [
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
+  padding: var(--space-3-5) var(--space-4-5);
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -166,15 +166,15 @@ const alignGroups = [
 .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   color: var(--text-primary);
 }
 
 .header-title h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-md);
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
   color: var(--text-primary);
 }
 
@@ -193,7 +193,7 @@ const alignGroups = [
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   transition:
     background var(--duration-fast) var(--ease-spring),
     color var(--duration-fast) var(--ease-spring),
@@ -213,32 +213,32 @@ const alignGroups = [
 
 /* === Content === */
 .dialog-content {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-4-5);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3-5);
 }
 
 .align-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .group-label {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent-blue);
   margin: 0;
-  padding-bottom: 4px;
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--border-light);
 }
 
 .button-row {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex-wrap: wrap;
 }
 
@@ -247,18 +247,18 @@ const alignGroups = [
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 10px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2-5) var(--space-3);
   min-width: 72px;
   border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   color: var(--text-secondary);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
   transition:
     background var(--duration-fast) var(--ease-spring),
     border-color var(--duration-fast) var(--ease-spring),
@@ -293,16 +293,16 @@ const alignGroups = [
 }
 
 .btn-label {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--letter-spacing-wide);
   white-space: nowrap;
   color: inherit;
 }
 
 /* === Footer === */
 .dialog-footer {
-  padding: 10px 18px;
+  padding: var(--space-2-5) var(--space-4-5);
   border-top: 1px solid var(--border-light);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -310,9 +310,9 @@ const alignGroups = [
 }
 
 .hint-text {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 /* === Transitions === */
@@ -334,17 +334,17 @@ const alignGroups = [
 /* === Responsive === */
 @media (max-width: 380px) {
   .align-overlay {
-    padding: 12px;
+    padding: var(--space-3);
   }
   .align-dialog {
     max-width: 100%;
   }
   .button-row {
-    gap: 4px;
+    gap: var(--space-1);
   }
   .align-btn {
     min-width: 60px;
-    padding: 8px 8px;
+    padding: var(--space-2);
   }
 }
 </style>

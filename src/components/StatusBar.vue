@@ -196,25 +196,25 @@ function drillOutFromStatusBar() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
-  font-size: 11px;
-  font-family: 'Geist Mono', 'SF Mono', 'Consolas', monospace;
+  padding: 0 var(--space-2-5);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
   background: var(--bg-header);
   border-top: 1px solid var(--border-light);
   color: var(--text-secondary);
   user-select: none;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .status-left,
 .status-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .separator {
-  color: var(--border-color);
+  color: var(--border-light);
   margin: 0 2px;
   opacity: 0.6;
 }
@@ -222,50 +222,50 @@ function drillOutFromStatusBar() {
 /* Tool mode — primary color */
 .mode {
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
 }
 
 /* Layer info — dot + name */
 .layer-info {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1-5);
 }
 
 .layer-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: var(--space-2-5);
+  height: var(--space-2-5);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-dark);
   flex-shrink: 0;
 }
 
 .layer-name {
   color: var(--text-primary);
-  font-weight: 600;
-  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
 }
 
 .layer-count {
   color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 400;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
 }
 
 /* Cell info — electric blue accent, clickable */
 .cell-info {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: var(--accent-blue);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .cell-info--clickable {
   cursor: pointer;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-sm);
   transition: all var(--duration-fast) var(--ease-spring);
 }
 
@@ -274,76 +274,76 @@ function drillOutFromStatusBar() {
 }
 
 .cell-icon {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   opacity: 0.8;
 }
 
 .cell-name {
-  font-weight: 600;
-  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   color: var(--accent-blue);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 /* Grid info */
 .grid {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-0-5);
 }
 
 .grid .label {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
 }
 
 .grid .value {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Snap badge */
 .snap-badge {
-  padding: 1px 5px;
+  padding: 1px var(--space-1);
   background: var(--accent-blue);
   color: var(--text-on-accent);
-  font-size: 9px;
-  font-weight: 700;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  border-radius: var(--radius-sm);
+  letter-spacing: var(--letter-spacing-wider);
 }
 
 /* Selection & measurement — accent colors */
 .selection {
   color: var(--accent-blue);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .measurement {
   color: var(--accent-green);
-  font-weight: 600;
-  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
 }
 
 /* Coordinates */
 .coords {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 140px;
 }
 
 .coords .label {
   color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
 }
 
 .coords .value {
   color: var(--text-primary);
   min-width: 56px;
   text-align: right;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Zoom */
@@ -354,29 +354,29 @@ function drillOutFromStatusBar() {
 
 .zoom .value {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 /* Shapes count */
 .shapes {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 88px;
   justify-content: flex-end;
 }
 
 .shapes .value {
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .shapes .label {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
 }
 
 .shapes .layer-count {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
 }
