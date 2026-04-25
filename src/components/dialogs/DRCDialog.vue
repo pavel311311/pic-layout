@@ -632,6 +632,13 @@ function renderIcon(name: string): string {
 .drc-btn-icon:hover {
   background: var(--bg-hover, #27272a);
   color: var(--text-primary, #fafafa);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--shadow) 15%, transparent);
+}
+
+.drc-btn-icon:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* Stats Bar */
@@ -893,6 +900,8 @@ function renderIcon(name: string): string {
 
 .rule-item:hover {
   background: var(--bg-hover, #27272a);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 12%, transparent);
 }
 
 .rule-item.disabled {
@@ -909,8 +918,17 @@ function renderIcon(name: string): string {
   background: transparent;
   color: var(--text-muted, #71717a);
   cursor: pointer;
-  transition: color var(--duration-fast, 150ms) var(--ease-soft-spring);
+  border-radius: var(--radius-sm, 4px);
+  transition: color var(--duration-fast, 150ms) var(--ease-soft-spring),
+              background var(--duration-fast, 150ms) var(--ease-soft-spring),
+              transform var(--duration-fast, 150ms) var(--ease-soft-spring);
   flex-shrink: 0;
+}
+
+.rule-toggle:hover {
+  background: var(--bg-hover, #27272a);
+  color: var(--text-primary, #fafafa);
+  transform: scale(1.15);
 }
 
 .rule-toggle.active {
@@ -973,6 +991,13 @@ function renderIcon(name: string): string {
 .rule-edit-btn:hover {
   background: var(--bg-hover, #27272a);
   color: var(--text-primary, #fafafa);
+  transform: translateY(-1px) scale(1.1);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+}
+
+.rule-edit-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* Rule Form */
@@ -1057,6 +1082,12 @@ function renderIcon(name: string): string {
 .drc-btn.danger:hover {
   background: rgba(239,68,68,0.2);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+}
+
+.drc-btn.danger:active {
+  transform: translateY(0) scale(0.96);
+  box-shadow: none;
 }
 
 .severity-error.severity-error { background: rgba(239,68,68,0.15); color: #ef4444; }
@@ -1246,6 +1277,13 @@ function renderIcon(name: string): string {
 .danger-icon:hover {
   color: #ef4444 !important;
   background: rgba(239,68,68,0.1) !important;
+  transform: translateY(-1px) scale(1.1);
+  box-shadow: 0 3px 8px rgba(239,68,68,0.2);
+}
+
+.danger-icon:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* Modal Transition */

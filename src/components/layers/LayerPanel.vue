@@ -446,7 +446,8 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 
 .nav-viewport-wrap:hover {
   border-color: var(--accent-blue);
-  box-shadow: var(--shadow-elevated);
+  transform: scale(1.01);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--accent-blue) 12%, var(--shadow-elevated));
 }
 
 /* ── Cells ──────────────────────────────────────────────────────────────────── */
@@ -462,9 +463,6 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 .lib-section {
   height: 90px;
   flex-shrink: 0;
-}
-
-.lib-section {
   padding: var(--space-2);
   border-bottom: 1px solid var(--border-light);
 }
@@ -564,7 +562,7 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 }
 
 .lib-name {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -588,8 +586,8 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 
 .add-btn {
   margin-left: auto;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
@@ -602,14 +600,22 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   transition:
     background var(--duration-fast) var(--ease-soft-spring),
     border-color var(--duration-fast) var(--ease-soft-spring),
-    color var(--duration-fast) var(--ease-soft-spring);
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .add-btn:hover {
-  background: var(--bg-panel);
-  border-color: var(--border-light);
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, transparent);
   color: var(--accent-blue);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+}
+
+.add-btn:active {
+  transform: translateY(0) scale(0.94);
+  box-shadow: none;
 }
 
 .add-layer-form {
@@ -667,42 +673,90 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 }
 
 .btn-cancel, .btn-add {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
+  padding: 6px var(--space-3);
+  border-radius: 999px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-wider);
+  letter-spacing: var(--letter-spacing-wide);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition:
     background var(--duration-fast) var(--ease-soft-spring),
     border-color var(--duration-fast) var(--ease-soft-spring),
-    transform var(--duration-fast) var(--ease-soft-spring);
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .btn-cancel {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--bg-panel) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
   color: var(--text-secondary);
 }
 
+/* Glass highlight */
+.btn-cancel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 3.5%, transparent), transparent 60%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
+  pointer-events: none;
+}
+
 .btn-cancel:hover {
-  border-color: var(--border-color);
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, transparent);
+  color: var(--accent-blue);
+  background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-panel));
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+}
+
+.btn-cancel:hover::before {
+  opacity: 1;
+}
+
+.btn-cancel:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
 }
 
 .btn-add {
-  background: var(--accent-blue);
-  border: 1px solid var(--accent-blue);
-  color: #fff;
+  background: color-mix(in srgb, var(--accent-blue) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 50%, transparent);
+  color: var(--accent-blue);
+}
+
+.btn-add::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, #fff 15%, transparent), transparent 60%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
+  pointer-events: none;
 }
 
 .btn-add:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-blue) 25%, transparent);
+}
+
+.btn-add:hover::before {
+  opacity: 0.3;
 }
 
 .btn-add:active {
   transform: translateY(0) scale(0.97);
+  box-shadow: none;
 }
 
 /* Color swatches in form */
@@ -739,7 +793,7 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 
 .swatch-btn.is-selected {
   border-color: #fff;
-  box-shadow: 0 0 0 2px var(--accent-blue);
+  box-shadow: 0 0 0 2px var(--accent-blue), var(--shadow-sm);
 }
 
 /* Layer list scroll wrapper */
@@ -803,12 +857,15 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-0-5);
-  animation: float-soft 3s var(--ease-soft-spring) infinite;
+  animation: float-soft 4s var(--ease-soft-spring) infinite;
 }
 
 @keyframes float-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-3px) scale(1.005); }
+  50% { transform: translateY(-6px) scale(1.01); }
+  75% { transform: translateY(-3px) scale(1.005); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 .empty-icon {
@@ -858,8 +915,8 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 .empty-add-btn:hover {
   background: color-mix(in srgb, var(--accent-blue) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent-blue) 50%, transparent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-blue) 22%, transparent);
 }
 
 .empty-add-btn:active {
@@ -888,13 +945,15 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 }
 
 .layer-item:hover {
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--bg-secondary) 80%, var(--border-light));
   border-color: var(--border-light);
-  transform: translateY(-1px);
+  transform: translateY(-1.5px) scale(1.01);
+  box-shadow: var(--shadow-elevated);
 }
 
 .layer-item:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(0) scale(0.975);
+  box-shadow: none;
 }
 
 .layer-item.is-hidden {
@@ -1040,10 +1099,13 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   background: var(--bg-panel);
   border-color: var(--border-light);
   color: var(--text-primary);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .act-btn:active {
-  transform: scale(0.93);
+  transform: translateY(0) scale(0.93);
+  box-shadow: none;
 }
 
 .lock-btn.is-locked {
@@ -1055,6 +1117,13 @@ const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
   background: color-mix(in srgb, #ef4444 12%, transparent);
   border-color: #ef4444;
   color: #ef4444;
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 0 10px color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+.delete-btn:active {
+  transform: translateY(0) scale(0.93);
+  box-shadow: none;
 }
 
 /* Footer */

@@ -584,6 +584,13 @@ function getCategoryIcon(cat: string): string {
 .close-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.close-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* === Search === */
@@ -695,6 +702,13 @@ function getCategoryIcon(cat: string): string {
 .category-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow) 10%, transparent);
+}
+
+.category-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
 }
 
 .category-btn.active {
@@ -985,6 +999,13 @@ kbd {
 .action-btn.secondary:hover {
   color: var(--text-primary);
   border-color: var(--border-medium);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.action-btn.secondary:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
 }
 
 /* === Transitions === */

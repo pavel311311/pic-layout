@@ -802,6 +802,8 @@ watch(flatTree, () => {
   background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 25%, transparent),
+              0 2px 8px color-mix(in srgb, var(--accent-blue) 10%, transparent);
 }
 
 .breadcrumb-sep {
@@ -1003,6 +1005,8 @@ watch(flatTree, () => {
   border-left-color: var(--accent-blue);
   color: var(--accent-blue);
   font-weight: var(--font-weight-medium);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 20%, transparent),
+              0 2px 8px color-mix(in srgb, var(--accent-blue) 8%, transparent);
 }
 
 /* Keyboard focus ring */
@@ -1432,15 +1436,39 @@ watch(flatTree, () => {
   cursor: pointer;
   border-radius: var(--radius-md);
   letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
   transition: background var(--duration-fast) var(--ease-soft-spring),
               color var(--duration-fast) var(--ease-soft-spring),
-              transform var(--duration-fast) var(--ease-soft-spring);
+              transform var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
+}
+
+/* Glass sheen on hover */
+.ctx-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 4%, transparent), transparent);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
+  pointer-events: none;
 }
 
 .ctx-item:hover {
   background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-panel));
   color: var(--accent-blue);
-  transform: translateX(2px);
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent-blue) 14%, transparent);
+}
+
+.ctx-item:hover::before {
+  opacity: 1;
+}
+
+.ctx-item:active {
+  transform: translateY(0px) scale(0.97);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 10%, transparent);
 }
 
 .ctx-icon {

@@ -11,6 +11,28 @@
   --ease-soft-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* === Vue Transition — Section Collapse Spring Animation === */
+.section-collapse-enter-active {
+  transition: max-height 400ms var(--ease-soft-spring), opacity 300ms var(--ease-soft-spring);
+  max-height: 600px;
+  overflow: hidden;
+}
+.section-collapse-leave-active {
+  transition: max-height 320ms var(--ease-soft-spring), opacity 200ms var(--ease-soft-spring);
+  max-height: 600px;
+  overflow: hidden;
+}
+.section-collapse-enter-from,
+.section-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+.section-collapse-enter-to,
+.section-collapse-leave-from {
+  max-height: 600px;
+  opacity: 1;
+}
+
 /* === Panel === */
 .properties-panel {
   height: 100%;
@@ -159,6 +181,18 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* Spring entrance when shape selected */
+  animation: contentEntrance 450ms var(--ease-soft-spring) both;
+}
+@keyframes contentEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* === Shape Preview — Double-Bezel Architecture === */
@@ -167,6 +201,18 @@
   border-bottom: 1px solid var(--border-light);
   background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
   position: relative;
+  /* Spring entrance animation — premium feel */
+  animation: previewEntrance 500ms var(--ease-soft-spring) both;
+}
+@keyframes previewEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
 }
 /* Outer shell */
 .shape-preview-wrapper::before {
@@ -204,7 +250,19 @@
 .prop-section {
   border-bottom: 1px solid var(--border-light);
   position: relative;
-  transition: all var(--duration-fast) var(--ease-soft-out);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
+  /* Magnetic hover: section glows faintly on hover */
+}
+
+/* === Section Collapse — Spring Animation === */
+.section-content {
+  overflow: hidden;
+  transition: max-height 380ms var(--ease-soft-spring), opacity 280ms var(--ease-soft-spring);
+  max-height: 600px;
+}
+.section-content.v-show-collapse {
+  max-height: 0;
+  opacity: 0;
 }
 
 /* === Section Header — Glassmorphism touch === */
@@ -230,12 +288,18 @@
   cursor: pointer;
 }
 .section-header.collapsible:hover {
-  background: color-mix(in srgb, var(--accent-blue) 5%, var(--bg-secondary));
+  background: color-mix(in srgb, var(--accent-blue) 6%, var(--bg-secondary));
   color: var(--text-primary);
+  transform: translateY(-0.5px) scale(1.008);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-blue) 6%, transparent);
+}
+.section-header.collapsible:active {
+  transform: translateY(0px) scale(0.99);
 }
 .section-header.collapsible:hover .section-icon {
   color: var(--accent-blue);
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-blue) 50%, transparent));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-blue) 55%, transparent));
+  transform: scale(1.1);
 }
 .section-icon {
   width: 13px;
@@ -344,15 +408,22 @@
   transition: all var(--duration-fast) var(--ease-soft-spring);
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12' fill='none'%3E%3Cpolyline points='2,4 6,8 10,4' stroke='%23888' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  /* Premium chevron arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12' fill='none'%3E%3Cpolyline points='2,4 6,8 10,4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   padding-right: 24px;
 }
+.layer-select:hover {
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, var(--border-light));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-blue) 8%, transparent);
+}
 .layer-select:focus {
   outline: none;
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent-blue) 15%, transparent),
+    0 0 10px color-mix(in srgb, var(--accent-blue) 10%, transparent);
 }
 
 /* === Coords Grid (Location/Size/Edge) === */
@@ -366,8 +437,19 @@
   font-size: var(--font-size-xs);
   color: var(--text-muted);
   font-weight: var(--font-weight-semibold);
-  text-align: right;
+  text-align: center;
   letter-spacing: var(--letter-spacing-wide);
+  /* Pill badge style — premium feel */
+  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 40%, transparent);
+  border-radius: 999px;
+  padding: 2px 5px;
+  transition: all var(--duration-fast) var(--ease-soft-spring);
+}
+.prop-section:hover .coord-label {
+  background: color-mix(in srgb, var(--accent-blue) 6%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+  color: var(--accent-blue);
 }
 .prop-input {
   width: 100%;
@@ -383,13 +465,17 @@
 }
 .prop-input:hover {
   border-color: color-mix(in srgb, var(--accent-blue) 40%, var(--border-light));
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--text-primary) 3%, transparent),
+    0 0 6px color-mix(in srgb, var(--accent-blue) 8%, transparent);
 }
 .prop-input:focus {
   outline: none;
   border-color: var(--accent-blue);
   box-shadow:
     inset 0 1px 2px color-mix(in srgb, var(--text-primary) 3%, transparent),
-    0 0 0 2px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--accent-blue) 15%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent-blue) 12%, transparent);
 }
 
 /* === Metrics Row === */
@@ -611,11 +697,17 @@
 }
 .transform-input:hover {
   border-color: color-mix(in srgb, var(--accent-blue) 40%, var(--border-light));
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--text-primary) 3%, transparent),
+    0 0 6px color-mix(in srgb, var(--accent-blue) 8%, transparent);
 }
 .transform-input:focus {
   outline: none;
   border-color: var(--accent-blue);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--text-primary) 3%, transparent), 0 0 0 2px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--text-primary) 3%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--accent-blue) 15%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent-blue) 12%, transparent);
 }
 .unit {
   font-size: var(--font-size-sm);

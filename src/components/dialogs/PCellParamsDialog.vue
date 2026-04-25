@@ -542,6 +542,13 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .close-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.close-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* === Description Bar === */
@@ -715,6 +722,11 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .stepper-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.stepper-btn:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .stepper-btn:disabled {
@@ -872,6 +884,13 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 .action-btn.secondary:hover {
   color: var(--text-primary);
   border-color: var(--border-medium);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.action-btn.secondary:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
 }
 
 /* === Transitions === */
@@ -880,7 +899,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 }
 
 .pcell-params-fade-leave-active {
-  transition: all var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0, 0, 0.2, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .pcell-params-fade-enter-from {

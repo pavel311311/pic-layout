@@ -204,11 +204,13 @@ const alignGroups = [
 .close-btn:hover {
   background: var(--bg-primary);
   color: var(--text-primary);
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
 }
 
 .close-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* === Content === */

@@ -210,7 +210,13 @@ const purposeColors: Record<string, string> = {
 
               <!-- Empty state -->
               <div v-if="currentMappings.length === 0" class="empty-state">
-                <p>No mappings in this preset</p>
+                <svg class="empty-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="8" y="14" width="32" height="22" rx="3" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <line x1="16" y1="22" x2="32" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="16" y1="28" x2="26" y2="28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <p class="empty-title">No mappings</p>
+                <span class="empty-hint">Select a preset or import a layer mapping file</span>
               </div>
             </div>
           </div>
@@ -329,11 +335,13 @@ const purposeColors: Record<string, string> = {
 .btn-close:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
 }
 
 .btn-close:active {
-  transform: scale(0.95);
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* === Preset Selector === */
@@ -584,20 +592,74 @@ const purposeColors: Record<string, string> = {
   height: 14px;
 }
 
-/* === Empty State === */
+/* === Empty State — soft-skill Double-Bezel === */
 .empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 20px;
-  color: var(--text-secondary);
-  gap: var(--space-2);
+  padding: 40px 20px;
+  gap: 12px;
+  position: relative;
+  margin: 8px;
 }
-
-.empty-state p {
-  margin: 0;
+/* Outer shell — Double-Bezel outer ring */
+.empty-state::before {
+  content: '';
+  position: absolute;
+  inset: 8px 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-secondary) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 45%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 0;
+}
+/* Inner core — Double-Bezel inner surface */
+.empty-state::after {
+  content: '';
+  position: absolute;
+  inset: 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--text-primary) 3%, transparent);
+  z-index: 0;
+}
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-muted);
+  opacity: 0.35;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--text-muted) 12%, transparent));
+  transition: all 600ms var(--ease-soft-spring);
+  animation: emptyFloat 4s var(--ease-soft-spring) infinite;
+}
+@keyframes emptyFloat {
+  0%, 100% { transform: translateY(0px) scale(1); opacity: 0.35; }
+  25% { transform: translateY(-2px) scale(1.01); opacity: 0.38; }
+  50% { transform: translateY(-4px) scale(1.02); opacity: 0.40; }
+  75% { transform: translateY(-2px) scale(1.01); opacity: 0.38; }
+}
+.empty-title {
   font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.01em;
+}
+.empty-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  max-width: 200px;
+  line-height: 1.5;
 }
 
 /* === Footer === */

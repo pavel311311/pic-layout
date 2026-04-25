@@ -717,7 +717,13 @@ import { nextTick } from 'vue'
 .close-btn:hover {
   background: var(--bg-primary);
   color: var(--text-primary);
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.close-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 .close-btn:active {
@@ -1042,6 +1048,13 @@ import { nextTick } from 'vue'
 .cell-item:hover {
   border-color: var(--accent-blue);
   background: rgba(59, 130, 246, 0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 10%, transparent);
+}
+
+.cell-item:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
 }
 
 .cell-item--selected {

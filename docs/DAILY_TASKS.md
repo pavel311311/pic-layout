@@ -1780,3 +1780,112 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 ### 下小时计划
 - [ ] v0.5.0: 其他 Dialog Loading 状态软技能升级（检查 SvgExportDialog/PCellParamsDialog 等）
 - [ ] v0.5.0: PropertiesPanel 弹簧动画微交互增强
+
+## 2026-04-25 10:10
+
+### 当前任务
+- [x] v0.5.0: 全项目 ease-spring → ease-soft-spring 统一 - v0.5.0 soft-skill 动画一致性
+
+### 完成内容
+- **全项目 `--ease-spring` → `--ease-soft-spring` 替换**（22 文件，1117 insertions，396 deletions）：
+  - properties-shared.css: `--ease-spring` 在 emptyFloat animation 中 → `--ease-soft-spring`
+  - style.css: 所有 transition helper classes 统一为 `--ease-soft-spring`
+  - CellTree.vue: emptyFloat animation 增强（添加 scale 微变 1→1.02）+ 所有过渡统一
+  - LayerPanel.vue: 所有过渡统一为 `--ease-soft-spring`
+  - Toolbar.vue / ContextMenu.vue / Canvas.vue / StatusBar.vue / Navigator.vue: 全部统一
+  - 全部 11 个 Dialog 组件统一（BooleanOperations/Align/ArrayCopy/GdsExport/GdsImport/SvgExport/Shortcuts/PCellPicker/PCellParams/LefDefLayerMapping/DRC）
+  - PCellPickerDialog/DRCDialog/PCellParamsDialog: 复合属性 `var(--ease-spring, cubic-bezier(...))` → `var(--ease-soft-spring)`
+
+- **emptyFloat 动画增强**：
+  - 从 2 帧（0%/50%/100%）→ 5 帧（0%/25%/50%/75%/100%）
+  - 新增 scale 微变：`scale(1)` → `scale(1.01)` → `scale(1.02)` → `scale(1.005)`
+  - translateY 增强：`translateY(-5px)` 峰值 + 多级中间帧
+  - 动画时长 4s 不变，spring cubic-bezier(0.32, 0.72, 0, 1) 保持
+
+### 遇到的问题
+- 问题: `ease-spring` 在 style.css 中有多处复合属性写法 `var(--ease-spring, cubic-bezier(...))`
+  - 解决: perl 正则表达式处理后仍有残留，手动逐文件 sed 处理剩余行
+
+### 编译测试
+- [x] npm run build → 通过（44 assets + brotli）
+
+### 下小时计划
+- [ ] v0.5.0: PropertiesPanel 弹簧动画微交互增强（hover press feedback / scale micro-variations）
+- [ ] v0.5.0: LayerPanel 按钮/项目微交互增强
+
+## 2026-04-25 13:10
+
+### 当前任务
+- [x] v0.5.0: PropertiesPanel micro-interactions 增强（磁性与按压微交互）- soft-skill 规范完善
+
+### 完成内容
+- properties-shared.css 分析确认 v0.5.0 soft-skill Double-Bezel 已全面实施：
+  - Empty State: Double-Bezel (::before 外壳 + ::after 内核) + emptyFloat 动画 ✓
+  - Shape Preview: Double-Bezel 架构 + previewEntrance 弹簧入场动画 ✓
+  - Section Header: 磁性与按压物理 (hover translateY(-0.5px) scale(1.008) / active scale(0.99)) ✓
+  - Section Content: Double-Bezel inner (::before 微光晕 hover 触发) ✓
+  - Action Buttons: 胶囊形 (rounded-full) + Button-in-Button 图标 + Magnetic hover (translateY(-1px) scale(1.02)) ✓
+  - Transform Inputs: 柔和 glow focus ring + hover border accent ✓
+  - 全部 11 个 Dialog 和 3 个 Properties 子组件使用 properties-shared.css 共享 ✓
+  - 所有动画统一使用 var(--ease-soft-spring) ✓
+- 发现一处不一致：`.prop-section` 仍使用 `--ease-soft-out`（旧值），已修正为 `--ease-soft-spring`
+- 编译测试 PropertiesPanel: 36.4KB→8.0KB, CSS: 22.1KB→2.8KB（压缩率 87%/87%）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过
+
+### 下小时计划
+- [ ] v0.5.0: LayerPanel 微交互增强（pill-shaped buttons / magnetic hover on swatches）
+- [ ] v0.5.0: CellTree 微交互增强（empty states 之外的其他微交互）
+
+## 2026-04-25 16:10
+
+### 当前任务
+- [x] v0.5.0: LayerPanel 微交互增强（float-soft 动画 + scale 微变）- soft-skill 规范完善
+
+### 完成内容
+- LayerPanel.vue float-soft 动画升级（v0.5.0 soft-skill 微交互增强）：
+  - 动画从 2 帧（0%/50%/100%）→ 5 帧（0%/25%/50%/75%/100%）
+  - 新增 scale 微变：`scale(1)` → `scale(1.005)` → `scale(1.01)` → `scale(1.005)` → `scale(1)`
+  - translateY 增强：`0` → `-3px` → `-6px` → `-3px` → `0`（峰值 6px）
+  - 动画时长 3s → 4s（与 CellTree emptyFloat 一致）
+  - timing 保持 `var(--ease-soft-spring)`（与全项目 soft-skill 规范一致）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（44 assets + brotli）
+
+### 下小时计划
+- [ ] v0.5.0: LayerPanel magnetic hover on swatches（pill-shaped buttons 增强）
+- [ ] v0.5.0: CellTree 微交互增强（toolbar buttons / context menu items）
+
+## 2026-04-25 19:10
+
+### 当前任务
+- [x] v0.5.0: LayerPanel act-btn/magnetic hover 微交互增强 - soft-skill 规范完善
+
+### 完成内容
+- LayerPanel.vue act-btn 微交互增强（v0.5.0 soft-skill 微交互增强）：
+  - `.act-btn:hover`: 添加 `translateY(-1px) scale(1.05)` + `box-shadow: var(--shadow-sm)` 磁性上移反馈
+  - `.act-btn:active`: 保持 `scale(0.93)` 但移除 box-shadow 保持一致性
+  - `.delete-btn:hover`: 添加 `translateY(-1px) scale(1.05)` + `box-shadow: glow` 红色光晕效果
+  - `.delete-btn:active`: 新增 press feedback 状态
+  - `.swatch-btn.is-selected`: 添加 `var(--shadow-sm)` 选中态光晕增强
+  - `.empty-add-btn:hover`: `scale(1.02)` 微变 + 增强阴影 `6px` 扩散
+- 全部交互使用 `var(--ease-soft-spring)` 保持软技能风格一致性
+- npm run build 通过（44 assets + brotli）
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（44 assets + brotli）
+
+### 下小时计划
+- [ ] v0.5.0: 其他 Dialog 微交互收尾（检查尚未完善 spring 动画的组件）
+- [ ] v0.5.0: CellTree 工具栏按钮微交互增强

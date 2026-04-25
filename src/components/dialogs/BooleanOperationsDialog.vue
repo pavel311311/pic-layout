@@ -558,11 +558,13 @@ function getOpDescription(op: BooleanOp): string {
 .close-btn:hover {
   background: var(--bg-primary);
   color: var(--text-primary);
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--shadow) 12%, transparent);
 }
 
 .close-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0) scale(0.95);
+  box-shadow: none;
 }
 
 /* === Preview Canvas === */
@@ -694,6 +696,8 @@ function getOpDescription(op: BooleanOp): string {
 
 .op-btn--active:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent-blue) 18%, var(--bg-panel));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.15);
 }
 
 .op-icon {

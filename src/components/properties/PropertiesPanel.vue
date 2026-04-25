@@ -234,8 +234,9 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('general')" class="section-content">
-          <div v-if="hasMultiSelection" class="info-grid">
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('general')" class="section-content">
+            <div v-if="hasMultiSelection" class="info-grid">
             <span class="info-label">Count</span>
             <span class="info-value mono">{{ store.selectedShapeIds.length }} shapes</span>
             <span class="info-label">Bounds</span>
@@ -287,6 +288,7 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             </span>
           </div>
         </div>
+        </Transition>
       </div>
 
       <!-- Location -->
@@ -304,14 +306,16 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('location')" class="section-content">
-          <div class="coords-grid">
-            <span class="coord-label">X</span>
-            <input type="number" :value="selectedShape.x" @change="(e) => updatePosition('x', parseFloat((e.target as HTMLInputElement).value))" step="0.1" class="prop-input" aria-label="X position" />
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('location')" class="section-content">
+            <div class="coords-grid">
+              <span class="coord-label">X</span>
+              <input type="number" :value="selectedShape.x" @change="(e) => updatePosition('x', parseFloat((e.target as HTMLInputElement).value))" step="0.1" class="prop-input" aria-label="X position" />
             <span class="coord-label">Y</span>
             <input type="number" :value="selectedShape.y" @change="(e) => updatePosition('y', parseFloat((e.target as HTMLInputElement).value))" step="0.1" class="prop-input" aria-label="Y position" />
           </div>
         </div>
+        </Transition>
       </div>
 
       <!-- Size (rectangle/waveguide) -->
@@ -327,7 +331,8 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('size')" class="section-content">
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('size')" class="section-content">
           <div class="coords-grid">
             <span class="coord-label">W</span>
             <input type="number" :value="selectedShape.width" @change="(e) => updateSize('width', parseFloat((e.target as HTMLInputElement).value))" step="0.1" min="0.1" class="prop-input" aria-label="Width" />
@@ -351,6 +356,7 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <button class="size-btn" @click="updateSize('height', (selectedShape.height || 1) / 2)" title="Height ÷2">H÷2</button>
           </div>
         </div>
+        </Transition>
       </div>
 
       <!-- Edge -->
@@ -366,7 +372,8 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('edge')" class="section-content">
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('edge')" class="section-content">
           <div class="coords-grid">
             <span class="coord-label">X1</span>
             <input type="number" :value="(selectedShape as any).x1 ?? selectedShape.x" @change="(e) => updateEdgeCoord('x1', parseFloat((e.target as HTMLInputElement).value))" step="0.1" class="prop-input" aria-label="Edge start X" />
@@ -382,6 +389,7 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <span class="info-value mono" aria-label="Edge length">{{ edgeLength.toFixed(3) }}</span>
           </div>
         </div>
+        </Transition>
       </div>
 
       <!-- Path (delegated) -->
@@ -432,7 +440,8 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('transform')" class="section-content">
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('transform')" class="section-content">
           <div class="transform-grid">
             <div class="transform-row">
               <label id="rotate-label">Rotate</label>
@@ -453,6 +462,7 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <button class="transform-btn" @click="() => { rotation = 0; scaleX = 1; scaleY = 1; }" aria-label="Reset transform values">Reset</button>
           </div>
         </div>
+        </Transition>
       </div>
 
       <!-- Operations -->
@@ -468,7 +478,8 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             <polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div v-show="!isCollapsed('operations')" class="section-content">
+        <Transition name="section-collapse">
+          <div v-show="!isCollapsed('operations')" class="section-content">
           <div class="action-buttons">
             <button class="action-btn" @click="duplicateShape" aria-label="Duplicate selected shape">
               <svg class="btn-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -486,6 +497,7 @@ function isCollapsed(section: string) { return collapsedSections.value.has(secti
             </button>
           </div>
         </div>
+        </Transition>
       </div>
 
     </div>
