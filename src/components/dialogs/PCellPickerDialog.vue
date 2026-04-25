@@ -578,7 +578,7 @@ function getCategoryIcon(cat: string): string {
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
 }
 
 .close-btn:hover {
@@ -616,7 +616,7 @@ function getCategoryIcon(cat: string): string {
   color: var(--text-primary);
   font-size: var(--font-size-md);
   font-family: var(--font-sans);
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
 }
 
 .search-input::placeholder {
@@ -688,7 +688,7 @@ function getCategoryIcon(cat: string): string {
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   text-align: left;
 }
 
@@ -779,7 +779,7 @@ kbd {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   border: 1px solid transparent;
   margin-bottom: var(--space-1);
   outline: none;
@@ -950,7 +950,7 @@ kbd {
   font-weight: var(--font-weight-medium);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -989,7 +989,7 @@ kbd {
 
 /* === Transitions === */
 .pcell-fade-enter-active {
-  transition: all var(--duration-normal, 250ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-normal, 250ms) var(--ease-soft-spring);
 }
 
 .pcell-fade-leave-active {

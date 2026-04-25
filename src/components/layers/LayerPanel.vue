@@ -172,6 +172,15 @@ const libIcons: Record<string, string> = {
   PATH: iconPath,
   POLYGON: iconPolygon,
 }
+
+// ── Empty state SVG icons (soft-skill Double-Bezel) ──────────────────────────
+const iconLayerEmpty = `<svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <rect x="14" y="14" width="20" height="4" rx="1.5" fill="currentColor" opacity="0.3"/>
+  <rect x="14" y="22" width="14" height="4" rx="1.5" fill="currentColor" opacity="0.2"/>
+  <rect x="14" y="30" width="17" height="4" rx="1.5" fill="currentColor" opacity="0.15"/>
+</svg>`
+const iconPlus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`
 </script>
 
 <template>
@@ -292,7 +301,22 @@ const libIcons: Record<string, string> = {
 
       <!-- Layer list -->
       <div class="layer-list-wrap">
-        <div class="layer-list">
+        <!-- Empty state — Double-Bezel Soft Structuralism -->
+        <div v-if="store.project.layers.length === 0" class="layers-empty">
+          <div class="layers-empty-inner">
+            <div class="empty-visual">
+              <span class="empty-icon" v-html="iconLayerEmpty"></span>
+            </div>
+            <p class="empty-title">No layers yet</p>
+            <span class="empty-hint">Add your first layer to get started</span>
+            <button class="empty-add-btn" @click="showAddLayer = true">
+              <span v-html="iconPlus"></span>
+              Add Layer
+            </button>
+          </div>
+        </div>
+        <!-- Layer list -->
+        <div v-else class="layer-list">
           <div
             v-for="layer in store.project.layers" :key="layer.id"
             class="layer-item" :class="{ 'is-hidden': !layer.visible }"
@@ -416,8 +440,8 @@ const libIcons: Record<string, string> = {
   border-radius: var(--radius-sm);
   overflow: hidden;
   transition:
-    border-color var(--duration-normal) var(--ease-spring),
-    box-shadow var(--duration-normal) var(--ease-spring);
+    border-color var(--duration-normal) var(--ease-soft-spring),
+    box-shadow var(--duration-normal) var(--ease-soft-spring);
 }
 
 .nav-viewport-wrap:hover {
@@ -440,11 +464,41 @@ const libIcons: Record<string, string> = {
   flex-shrink: 0;
 }
 
+.lib-section {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}
+
 .lib-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-0-5);
-  padding: var(--space-1);
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-0-5);
+  position: relative;
+}
+
+/* Outer shell — Double-Bezel */
+.lib-grid::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-1);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--bg-secondary) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 40%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 0;
+}
+
+/* Inner core */
+.lib-grid::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-1) + 5px);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-panel) 50%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--text-primary) 2%, transparent);
+  z-index: 0;
 }
 
 .lib-item {
@@ -452,46 +506,76 @@ const libIcons: Record<string, string> = {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-1) var(--space-0-5) var(--space-0-5);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-1) var(--space-1-5);
+  background: color-mix(in srgb, var(--bg-panel) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 35%, transparent);
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  position: relative;
+  z-index: 1;
   transition:
-    background var(--duration-normal) var(--ease-spring),
-    border-color var(--duration-normal) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-normal) var(--ease-soft-spring),
+    border-color var(--duration-normal) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Glass highlight sheen */
+.lib-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 3%, transparent), transparent 60%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
+  pointer-events: none;
 }
 
 .lib-item:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-blue);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-blue) 15%, transparent);
+}
+
+.lib-item:hover::before {
+  opacity: 1;
 }
 
 .lib-item:active {
-  transform: translateY(0) scale(0.97);
+  transform: translateY(0) scale(0.96);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow) 8%, transparent);
 }
 
 .lib-icon {
   display: flex;
   align-items: center;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-0-5);
-  transition: color var(--duration-normal) var(--ease-spring);
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+  transition: color var(--duration-normal) var(--ease-soft-spring);
 }
 
 .lib-item:hover .lib-icon {
   color: var(--accent-blue);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-blue) 30%, transparent));
 }
 
 .lib-name {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
   text-align: center;
   line-height: 1;
+  text-transform: uppercase;
+  transition: color var(--duration-normal) var(--ease-soft-spring);
+}
+
+.lib-item:hover .lib-name {
+  color: var(--accent-blue);
 }
 
 /* ── Layers ─────────────────────────────────────────────────────────────────── */
@@ -516,9 +600,9 @@ const libIcons: Record<string, string> = {
   align-items: center;
   justify-content: center;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .add-btn:hover {
@@ -561,7 +645,7 @@ const libIcons: Record<string, string> = {
   font-size: var(--font-size-base);
   background: var(--bg-panel);
   color: var(--text-primary);
-  transition: border-color var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring), box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-input:focus {
@@ -590,9 +674,9 @@ const libIcons: Record<string, string> = {
   letter-spacing: var(--letter-spacing-wider);
   cursor: pointer;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
 }
 
 .btn-cancel {
@@ -638,9 +722,9 @@ const libIcons: Record<string, string> = {
   align-items: center;
   justify-content: center;
   transition:
-    transform var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    transform var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -669,6 +753,126 @@ const libIcons: Record<string, string> = {
   padding: 4px;
 }
 
+/* ── Layers Empty State — Double-Bezel Soft Structuralism ────────────────── */
+.layers-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: var(--space-4) var(--space-3);
+  position: relative;
+}
+
+/* Outer bezel shell */
+.layers-empty::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-2);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 60%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color var(--duration-normal) var(--ease-soft-spring);
+}
+
+/* Inner core */
+.layers-empty::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-2) + 6px);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-panel) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 30%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.layers-empty-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1-5);
+  text-align: center;
+}
+
+.empty-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-0-5);
+  animation: float-soft 3s var(--ease-soft-spring) infinite;
+}
+
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.empty-icon {
+  display: flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--accent-blue) 35%, var(--text-muted));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 20%, transparent));
+}
+
+.empty-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.empty-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  letter-spacing: var(--letter-spacing-normal);
+  margin-top: calc(-1 * var(--space-0-5));
+}
+
+.empty-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 7px var(--space-3);
+  margin-top: var(--space-0-5);
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-sans, 'Geist', 'Satoshi', system-ui, sans-serif);
+  color: var(--accent-blue);
+  letter-spacing: var(--letter-spacing-wide);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
+}
+
+.empty-add-btn:hover {
+  background: color-mix(in srgb, var(--accent-blue) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 50%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+}
+
+.empty-add-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+}
+
+.empty-add-btn svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
 .layer-item {
   display: flex;
   align-items: center;
@@ -678,9 +882,9 @@ const libIcons: Record<string, string> = {
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-item:hover {
@@ -710,7 +914,7 @@ const libIcons: Record<string, string> = {
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: color var(--duration-fast) var(--ease-spring), background var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring), background var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-vis-btn:hover {
@@ -769,8 +973,8 @@ const libIcons: Record<string, string> = {
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   margin-top: 1px;
-  transition: background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .lef-badge-dot {
@@ -807,7 +1011,7 @@ const libIcons: Record<string, string> = {
   display: flex;
   gap: 2px;
   opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-spring);
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-item:hover .layer-actions,
@@ -827,9 +1031,9 @@ const libIcons: Record<string, string> = {
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    color var(--duration-fast) var(--ease-spring),
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring);
+    color var(--duration-fast) var(--ease-soft-spring),
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .act-btn:hover {
@@ -877,8 +1081,8 @@ const libIcons: Record<string, string> = {
 .slide-down-enter-active,
 .slide-down-leave-active {
   transition:
-    max-height var(--duration-normal) var(--ease-spring),
-    opacity var(--duration-fast) var(--ease-spring);
+    max-height var(--duration-normal) var(--ease-soft-spring),
+    opacity var(--duration-fast) var(--ease-soft-spring);
   overflow: hidden;
 }
 

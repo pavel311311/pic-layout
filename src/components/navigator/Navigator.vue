@@ -292,8 +292,8 @@ onUnmounted(() => {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-light);
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .navigator-header:hover {
@@ -319,7 +319,7 @@ onUnmounted(() => {
 
 .collapse-icon {
   color: var(--text-muted);
-  transition: transform 250ms var(--ease-spring);
+  transition: transform 250ms var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -342,7 +342,7 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-light);
-  transition: box-shadow var(--duration-fast) var(--ease-spring);
+  transition: box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .nav-viewport-wrap:hover {
@@ -362,8 +362,8 @@ onUnmounted(() => {
 /* Viewport drag feedback */
 .viewport-rect {
   transition:
-    fill-opacity 150ms var(--ease-spring),
-    stroke-width 150ms var(--ease-spring);
+    fill-opacity 150ms var(--ease-soft-spring),
+    stroke-width 150ms var(--ease-soft-spring);
 }
 
 .viewport-rect:hover {
@@ -395,11 +395,11 @@ onUnmounted(() => {
   letter-spacing: var(--letter-spacing-wide);
   cursor: pointer;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .nav-fit-btn:hover {
@@ -438,9 +438,9 @@ onUnmounted(() => {
 /* === Transitions === */
 .nav-slide-enter-active {
   transition:
-    opacity 200ms var(--ease-spring),
-    transform 200ms var(--ease-spring),
-    max-height 200ms var(--ease-spring);
+    opacity 200ms var(--ease-soft-spring),
+    transform 200ms var(--ease-soft-spring),
+    max-height 200ms var(--ease-soft-spring);
   transform-origin: top;
 }
 .nav-slide-leave-active {

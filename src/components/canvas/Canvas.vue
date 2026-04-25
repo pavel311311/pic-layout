@@ -688,7 +688,7 @@ canvas { display: block; }
 .error-content { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); max-width: 400px; padding: 24px; background: var(--bg-panel); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .error-icon { display: flex; align-items: center; justify-content: center; }
 .error-message { text-align: center; color: var(--text-primary); }
-.error-button { padding: 8px 24px; background: var(--accent-blue); color: var(--text-on-accent, white); border: none; border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-base); transition: background var(--duration-fast) var(--ease-spring); }
+.error-button { padding: 8px 24px; background: var(--accent-blue); color: var(--text-on-accent, white); border: none; border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-base); transition: background var(--duration-fast) var(--ease-soft-spring); }
 .error-button:hover { background: color-mix(in srgb, var(--accent-blue) 80%, black); }
 .error-button:focus { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 </style>

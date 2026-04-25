@@ -727,7 +727,7 @@ function incrementStroke() {
   border: 1px solid var(--border-light);
   border-radius: 11px;
   cursor: pointer;
-  transition: background 0.2s var(--ease-spring), border-color 0.2s;
+  transition: background 0.2s var(--ease-soft-spring), border-color 0.2s;
 }
 
 .toggle-switch.active {
@@ -743,7 +743,7 @@ function incrementStroke() {
   height: 16px;
   background: #ffffff;
   border-radius: 50%;
-  transition: transform 0.2s var(--ease-spring);
+  transition: transform 0.2s var(--ease-soft-spring);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
@@ -753,7 +753,7 @@ function incrementStroke() {
 
 /* === Transitions === */
 .dialog-fade-enter-active {
-  transition: opacity 0.2s var(--ease-spring), transform 0.25s var(--ease-spring);
+  transition: opacity 0.2s var(--ease-soft-spring), transform 0.25s var(--ease-soft-spring);
 }
 
 .dialog-fade-leave-active {

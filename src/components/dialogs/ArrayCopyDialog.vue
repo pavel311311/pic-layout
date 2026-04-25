@@ -318,9 +318,9 @@ onUnmounted(() => {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -350,7 +350,7 @@ onUnmounted(() => {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-danger);
-  animation: error-appear var(--duration-fast) var(--ease-spring);
+  animation: error-appear var(--duration-fast) var(--ease-soft-spring);
 }
 
 .field-error svg {
@@ -403,10 +403,10 @@ onUnmounted(() => {
   cursor: pointer;
   border-radius: var(--radius-md);
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
   flex-shrink: 0;
 }
@@ -441,8 +441,8 @@ onUnmounted(() => {
   text-align: center;
   outline: none;
   transition:
-    border-color var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
   -moz-appearance: textfield;
 }
 
@@ -518,11 +518,11 @@ onUnmounted(() => {
   letter-spacing: var(--letter-spacing-normal);
   cursor: pointer;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -569,7 +569,7 @@ onUnmounted(() => {
 
 /* === Transitions === */
 .array-fade-enter-active {
-  transition: opacity var(--duration-normal) var(--ease-spring), transform var(--duration-normal) var(--ease-spring);
+  transition: opacity var(--duration-normal) var(--ease-soft-spring), transform var(--duration-normal) var(--ease-soft-spring);
 }
 .array-fade-leave-active {
   transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);

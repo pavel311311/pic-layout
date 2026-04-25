@@ -474,10 +474,12 @@ import { nextTick } from 'vue'
 
             <!-- Loading -->
             <div v-if="isLoading && !previewData" class="loading-area">
-              <svg class="spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M21 12a9 9 0 11-6.219-8.56"/>
-              </svg>
-              <span>Parsing GDSII file...</span>
+              <span class="spinner-wrap">
+                <svg class="spinner" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="26" cy="26" r="20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="loading-text">Parsing GDSII file...</span>
             </div>
 
             <!-- Drop zone -->
@@ -708,7 +710,7 @@ import { nextTick } from 'vue'
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px;
-  transition: background var(--duration-fast) var(--ease-spring), color var(--duration-fast) var(--ease-spring), transform var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring), color var(--duration-fast) var(--ease-soft-spring), transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -749,25 +751,81 @@ import { nextTick } from 'vue'
   flex-shrink: 0;
 }
 
-/* === Loading === */
+/* === Loading — soft-skill spring physics === */
 .loading-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 40px;
-  color: var(--text-muted);
-  font-size: 13px;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 40px;
+  position: relative;
+}
+/* Double-Bezel outer shell */
+.loading-area::before {
+  content: '';
+  position: absolute;
+  inset: 16px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 0;
+}
+/* Double-Bezel inner core */
+.loading-area::after {
+  content: '';
+  position: absolute;
+  inset: 18px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 60%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--text-primary) 3%, transparent);
+  z-index: 0;
+}
+
+.spinner-wrap {
+  position: relative;
+  z-index: 1;
+  animation: spinnerFloat 3s var(--ease-soft-spring) infinite;
 }
 
 .spinner {
-  animation: spin 1s linear infinite;
+  width: 28px;
+  height: 28px;
   color: var(--accent-blue);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 35%, transparent));
+  /* Spring-based draw animation: arc draws around the circle */
+  stroke-dasharray: 60 126;
+  stroke-dashoffset: 0;
+  animation: spinnerDraw 1.6s var(--ease-soft-spring) infinite;
+  transform-origin: center;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@keyframes spinnerFloat {
+  0%, 100% { transform: translateY(0px); opacity: 0.9; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+@keyframes spinnerDraw {
+  0% { stroke-dashoffset: 0; transform: rotate(0deg); }
+  50% { stroke-dashoffset: -60; transform: rotate(180deg); }
+  100% { stroke-dashoffset: -126; transform: rotate(360deg); }
+}
+
+.loading-text {
+  position: relative;
+  z-index: 1;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+  animation: loadingPulse 2s var(--ease-soft-spring) infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 /* === Drop zone === */
@@ -777,7 +835,7 @@ import { nextTick } from 'vue'
   padding: 40px;
   text-align: center;
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-spring), background var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring), background var(--duration-fast) var(--ease-soft-spring);
 }
 
 .drop-zone:hover {
@@ -865,7 +923,7 @@ import { nextTick } from 'vue'
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
-  transition: background var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring);
 }
 
 .text-btn:hover {
@@ -945,7 +1003,7 @@ import { nextTick } from 'vue'
   font-weight: 500;
   font-family: 'Geist Mono', monospace;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-tag:hover {
@@ -978,7 +1036,7 @@ import { nextTick } from 'vue'
   border: 1px solid var(--border-light);
   border-radius: 8px;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-item:hover {
@@ -1050,7 +1108,7 @@ import { nextTick } from 'vue'
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -1094,7 +1152,7 @@ import { nextTick } from 'vue'
 
 /* === Transitions === */
 .import-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity 200ms var(--ease-soft-spring), transform 200ms var(--ease-soft-spring);
 }
 .import-fade-leave-active {
   transition: opacity 150ms ease, transform 150ms ease;

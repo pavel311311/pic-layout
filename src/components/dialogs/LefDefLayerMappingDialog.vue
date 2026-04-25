@@ -268,7 +268,7 @@ const purposeColors: Record<string, string> = {
 
 /* === Transitions === */
 .dialog-fade-enter-active {
-  transition: opacity 0.2s var(--ease-spring), transform 0.25s var(--ease-spring);
+  transition: opacity 0.2s var(--ease-soft-spring), transform 0.25s var(--ease-soft-spring);
 }
 .dialog-fade-leave-active {
   transition: opacity 0.15s ease, transform 0.18s ease;
@@ -322,7 +322,7 @@ const purposeColors: Record<string, string> = {
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -363,7 +363,7 @@ const purposeColors: Record<string, string> = {
   font-family: var(--font-sans);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
 }
 
 .preset-select:focus {
@@ -438,7 +438,7 @@ const purposeColors: Record<string, string> = {
   padding: var(--space-2) 0;
   align-items: center;
   border-bottom: 1px solid rgba(255,255,255,0.03);
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
 }
 
 .mapping-row:hover {
@@ -553,7 +553,7 @@ const purposeColors: Record<string, string> = {
   border: 1px solid var(--border-light);
   background: var(--bg-primary);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -635,7 +635,7 @@ const purposeColors: Record<string, string> = {
   font-family: var(--font-sans);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   white-space: nowrap;
 }
 

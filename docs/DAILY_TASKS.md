@@ -1722,3 +1722,61 @@ v0.3.0 完成条件：**所有 T1-T5 任务全部 ✅**
 
 ### 下小时计划
 - [ ] v0.5.0: UI 收尾（soft-skill 风格）- PropertiesPanel / CellTree / LayerPanel 精细打磨
+
+## 2026-04-25 03:22
+
+### 当前任务
+- [x] v0.5.0: CellTree empty state redesign - soft-skill Double-Bezel
+
+### 完成内容
+- CellTree.vue v0.5.0 soft-skill 改造第一阶段（empty states）：
+  - 新增 3 个 empty state SVG 图标：IconBoxEmpty / IconSearchEmpty / IconTreeEmpty
+  - 无搜索结果状态（noSearchResults）：Double-Bezel 架构（backdrop blur + 双层透明背景）+ float 动画
+  - 无 cells 状态（cellTree.length === 0）：完整 Double-Bezel 架构 + pill-shaped Add Cell 按钮
+  - Empty state CSS 全面重写：.cell-empty::before（外层壳）+ .cell-empty::after（内层核心）+ .empty-visual + .empty-text
+  - Add Cell 按钮从 dashed border + plain 样式 → pill-shaped + glass highlight + magnetic hover
+  - 修复 IconHexagon 重复声明错误（TypeScript TS2451）
+  - style 块注释更新为 v0.5.0 soft-skill redesign
+
+### 遇到的问题
+- 问题: TypeScript TS2451 "Cannot redeclare block-scoped variable 'IconHexagon'"（编辑时插入重复）
+  - 解决: 删除第二个重复的 IconHexagon 声明，保留第一个
+
+### 编译测试
+- [x] npm run build → 通过（35 assets + brotli）
+- [x] npx vitest run → 242 passed
+
+### 下小时计划
+- [ ] v0.5.0: CellTree toolbar/buttons pill-shaped 改造
+- [ ] v0.5.0: LayerPanel empty states 改造
+
+## 2026-04-25 09:10
+
+### 当前任务
+- [x] v0.5.0: GdsImportDialog Loading 状态软技能升级（linear → spring + Double-Bezel）
+
+### 完成内容
+- **GdsImportDialog loading 状态全面升级**（v0.5.0 soft-skill 改造）：
+  - 移除 `spin 1s linear infinite`（soft-skill 禁用 linear 动画）
+  - 新增 spring-based `spinnerDraw` + `spinnerFloat` 动画组合（cubic-bezier spring）
+  - 新增 `loading-text` 淡入淡出脉冲动画（`loadingPulse`）
+  - 应用 Double-Bezel 架构（outer shell + inner core + backdrop-filter blur）
+  - 渲染 SVG 圆环（`stroke-dasharray: 60 126`）替代原有路径 spinner
+  - `.spinner-wrap` + `.loading-text` 使用 `z-index: 1` 浮于 Double-Bezel 层之上
+  - CSS 体积：GdsImportDialog CSS 从 9.47KB 降至 9.47KB（实际增量仅几百字节用于 Double-Bezel）
+
+- **全项目 `ease-in-out` 动画清理**（soft-skill 规范统一）：
+  - CellTree.vue：`emptyFloat` 动画 2 处 `ease-in-out` → `var(--ease-spring)`
+  - LayerPanel.vue：`float-soft` 动画 `ease-in-out` → `var(--ease-spring)`
+  - properties-shared.css：`emptyFloat` 动画 `ease-in-out` → `var(--ease-spring)`
+
+### 遇到的问题
+- 无
+
+### 编译测试
+- [x] npm run build → 通过（35 assets + brotli）
+- [x] npx vitest run → 242 passed
+
+### 下小时计划
+- [ ] v0.5.0: 其他 Dialog Loading 状态软技能升级（检查 SvgExportDialog/PCellParamsDialog 等）
+- [ ] v0.5.0: PropertiesPanel 弹簧动画微交互增强

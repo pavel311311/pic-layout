@@ -549,9 +549,9 @@ function getOpDescription(op: BooleanOp): string {
   cursor: pointer;
   border-radius: 6px;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -661,11 +661,11 @@ function getOpDescription(op: BooleanOp): string {
   font-size: 11px;
   font-weight: 500;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .op-btn:hover:not(:disabled) {
@@ -751,11 +751,11 @@ function getOpDescription(op: BooleanOp): string {
   letter-spacing: 0.01em;
   cursor: pointer;
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -799,7 +799,7 @@ function getOpDescription(op: BooleanOp): string {
 
 /* === Transitions === */
 .bool-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity 200ms var(--ease-soft-spring), transform 200ms var(--ease-soft-spring);
 }
 .bool-fade-leave-active {
   transition: opacity 150ms ease, transform 150ms ease;

@@ -1,6 +1,7 @@
 /**
- * PropertiesPanel.vue - Shape properties panel (v0.3.1 taste-skill-main redesign)
- * Complete overhaul: inline SVG icons, Zinc palette, spring animations, diffusion shadow
+ * PropertiesPanel.vue - Shape properties panel (v0.5.0 soft-skill redesign)
+ * Soft Structuralism · Double-Bezel architecture · Heavy spring cubic-bezier(0.32,0.72,0,1)
+ * Glassmorphism empty state · Pill-shaped action buttons · Magnetic hover physics
  */
 <script setup lang="ts">
 import { useEditorStore } from '../../stores/editor'

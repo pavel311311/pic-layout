@@ -626,7 +626,7 @@ function renderIcon(name: string): string {
   color: var(--text-muted, #71717a);
   border-radius: var(--radius-md, 6px);
   cursor: pointer;
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .drc-btn-icon:hover {
@@ -698,7 +698,7 @@ function renderIcon(name: string): string {
   letter-spacing: 0.02em;
   border-radius: var(--radius-md, 6px);
   cursor: pointer;
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .drc-tab:hover {
@@ -765,7 +765,7 @@ function renderIcon(name: string): string {
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .violation-item:hover,
@@ -865,7 +865,7 @@ function renderIcon(name: string): string {
   font-size: var(--font-size-sm, 12px);
   font-family: inherit;
   cursor: pointer;
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .preset-select:focus {
@@ -888,7 +888,7 @@ function renderIcon(name: string): string {
   background: var(--bg-secondary, #09090b);
   border: 1px solid var(--border-light, #3f3f46);
   border-radius: var(--radius-md, 6px);
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .rule-item:hover {
@@ -909,7 +909,7 @@ function renderIcon(name: string): string {
   background: transparent;
   color: var(--text-muted, #71717a);
   cursor: pointer;
-  transition: color var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: color var(--duration-fast, 150ms) var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -966,7 +966,7 @@ function renderIcon(name: string): string {
   color: var(--text-muted, #71717a);
   cursor: pointer;
   border-radius: var(--radius-sm, 4px);
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -1025,7 +1025,7 @@ function renderIcon(name: string): string {
   font-size: var(--font-size-sm, 12px);
   font-family: inherit;
   color: var(--text-primary, #fafafa);
-  transition: border-color var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: border-color var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .form-row input:focus,
@@ -1103,7 +1103,7 @@ function renderIcon(name: string): string {
   font-weight: var(--font-weight-medium, 500);
   font-family: inherit;
   cursor: pointer;
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .drc-btn.secondary {
@@ -1207,7 +1207,7 @@ function renderIcon(name: string): string {
   border: 1px solid var(--border-light, #3f3f46);
   border-radius: var(--radius-md, 6px);
   margin-bottom: var(--space-1, 4px);
-  transition: all var(--duration-fast, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-fast, 150ms) var(--ease-soft-spring);
 }
 
 .preset-item:hover {
@@ -1251,12 +1251,12 @@ function renderIcon(name: string): string {
 /* Modal Transition */
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity var(--duration-normal, 200ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: opacity var(--duration-normal, 200ms) var(--ease-soft-spring);
 }
 
 .modal-enter-active .drc-modal,
 .modal-leave-active .drc-modal {
-  transition: transform var(--duration-normal, 200ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1)), opacity var(--duration-normal, 200ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: transform var(--duration-normal, 200ms) var(--ease-soft-spring), opacity var(--duration-normal, 200ms) var(--ease-soft-spring);
 }
 
 .modal-enter-from,

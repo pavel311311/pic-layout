@@ -19,11 +19,31 @@ const IconHome = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" st
 const IconSearch = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`
 const IconX = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
 const IconPlus = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`
+const IconHexagon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5v8z"/></svg>`
+// Empty state icons (v0.5.0 soft-skill)
+const IconBoxEmpty = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="10" width="28" height="20" rx="2" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2.5"/>
+  <line x1="12" y1="18" x2="28" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="23" x2="22" y2="23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="28" x2="18" y2="28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`
+const IconSearchEmpty = `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="15" cy="15" r="9" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="22" y1="22" x2="30" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <line x1="11" y1="15" x2="19" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+</svg>`
+const IconTreeEmpty = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="14" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+  <rect x="20" y="14" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+  <rect x="12" y="24" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+  <line x1="10" y1="14" x2="10" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="26" y1="14" x2="26" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="18" y1="24" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`
 const IconArrowRight = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`
 const IconArrowLeft = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`
 const IconChevronRight = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
 const IconCircle = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>`
-const IconHexagon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-9 5-9-5V8l9-5 9 5v8z"/></svg>`
 const IconPencil = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`
 const IconTrash = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`
 
@@ -586,10 +606,13 @@ watch(flatTree, () => {
       </span>
     </div>
 
-    <!-- No search results empty state (v0.2.7 search UX) -->
+    <!-- No search results empty state (v0.5.0 soft-skill redesign) -->
     <div v-if="noSearchResults" class="cell-search-no-results" role="status" aria-live="polite">
-      <span class="icon-inline" v-html="renderSearch()" aria-hidden="true" />
-      <span>No cells matching "{{ searchQuery }}"</span>
+      <span class="icon-inline empty-icon" v-html="IconSearchEmpty" aria-hidden="true" />
+      <div class="empty-text">
+        <span class="empty-title">No matches</span>
+        <span class="empty-hint">Try a different search term</span>
+      </div>
     </div>
 
     <!-- Cell Tree List -->
@@ -640,10 +663,19 @@ watch(flatTree, () => {
         </span>
       </div>
 
-      <!-- Empty state -->
+      <!-- Empty state (v0.5.0 soft-skill redesign) -->
       <div v-if="cellTree.length === 0" class="cell-empty">
-        <span>No cells</span>
-        <button class="add-cell-btn" @click="openAddCellDialog()">+ Add Cell</button>
+        <div class="empty-visual">
+          <span class="icon-inline empty-icon" v-html="IconTreeEmpty" aria-hidden="true" />
+        </div>
+        <div class="empty-text">
+          <span class="empty-title">No cells</span>
+          <span class="empty-hint">Create your first cell to get started</span>
+        </div>
+        <button class="add-cell-btn" @click="openAddCellDialog()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Add Cell
+        </button>
       </div>
     </div>
 
@@ -705,9 +737,18 @@ watch(flatTree, () => {
 
 <style scoped>
 /* ============================================
-   CellTree.vue — taste-skill-main redesign
-   v0.3.1 — Geist/Satoshi, Zinc palette, spring animations
+   CellTree.vue — v0.5.0 soft-skill redesign
+   Soft Structuralism · Double-Bezel architecture
+   Heavy spring cubic-bezier(0.32,0.72,0,1)
    ============================================ */
+
+/* Soft-skill spring curves (matching PropertiesPanel) */
+@keyframes emptyFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  25% { transform: translateY(-3px) scale(1.01); }
+  50% { transform: translateY(-5px) scale(1.02); }
+  75% { transform: translateY(-2px) scale(1.005); }
+}
 
 .cell-tree-panel {
   display: flex;
@@ -734,22 +775,22 @@ watch(flatTree, () => {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 7px;
+  padding: 4px 10px;
   background: transparent;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
+  border-radius: 999px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
   cursor: pointer;
-  max-width: 72px;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              color var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-spring),
-              border-color var(--duration-fast) var(--ease-spring);
+  transition: transform var(--duration-fast) var(--ease-soft-spring),
+              color var(--duration-fast) var(--ease-soft-spring),
+              background var(--duration-fast) var(--ease-soft-spring),
+              border-color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .breadcrumb-btn:hover {
@@ -797,8 +838,8 @@ watch(flatTree, () => {
   background: var(--bg-primary);
   color: var(--text-primary);
   letter-spacing: 0.01em;
-  transition: border-color var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-search-input:focus {
@@ -842,8 +883,8 @@ watch(flatTree, () => {
   color: var(--text-muted);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: color var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring),
+              background var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-search-clear:hover {
@@ -851,16 +892,61 @@ watch(flatTree, () => {
   background: var(--bg-secondary);
 }
 
-/* No search results empty state */
+/* No search results empty state (v0.5.0 soft-skill redesign) */
 .cell-search-no-results {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 14px 10px;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 20px;
   color: var(--text-muted);
   font-size: var(--font-size-base);
   text-align: center;
-  justify-content: center;
+  position: relative;
+}
+
+.cell-search-no-results::before {
+  content: '';
+  position: absolute;
+  inset: 16px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 40%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 0;
+}
+
+.cell-search-no-results .icon-inline.empty-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-muted);
+  opacity: 0.45;
+  position: relative;
+  z-index: 1;
+  animation: emptyFloat 3.5s var(--ease-soft-spring) infinite;
+}
+
+.cell-search-no-results .empty-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.cell-search-no-results .empty-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.cell-search-no-results .empty-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
   letter-spacing: 0.01em;
 }
 
@@ -896,10 +982,10 @@ watch(flatTree, () => {
   font-size: var(--font-size-base);
   color: var(--text-primary);
   border-left: 2px solid transparent;
-  transition: background var(--duration-fast) var(--ease-spring),
-              transform var(--duration-fast) var(--ease-spring),
-              border-color var(--duration-fast) var(--ease-spring),
-              color var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+              transform var(--duration-fast) var(--ease-soft-spring),
+              border-color var(--duration-fast) var(--ease-soft-spring),
+              color var(--duration-fast) var(--ease-soft-spring);
   letter-spacing: 0.01em;
 }
 
@@ -971,9 +1057,9 @@ watch(flatTree, () => {
   cursor: pointer;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  transition: color var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-spring),
-              transform var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring),
+              background var(--duration-fast) var(--ease-soft-spring),
+              transform var(--duration-fast) var(--ease-soft-spring);
 }
 
 .expand-btn:hover {
@@ -994,7 +1080,7 @@ watch(flatTree, () => {
   flex-shrink: 0;
   width: 14px;
   height: 14px;
-  transition: color var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-icon.is-top {
@@ -1020,7 +1106,7 @@ watch(flatTree, () => {
   min-width: 22px;
   text-align: center;
   letter-spacing: 0.02em;
-  transition: background var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-item:hover .cell-count {
@@ -1028,37 +1114,135 @@ watch(flatTree, () => {
 }
 
 /* Empty state */
+/* Empty state (v0.5.0 soft-skill redesign) */
 .cell-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  gap: 10px;
-  font-size: var(--font-size-base);
+  gap: 12px;
+  padding: 32px 20px;
+  position: relative;
+}
+
+/* Double-Bezel outer shell */
+.cell-empty::before {
+  content: '';
+  position: absolute;
+  inset: 12px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-secondary) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-light) 45%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 0;
+}
+
+/* Inner core surface */
+.cell-empty::after {
+  content: '';
+  position: absolute;
+  inset: 14px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--text-primary) 3%, transparent);
+  z-index: 0;
+}
+
+.empty-visual {
+  position: relative;
+  z-index: 1;
+}
+
+.empty-visual .icon-inline.empty-icon {
+  width: 44px;
+  height: 44px;
   color: var(--text-muted);
+  opacity: 0.35;
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--text-muted) 12%, transparent));
+  transition: all 600ms var(--ease-soft-spring);
+  animation: emptyFloat 4s var(--ease-soft-spring) infinite;
+}
+
+.cell-empty .empty-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+.cell-empty .empty-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
   letter-spacing: 0.01em;
 }
 
-.add-cell-btn {
-  padding: 5px 14px;
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-md);
-  background: transparent;
+.cell-empty .empty-hint {
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.01em;
+  max-width: 160px;
+  line-height: 1.4;
+}
+
+/* Pill-shaped add button (soft-skill) */
+.add-cell-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   font-family: inherit;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-spring),
-              border-color var(--duration-fast) var(--ease-spring),
-              transform var(--duration-fast) var(--ease-spring);
+  letter-spacing: 0.03em;
+  position: relative;
+  z-index: 1;
+  transition: all var(--duration-fast) var(--ease-soft-spring);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.add-cell-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 3.5%, transparent), transparent);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
 }
 
 .add-cell-btn:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-blue);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  color: var(--accent-blue);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+}
+
+.add-cell-btn:hover::before {
+  opacity: 1;
+}
+
+.add-cell-btn:active {
+  transform: translateY(0px) scale(0.97);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 8%, transparent);
+}
+
+.add-cell-btn svg {
+  transition: transform var(--duration-fast) var(--ease-soft-spring);
+}
+
+.add-cell-btn:hover svg {
+  transform: scale(1.15);
 }
 
 /* Add cell form */
@@ -1082,8 +1266,8 @@ watch(flatTree, () => {
   background: var(--bg-panel);
   color: var(--text-primary);
   letter-spacing: 0.01em;
-  transition: border-color var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-name-input:focus {
@@ -1100,25 +1284,29 @@ watch(flatTree, () => {
 
 .btn-cancel,
 .btn-add {
-  padding: 4px 12px;
-  border-radius: var(--radius-md);
+  padding: 5px 14px;
+  border-radius: 999px;
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   font-family: inherit;
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-spring),
-              border-color var(--duration-fast) var(--ease-spring);
+  letter-spacing: 0.03em;
+  transition: transform var(--duration-fast) var(--ease-soft-spring),
+              background var(--duration-fast) var(--ease-soft-spring),
+              border-color var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .btn-cancel {
-  border: 1px solid var(--border-light);
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
   background: var(--bg-panel);
   color: var(--text-secondary);
 }
 
 .btn-cancel:hover {
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--accent-blue) 8%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  color: var(--accent-blue);
   transform: translateY(-1px);
 }
 
@@ -1130,11 +1318,12 @@ watch(flatTree, () => {
 
 .btn-add:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-blue) 25%, transparent);
 }
 
 .btn-add:active {
   transform: scale(0.97);
+  box-shadow: none;
 }
 
 /* Toolbar */
@@ -1150,31 +1339,56 @@ watch(flatTree, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex: 1;
-  padding: 5px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg-panel);
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--border-light) 50%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-panel) 80%, transparent);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   font-family: inherit;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  letter-spacing: var(--letter-spacing-wide);
   cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+  transition:
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Glass highlight sheen */
+.toolbar-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 4%, transparent), transparent 60%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-soft-spring);
+  pointer-events: none;
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: var(--border-light);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-elevated);
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
+  color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-blue) 15%, transparent);
+}
+
+.toolbar-btn:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .toolbar-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(0px) scale(0.96);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow) 10%, transparent);
 }
 
 .toolbar-btn:disabled {
@@ -1193,7 +1407,7 @@ watch(flatTree, () => {
   box-shadow: var(--shadow-elevated);
   padding: 4px;
   backdrop-filter: blur(8px);
-  animation: ctx-enter 0.15s var(--ease-spring) forwards;
+  animation: ctx-enter 0.15s var(--ease-soft-spring) forwards;
 }
 
 @keyframes ctx-enter {
@@ -1218,9 +1432,9 @@ watch(flatTree, () => {
   cursor: pointer;
   border-radius: var(--radius-md);
   letter-spacing: 0.01em;
-  transition: background var(--duration-fast) var(--ease-spring),
-              color var(--duration-fast) var(--ease-spring),
-              transform var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+              color var(--duration-fast) var(--ease-soft-spring),
+              transform var(--duration-fast) var(--ease-soft-spring);
 }
 
 .ctx-item:hover {

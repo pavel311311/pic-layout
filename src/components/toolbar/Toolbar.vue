@@ -523,7 +523,7 @@ onUnmounted(() => {
   border-radius: var(--radius-lg);
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
   position: relative;
 }
 
@@ -560,7 +560,7 @@ onUnmounted(() => {
 
 .btn-icon-svg :deep(svg) {
   stroke: currentColor;
-  transition: stroke var(--duration-fast) var(--ease-spring);
+  transition: stroke var(--duration-fast) var(--ease-soft-spring);
 }
 
 .btn-label {
@@ -661,7 +661,7 @@ onUnmounted(() => {
   background: var(--bg-panel);
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .grid-select:hover {
@@ -721,7 +721,7 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
   cursor: pointer;
   color: var(--accent-blue);
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-nav-btn:hover {

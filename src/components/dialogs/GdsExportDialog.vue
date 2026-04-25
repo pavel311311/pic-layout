@@ -418,7 +418,7 @@ const scopeHints: Record<string, string> = {
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px;
-  transition: background var(--duration-fast) var(--ease-spring), color var(--duration-fast) var(--ease-spring), transform var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring), color var(--duration-fast) var(--ease-soft-spring), transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -507,7 +507,7 @@ const scopeHints: Record<string, string> = {
   border: 1px solid var(--border-light);
   border-radius: 8px;
   overflow: hidden;
-  transition: border-color var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring), box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .input-wrapper:focus-within {
@@ -566,7 +566,7 @@ const scopeHints: Record<string, string> = {
   cursor: pointer;
   appearance: none;
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring), box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .select-input:focus {
@@ -612,7 +612,7 @@ const scopeHints: Record<string, string> = {
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-spring), border-color var(--duration-fast) var(--ease-spring), color var(--duration-fast) var(--ease-spring), transform var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring), border-color var(--duration-fast) var(--ease-soft-spring), color var(--duration-fast) var(--ease-soft-spring), transform var(--duration-fast) var(--ease-soft-spring);
 }
 
 .layer-tag:hover {
@@ -702,7 +702,7 @@ const scopeHints: Record<string, string> = {
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-spring), border-color var(--duration-fast) var(--ease-spring), color var(--duration-fast) var(--ease-spring), transform var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring), border-color var(--duration-fast) var(--ease-soft-spring), color var(--duration-fast) var(--ease-soft-spring), transform var(--duration-fast) var(--ease-soft-spring), box-shadow var(--duration-fast) var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -746,7 +746,7 @@ const scopeHints: Record<string, string> = {
 
 /* === Transitions === */
 .export-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity 200ms var(--ease-soft-spring), transform 200ms var(--ease-soft-spring);
 }
 .export-fade-leave-active {
   transition: opacity 150ms ease, transform 150ms ease;

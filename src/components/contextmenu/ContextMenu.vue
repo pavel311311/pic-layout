@@ -323,8 +323,8 @@ function getActiveSubmenuItems(): MenuItem[] {
   font-size: var(--font-size-base);
   gap: var(--space-2);
   position: relative;
-  transition: background var(--duration-fast) var(--ease-spring),
-              color var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+              color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .context-item:hover:not(.is-disabled),
@@ -351,7 +351,7 @@ function getActiveSubmenuItems(): MenuItem[] {
 .item-shortcut {
   color: var(--text-muted);
   font-size: var(--font-size-sm);
-  transition: color var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .context-item:hover:not(.is-disabled) .item-shortcut {
@@ -365,7 +365,7 @@ function getActiveSubmenuItems(): MenuItem[] {
   width: var(--space-2-5);
   height: var(--space-2-5);
   color: var(--text-muted);
-  transition: color var(--duration-fast) var(--ease-spring);
+  transition: color var(--duration-fast) var(--ease-soft-spring);
 }
 
 .context-item:hover:not(.is-disabled) .submenu-arrow {

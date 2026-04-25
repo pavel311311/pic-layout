@@ -266,7 +266,7 @@ function drillOutFromStatusBar() {
   cursor: pointer;
   padding: 1px var(--space-1-5);
   border-radius: var(--radius-sm);
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
 }
 
 .cell-info--clickable:hover {

@@ -195,9 +195,9 @@ const alignGroups = [
   cursor: pointer;
   border-radius: var(--radius-md);
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -260,11 +260,11 @@ const alignGroups = [
   font-weight: 500;
   letter-spacing: var(--letter-spacing-normal);
   transition:
-    background var(--duration-fast) var(--ease-spring),
-    border-color var(--duration-fast) var(--ease-spring),
-    color var(--duration-fast) var(--ease-spring),
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-spring);
+    background var(--duration-fast) var(--ease-soft-spring),
+    border-color var(--duration-fast) var(--ease-soft-spring),
+    color var(--duration-fast) var(--ease-soft-spring),
+    transform var(--duration-fast) var(--ease-soft-spring),
+    box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 .align-btn:hover {
@@ -317,7 +317,7 @@ const alignGroups = [
 
 /* === Transitions === */
 .align-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity 200ms var(--ease-soft-spring), transform 200ms var(--ease-soft-spring);
 }
 .align-fade-leave-active {
   transition: opacity 150ms ease, transform 150ms ease;

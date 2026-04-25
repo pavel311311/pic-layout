@@ -74,6 +74,7 @@
   
   /* === MOTION === */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
@@ -270,8 +271,8 @@ input, textarea, select {
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: 6px;
-  transition: border-color var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring);
+  transition: border-color var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
 }
 
 input:focus, textarea:focus, select:focus {
@@ -287,7 +288,7 @@ button {
   cursor: pointer;
   border-radius: 6px;
   border: 1px solid transparent;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all var(--duration-fast) var(--ease-soft-spring);
 }
 
 button:active:not(:disabled) {
@@ -296,9 +297,9 @@ button:active:not(:disabled) {
 
 /* Theme transition */
 .theme-light, .theme-dark, :root {
-  transition: background-color var(--duration-normal) var(--ease-spring),
-              color var(--duration-normal) var(--ease-spring),
-              border-color var(--duration-normal) var(--ease-spring);
+  transition: background-color var(--duration-normal) var(--ease-soft-spring),
+              color var(--duration-normal) var(--ease-soft-spring),
+              border-color var(--duration-normal) var(--ease-soft-spring);
 }
 
 /* Selection color */
@@ -358,6 +359,6 @@ button:active:not(:disabled) {
 .shadow-2xl { box-shadow: var(--shadow-2xl); }
 
 /* Transition helpers */
-.transition-fast { transition: all var(--duration-fast) var(--ease-spring); }
-.transition-normal { transition: all var(--duration-normal) var(--ease-spring); }
-.transition-slow { transition: all var(--duration-slow) var(--ease-spring); }
+.transition-fast { transition: all var(--duration-fast) var(--ease-soft-spring); }
+.transition-normal { transition: all var(--duration-normal) var(--ease-soft-spring); }
+.transition-slow { transition: all var(--duration-slow) var(--ease-soft-spring); }

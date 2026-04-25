@@ -536,7 +536,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
 }
 
 .close-btn:hover {
@@ -666,7 +666,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   font-size: var(--font-size-base);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -698,7 +698,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   flex-shrink: 0;
 }
 
@@ -732,7 +732,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   font-size: var(--font-size-base);
   font-family: var(--font-mono);
   text-align: center;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   -moz-appearance: textfield;
 }
 
@@ -765,7 +765,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   background: var(--bg-secondary);
   border-radius: 10px;
   padding: 2px;
-  transition: background var(--ease-spring);
+  transition: background var(--ease-soft-spring);
   display: flex;
   align-items: center;
 }
@@ -779,7 +779,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   height: 16px;
   background: white;
   border-radius: 50%;
-  transition: transform var(--ease-spring);
+  transition: transform var(--ease-soft-spring);
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
@@ -837,7 +837,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
   font-weight: var(--font-weight-medium);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all var(--ease-spring);
+  transition: all var(--ease-soft-spring);
   border: 1px solid transparent;
 }
 
@@ -876,7 +876,7 @@ const IconInfo = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" st
 
 /* === Transitions === */
 .pcell-params-fade-enter-active {
-  transition: all var(--duration-normal, 250ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: all var(--duration-normal, 250ms) var(--ease-soft-spring);
 }
 
 .pcell-params-fade-leave-active {

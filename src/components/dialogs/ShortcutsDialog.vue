@@ -292,9 +292,9 @@ const viewShortcuts = [
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px;
-  transition: background var(--duration-fast) var(--ease-spring),
-              color var(--duration-fast) var(--ease-spring),
-              transform var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+              color var(--duration-fast) var(--ease-soft-spring),
+              transform var(--duration-fast) var(--ease-soft-spring);
   padding: 0;
 }
 
@@ -381,8 +381,8 @@ kbd {
   text-align: center;
   box-shadow: 0 1px 0 1px var(--border-dark);
   flex-shrink: 0;
-  transition: background var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring);
+  transition: background var(--duration-fast) var(--ease-soft-spring),
+              box-shadow var(--duration-fast) var(--ease-soft-spring);
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -415,7 +415,7 @@ kbd {
 
 /* === Transitions === */
 .shortcuts-fade-enter-active {
-  transition: opacity 200ms var(--ease-spring), transform 200ms var(--ease-spring);
+  transition: opacity 200ms var(--ease-soft-spring), transform 200ms var(--ease-soft-spring);
 }
 .shortcuts-fade-leave-active {
   transition: opacity 150ms ease, transform 150ms ease;
